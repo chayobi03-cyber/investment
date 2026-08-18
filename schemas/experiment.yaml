@@ -1,0 +1,28 @@
+version: "0.1"
+name: initial_capital_preservation_matrix
+capital_tiers: [T1, T2, T3]
+portfolios:
+  P0: equity_100
+  P1: conservative
+  P2: balanced
+  P3: defensive
+required_metrics:
+  - CAGR
+  - volatility
+  - max_drawdown
+  - recovery_time
+  - sortino
+  - calmar
+  - turnover
+  - transaction_cost
+  - stress_loss
+  - risk_contribution
+scenarios:
+  - equity_down_10
+  - equity_down_20
+  - equity_down_30
+  - equity_down_50
+  - volatility_double
+  - correlation_shock
+  - rate_shock
+  - fx_shock

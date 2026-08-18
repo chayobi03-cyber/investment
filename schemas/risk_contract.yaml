@@ -1,0 +1,19 @@
+version: "0.1"
+objective: capital_preservation
+capital_tiers:
+  - id: T1
+    capital_krw: 10000000
+  - id: T2
+    capital_krw: 50000000
+  - id: T3
+    capital_krw: 100000000
+risk:
+  max_mdd: 0.20
+  stress_mdd: 0.30
+  max_single_position: 0.05
+  max_sector: 0.20
+  min_cash: 0.15
+  leverage: 0.0
+promotion:
+  require_all_upstream_green: true
+  blocked_on_data_integrity_failure: true
