@@ -18,3 +18,24 @@ jobs:
         run: python -m pip install --upgrade pip pytest numpy
       - name: Run deterministic tests
         run: python -m pytest -q
+      - name: Run capital matrix harness
+        run: python scripts/run_capital_matrix.py > /tmp/capital_matrix.json
+      - name: Validate capital matrix coverage
+        run: python - <<'PY'
+          import json
+          d = json.load(open('/tmp/capital_matrix.json'))
+          assert d['case_count'] == 12
+          assert len(d['cases']) == 12
+          print('capital matrix: 12/12 cases')
+          PY
+      - name: Run stress matrix harness
+        run: python scripts/run_stress_matrix.py > /tmp/stress_matrix.json
+      - name: Validate stress matrix coverage
+        run: python - <<'PY'
+          import json
+          d = json.load(open('/tmp/stress_matrix.json'))
+          assert d['case_count'] == 12
+          assert d['scenario_count'] == 5
+          assert d['result_count'] == 60
+          print('stress matrix: 12 cases x 5 scenarios = 60 results')
+          PY
