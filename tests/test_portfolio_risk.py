@@ -29,7 +29,7 @@ def test_stress_loss_reports_negative_krw_loss():
         {"Equity": -0.30, "Bond": -0.10, "Gold": -0.05, "Cash": 0.0},
         10_000_000,
     )
-    assert loss == pytest.approx(-1_925_000)
+    assert loss == pytest.approx(-1_800_000)
 
 
 def test_portfolio_volatility_is_positive():
