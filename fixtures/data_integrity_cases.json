@@ -1,0 +1,15 @@
+{
+  "description": "Synthetic data-integrity fixtures only; each case declares expected severity and strict M1-B gate behavior.",
+  "cases": [
+    {"id":"OHLC_NORMAL","rows":[{"symbol":"TEST","timestamp":"2026-01","open":100,"high":105,"low":98,"close":102}],"expected_codes":[],"expected_severity":[],"gate_pass":true},
+    {"id":"OHLC_RANGE_VIOLATION","rows":[{"symbol":"TEST","timestamp":"2026-01","open":107,"high":105,"low":98,"close":102}],"expected_codes":["OHLC_RANGE"],"expected_severity":["ERROR"],"gate_pass":false},
+    {"id":"NON_POSITIVE_PRICE","rows":[{"symbol":"TEST","timestamp":"2026-01","open":10,"high":11,"low":0,"close":10}],"expected_codes":["NON_POSITIVE_PRICE"],"expected_severity":["ERROR"],"gate_pass":false},
+    {"id":"EXTREME_VALID_SHOCK","rows":[{"symbol":"TEST","timestamp":"2026-01","open":100,"high":105,"low":95,"close":100},{"symbol":"TEST","timestamp":"2026-02","open":75,"high":78,"low":70,"close":75}],"expected_codes":["RETURN_OUTLIER"],"expected_severity":["REVIEW"],"gate_pass":false},
+    {"id":"INTRAPERIOD_RANGE_ANOMALY","rows":[{"symbol":"TEST","timestamp":"2026-01","open":100,"high":105,"low":40,"close":102}],"expected_codes":["INTRAPERIOD_RANGE_ANOMALY"],"expected_severity":["REVIEW"],"gate_pass":false},
+    {"id":"CORPORATE_ACTION_DISCONTINUITY","rows":[{"symbol":"BIL","timestamp":"2017-11-29","close":91.5},{"symbol":"BIL","timestamp":"2017-11-30","close":91.5},{"symbol":"BIL","timestamp":"2017-12-01","close":91.4}],"expected_action":"document 1:2 reverse split effective 2017-11-30; do not classify split as market loss","gate_pass":false},
+    {"id":"DUPLICATE_TIMESTAMP","rows":[{"symbol":"TEST","timestamp":"2026-01","open":100,"high":105,"low":98,"close":102},{"symbol":"TEST","timestamp":"2026-01","open":101,"high":106,"low":99,"close":103}],"expected_codes":["DUPLICATE_TIMESTAMP"],"expected_severity":["ERROR"],"gate_pass":false},
+    {"id":"MISSING_OBSERVATION","rows":[{"symbol":"TEST","timestamp":"2026-01","open":100,"high":105,"low":98,"close":102}],"expected_codes":["MISSING_OBSERVATION"],"expected_severity":["ERROR"],"expected_missing":["2026-02"],"gate_pass":false},
+    {"id":"TIMESTAMP_ORDER","rows":[{"symbol":"TEST","timestamp":"2026-02","open":102,"high":108,"low":101,"close":107},{"symbol":"TEST","timestamp":"2026-01","open":100,"high":105,"low":98,"close":102}],"expected_codes":["TIMESTAMP_ORDER"],"expected_severity":["ERROR"],"gate_pass":false},
+    {"id":"POINT_IN_TIME_VIOLATION","rows":[{"symbol":"TEST","timestamp":"2026-03","decision_timestamp":"2026-02","open":102,"high":108,"low":101,"close":107}],"expected_codes":["POINT_IN_TIME_VIOLATION"],"expected_severity":["ERROR"],"gate_pass":false}
+  ]
+}
