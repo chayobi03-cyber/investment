@@ -2,17 +2,11 @@
 
 ## Session scope
 
-This session initialized and advanced the capital-preservation investment research framework for three capital tiers:
+This session continued the capital-preservation research framework with emphasis on M1-B Data Integrity. Work stayed fail-closed and did not promote historical strategy performance.
 
-- T1: KRW 10,000,000
-- T2: KRW 50,000,000
-- T3: KRW 100,000,000
+## 1. Capital preservation remains the primary optimization objective
 
-The session intentionally prioritized data integrity and deterministic risk calculation before any historical strategy-performance claims.
-
-## 1. Capital preservation must be the primary optimization objective
-
-Raw CAGR is not the primary gate. The evaluation order is:
+Raw CAGR is not the primary gate. The evaluation order remains:
 
 1. Probability of ruin / catastrophic loss
 2. Maximum drawdown
@@ -23,70 +17,82 @@ Raw CAGR is not the primary gate. The evaluation order is:
 7. Calmar
 8. CAGR
 
-A strategy with higher CAGR must not automatically outrank a lower-CAGR strategy with substantially better downside characteristics.
+A higher CAGR cannot override materially worse downside characteristics or failed evidence gates.
 
 ## 2. Capital tiers must be tested separately
 
-The same percentage allocation can produce different implementation behavior at KRW 10M, 50M, and 100M because minimum trade sizes, transaction costs, diversification granularity, and implementation constraints differ. Percentage metrics and absolute KRW loss must therefore both be reported.
+The same percentage allocation can behave differently at KRW 10M, 50M, and 100M because implementation granularity, transaction costs, diversification and liquidity differ. Percentage metrics and absolute KRW loss must both be reported.
 
 ## 3. Data QA is a hard promotion gate
 
-Initial market-data sampling exposed suspicious observations. A SPY monthly record contained a low near 69 while surrounding open/close values were near 686. A BIL price-level discontinuity around 2017 also required corporate-action verification.
-
-Lesson: suspicious values must be quarantined or independently verified before they can support any performance claim. They must not be silently corrected or deleted.
+The session reinforced that suspicious market observations must be quarantined or independently verified before supporting any performance claim. No silent correction, deletion, winsorization or imputation is allowed.
 
 ## 4. Outlier detection and outlier deletion are different operations
 
-A large historical move can be a genuine market shock. Therefore the data pipeline should:
+A large historical move may be a real market shock. The correct workflow is detect -> classify -> preserve evidence -> verify, not detect -> delete.
 
-- detect
-- classify
-- preserve evidence
-- request verification
+The SPY anomaly was treated as an evidence problem, not automatically as a bad market event.
 
-rather than automatically remove observations.
+## 5. Adjustment rules must be machine-readable
 
-The SPY issue was refined from a simple OHLC error assumption into an `INTRAPERIOD_RANGE_ANOMALY` review condition. This prevents the QA system from confusing unusual market behavior with invalid OHLC structure.
+The provenance matrix now records source identity, secondary confirmation source, corporate-action handling, PIT rule, and adjustment rules for SPY/IEF/TLT/GLD/BIL. The important improvement is that the rule is executable-testable rather than only prose.
 
-## 5. Deterministic calculation tests caught a genuine specification error
+## 6. Known historical anomalies can often be explained, but explanation is not the same as gate clearance
 
-The first stress-loss test expected KRW -1.925M for a T1 P1-style scenario, but the implemented weighted shock mathematically produced KRW -1.8M. The expected value was corrected.
+The BIL 2017 discontinuity was identified as a reverse-split issue. The SPY suspicious low was retained as a quarantined anomaly. These explanations reduce ambiguity but do not by themselves make the full historical dataset GREEN.
 
-Lesson: even simple financial arithmetic requires executable tests; prose calculations are not sufficient evidence.
+## 7. Actual-data evidence must remain separate from synthetic engineering fixtures
 
-## 6. Synthetic fixtures must never be presented as investment performance
+The 12-case and stress harnesses are useful regression fixtures, but they are not historical evidence. Real historical ingest must produce separate machine evidence with source, retrieval and reconciliation metadata.
 
-The 12-case harness and stress matrix are deterministic engineering fixtures. They validate code paths and risk calculations but do not establish a historical investment edge.
+## 8. CI evidence must attach to the exact current head
 
-This distinction must remain explicit in documentation, CI output, and future reports.
+A previous successful run cannot certify later changes. The session explicitly checked the current PR head and found a retrievable CI failure. The failure became evidence for remediation rather than being ignored.
 
-## 7. Promotion gates must remain hard constraints
+## 9. Workflow improvement: isolate data-evidence execution from deterministic regression
 
-Current promotion policy:
+A useful structural improvement was to separate the M1-B real-data ingest/evidence job from the deterministic harness job. This prevents an unrelated calculation-regression failure from hiding whether historical-data evidence generation itself can execute.
 
-`M0 -> M1 -> M2 -> M3`
+This is a low-risk, high-ROI workflow improvement because it improves diagnosis without weakening the final promotion gate: all required gates still have to pass before promotion.
 
-A blocked upstream gate cannot be bypassed because a downstream simulation looks attractive. In particular:
+## 10. Automation opportunities should be small, auditable and high-value
 
-- M1 data-integrity failure blocks historical backtesting.
-- M2 risk-engine failure blocks strategy comparison.
-- CAGR cannot override evidence-quality or risk-gate failure.
+The most valuable automations identified in this session are:
 
-## 8. CI is necessary but not sufficient
+- automatic provenance-contract validation
+- automatic historical ingest with retrieval timestamps
+- automatic duplicate/missing/gap/OHLC checks
+- automatic corporate-action event capture
+- automatic cross-source reconciliation
+- automatic machine evidence artifact generation
+- automatic fail-closed M1-B decision
+- automatic exact-head CI evidence capture
 
-The deterministic CI run completed with 6 tests passing after correction. However, later harness changes were not independently certified by a newly retrievable Actions result in this session.
+Do not add automation merely for convenience when it increases data-source ambiguity or operational complexity.
 
-Lesson: never report "latest CI GREEN" unless the exact current commit has an attributable successful workflow run. A previously successful run is not evidence for later code.
+## 11. What did not work well
 
-## 9. Research should fail closed
+The real-data ingest path could not be validated inside the assistant runtime because external financial API access is unavailable there. The implementation therefore had to be pushed to GitHub Actions for execution.
 
-The appropriate status when provenance, corporate-action treatment, or current-run verification is incomplete is `YELLOW / BLOCKING`, not an inferred PASS.
+The first latest-head CI also exposed three failures: one provenance-contract string mismatch and two existing deterministic harness execution failures. This means future changes should be followed immediately by focused regression checks before adding another layer of automation.
 
-This keeps the research chain auditable and prevents optimistic interpretation from entering the baseline.
+## 12. Next-session focus: financial-information acquisition
 
-## 10. Next-session priority is data, not alpha
+The next session should explicitly evaluate how the project will obtain financial information with the lowest operational risk and highest reproducibility value.
 
-The next session must first resolve M1-B. No new strategy optimization, stock selection, or historical return ranking should be promoted until the critical-data QA contract is satisfied.
+The evaluation should cover:
+
+- official issuer / exchange sources
+- regulator filings and corporate-action records
+- stable public historical APIs
+- licensed commercial datasets where justified
+- source terms, rate limits and redistribution constraints
+- retrieval timestamps and dataset/version identifiers
+- raw-data retention and hashing
+- primary/secondary reconciliation strategy
+- PIT-capable sources for research-decision timestamps
+
+The objective is not to add many data vendors. It is to select a small, defensible source stack that maximizes evidence quality and minimizes maintenance and licensing risk.
 
 ## Current gate state at session close
 
