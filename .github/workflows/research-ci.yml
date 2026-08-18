@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  deterministic:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +41,15 @@ jobs:
           assert d['result_count'] == 60
           print('stress matrix: 12 cases x 5 scenarios = 60 results')
           PY
-      - name: Ingest real baseline historical series
+
+  m1b_ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run real baseline historical ingest
         run: python scripts/ingest_baseline_history.py
       - name: Upload M1-B machine evidence
         if: always()
