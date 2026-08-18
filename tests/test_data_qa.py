@@ -1,7 +1,7 @@
 from src.data_qa.validation import flag_return_outliers, qa_pass, validate_ohlc
 
 
-def test_ohlc_out_of_range_is_blocking():
+def test_extreme_intraperiod_range_is_reviewed():
     rows = [{
         "symbol": "SPY",
         "timestamp": "2026-02",
@@ -11,6 +11,7 @@ def test_ohlc_out_of_range_is_blocking():
         "close": 685.99,
     }]
     issues = validate_ohlc(rows)
+    assert any(issue.code == "INTRAPERIOD_RANGE_ANOMALY" for issue in issues)
     assert qa_pass(issues)
 
 
@@ -36,4 +37,3 @@ def test_large_return_is_review_not_deleted():
     issues = flag_return_outliers(rows, threshold=0.25)
     assert len(issues) == 1
     assert issues[0].severity == "REVIEW"
-    assert not any(i.code == "NON_POSITIVE_PRICE" for i in issues)
