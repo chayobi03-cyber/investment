@@ -5,7 +5,7 @@
 - Repository: `chayobi03-cyber/investment`
 - Branch: `research/capital-preservation-v0.1`
 - Base branch: `main`
-- Open PR: #1
+- Open PR: #1 (Draft)
 
 ## Research objective
 
@@ -17,10 +17,10 @@ Build and validate a capital-preservation-oriented investment research system fo
 
 Priority is capital survival and risk-adjusted compounding, not raw CAGR maximization.
 
-## Current gate state
+## Current gate state at handoff
 
 - M0 Risk Contract: GREEN
-- M1-A Data Acquisition: GREEN for development sample/fixtures
+- M1-A Data Acquisition: GREEN for development fixture/sample
 - M1-B Data Integrity: YELLOW / BLOCKING
 - M2-A Risk Calculation: GREEN for deterministic fixtures
 - M2-B Stress Calculation: GREEN for deterministic fixtures
@@ -30,117 +30,172 @@ Priority is capital survival and risk-adjusted compounding, not raw CAGR maximiz
 
 1. Do not start or promote historical strategy-performance analysis while M1-B is blocked.
 2. Do not silently repair, delete, winsorize, or impute suspicious market observations.
-3. Preserve anomaly evidence and classify it as `ERROR` or `REVIEW` with an explicit reason.
+3. Preserve anomaly evidence and classify it with an explicit reason.
 4. Never report CI GREEN unless the exact current commit has a retrievable successful workflow run.
 5. Synthetic fixtures are engineering validation only; they are not evidence of investment alpha.
 6. A high CAGR cannot override a failed data-integrity or risk gate.
 7. No leverage by default in the research baseline.
+8. Historical data evidence and synthetic regression fixtures must remain separate.
 
-## Immediate next-session tasks
+# Next Session Prompt
 
-### Task 1 — M1-B Data Integrity remediation
+## Mission
 
-Validate the actual historical data sources for the baseline instruments:
+Resume at **M1-B Data Integrity remediation** and do not enter historical backtesting or optimization unless M1-B is independently proven GREEN.
 
-- broad equity proxy / SPY-equivalent
-- intermediate bond proxy / IEF-equivalent
-- long-duration bond proxy / TLT-equivalent
-- gold proxy / GLD-equivalent
-- cash proxy / BIL-equivalent
+## Phase 0 — exact-head orientation
 
-For each series, establish:
+1. Verify repository, branch, PR #1, and exact current HEAD SHA.
+2. Verify current CI status for that exact SHA.
+3. Inspect the latest failed job before changing code.
+4. Preserve all useful failure evidence.
 
-- source and dataset identifier
-- observation timestamp
-- retrieval timestamp
+## Phase 1 — financial-information acquisition strategy
+
+Before broadening ingestion, evaluate and choose a small, defensible financial-information source stack for the five baseline ETFs:
+
+- SPY
+- IEF
+- TLT
+- GLD
+- BIL
+
+For each candidate source, assess:
+
+- authoritative status
+- historical depth
+- OHLC availability
+- corporate-action coverage
+- dividend/distribution coverage
+- publication timestamp availability
+- point-in-time capability
+- API stability
+- rate limits
+- terms/licensing/redistribution constraints
+- reproducibility/versioning
+- cost
+- operational maintenance burden
+
+Prefer **low-risk / high-ROI** sources. Do not add vendors merely to increase vendor count.
+
+Required output:
+
+`source -> purpose -> evidence strength -> PIT capability -> licensing risk -> operational cost -> decision`
+
+Separate the roles of:
+
+- official issuer / regulator evidence
+- primary historical market-data feed
+- independent reconciliation feed
+- PIT/event-date evidence
+
+## Phase 2 — real historical ingest
+
+Run the ingest on the CI runner or another execution environment with outbound access.
+
+For each of the five series, capture:
+
+- exact source URL / dataset identifier
+- retrieval UTC timestamp
+- requested range
+- actual first/last observation
+- row count
+- raw file hash
+- normalized file hash
+- schema version
 - adjustment status
-- split/dividend/corporate-action treatment
-- point-in-time availability
-- missingness
-- duplicate records
+- corporate actions
+- distribution events
+- source-response metadata
+
+Never silently overwrite raw source data.
+
+## Phase 3 — machine QA
+
+Run and record:
+
+- duplicate timestamps
+- missing observations
+- timestamp ordering
 - OHLC consistency
+- positive price checks
 - extreme-return review
-- independent cross-source confirmation for anomalies
+- split/dividend consistency
+- adjustment-rule consistency
+- source-to-source reconciliation
 
-The previously observed SPY low near 69 and BIL discontinuity around 2017 remain explicit QA findings until independently resolved.
+For each finding emit:
 
-### Task 2 — M1 fixture expansion
+`series + date + rule + observed value + expected/reference + classification + action + evidence pointer`
 
-Extend fixtures to cover:
+## Phase 4 — known anomaly closure
 
-- normal OHLC
-- OHLC range violation
-- non-positive price
-- extreme but valid market shock
-- intraperiod range anomaly
-- corporate-action discontinuity
-- duplicate timestamp
-- missing observation
-- timestamp ordering issue
-- point-in-time availability violation
+### SPY
 
-Every fixture must specify expected severity and gate behavior.
+Resolve the previously flagged approximately-69 low by collecting:
 
-### Task 3 — 12-case harness audit
+- raw primary observation
+- independent source observation
+- official/reference evidence where available
+- classification
+- quarantine/replacement decision
+- transformation provenance
 
-Validate exactly:
+The observation must remain auditable even if excluded from normalized research data.
 
-`4 portfolios × 3 capital tiers = 12 cases`
+### BIL
 
-Portfolio set:
+Verify the 2017 reverse-split treatment against an authoritative corporate-action record and demonstrate that the normalized return series follows the declared adjustment rule.
 
-- P0: Equity 100%
-- P1: Conservative
-- P2: Balanced
-- P3: Defensive
+## Phase 5 — PIT evidence
 
-Capital tiers:
+Do not mark PIT GREEN merely because historical price dates are correct.
 
-- T1: 10M KRW
-- T2: 50M KRW
-- T3: 100M KRW
+Establish whether the chosen data source can prove:
 
-The harness must emit deterministic case IDs and report percentage and KRW results separately.
+`observation -> source publication/availability time -> research decision time`
 
-### Task 4 — Stress Matrix audit
+For sources that cannot establish this, explicitly mark PIT as unavailable and identify the safest alternative evidence path.
 
-Validate baseline scenarios:
+## Phase 6 — machine evidence
 
-- Equity -10%
-- Equity -20%
-- Equity -30%
-- Equity -50%
-- volatility x2
-- correlation shock toward 1
-- rate shock
-- FX shock where applicable
+Generate and retain:
 
-Require machine-checkable mapping from scenario -> asset shock -> portfolio loss -> KRW loss.
+`artifacts/baseline_history/M1B_EVIDENCE.json`
 
-### Task 5 — Current-head CI proof
+plus raw/normalized data artifacts and hashes.
 
-Run deterministic tests on the latest PR head and record:
+The evidence must contain at minimum:
 
-- commit SHA
-- workflow run ID
-- job ID
-- test count
-- passed/failed count
-- conclusion
-- artifact availability
+- exact commit SHA
+- generation timestamp
+- source identifiers
+- retrieval timestamps
+- row counts
+- hashes
+- QA results
+- corporate-action results
+- cross-source reconciliation results
+- PIT result
+- critical failures
+- final machine gate result
 
-Do not infer latest status from older workflow runs.
+## Phase 7 — M1-B promotion decision
 
-## Promotion criterion for M1-B GREEN
+M1-B GREEN only if:
 
-M1-B can become GREEN only when all critical data series have either:
+1. all five baseline series have acceptable primary provenance;
+2. independent reconciliation is available and passes defined tolerance or documented exceptions;
+3. corporate-action handling is verified;
+4. duplicate/missing/OHLC/timestamp checks pass or have explicit reviewed exceptions;
+5. no unresolved critical anomaly remains;
+6. PIT is proven or formally bounded by an approved evidence limitation;
+7. machine evidence artifact is complete and hash-linked;
+8. exact current-head CI is GREEN.
 
-- independently verified correct source values and adjustment handling, or
-- documented, reproducible transformation rules with source evidence.
+Otherwise remain `YELLOW / BLOCKING`.
 
-After M1-B GREEN, M2 historical-data integration can proceed.
-
-## After M1-B GREEN
+## Phase 8 — after M1-B GREEN only
 
 Proceed in this order:
 
@@ -154,13 +209,13 @@ Proceed in this order:
 
 Do not optimize allocation parameters before a clean baseline is established.
 
-## Session close requirement
+## Session close requirements
 
-At the end of the next session:
-
-1. Update lessons learned.
-2. Update this handoff if priorities change.
-3. Record exact gate states.
+1. Update lessons learned only with observed facts.
+2. Record what worked, what failed, what is worth automating, and what is useful workflow guidance.
+3. Prefer changes that reduce risk and increase ROI; do not add low-value process.
 4. Record exact current HEAD SHA.
-5. Run current-head CI verification.
-6. Commit all session closure documentation and implementation changes.
+5. Run and inspect exact-head CI.
+6. Record final gate states.
+7. Commit implementation and governance changes.
+8. Preserve M1-B fail-closed status unless evidence genuinely proves GREEN.
