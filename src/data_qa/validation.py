@@ -31,13 +31,13 @@ def validate_ohlc(rows: Iterable[Mapping[str, object]]) -> list[DataIssue]:
         if min(open_px, high_px, low_px, close_px) <= 0:
             issues.append(DataIssue("NON_POSITIVE_PRICE", symbol, timestamp, "price must be positive"))
         midpoint = (open_px + close_px) / 2.0
-        if midpoint > 0 and (high_px - low_px) / midpoint > 1.0:
+        if midpoint > 0 and (high_px - low_px) / midpoint > 0.50:
             issues.append(
                 DataIssue(
                     "INTRAPERIOD_RANGE_ANOMALY",
                     symbol,
                     timestamp,
-                    "high/low range exceeds 100% of the open/close midpoint; requires source verification",
+                    "high/low range exceeds 50% of the open/close midpoint; requires source verification",
                     severity="REVIEW",
                 )
             )
