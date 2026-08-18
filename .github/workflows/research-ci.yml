@@ -21,7 +21,8 @@ jobs:
       - name: Run capital matrix harness
         run: python scripts/run_capital_matrix.py > /tmp/capital_matrix.json
       - name: Validate capital matrix coverage
-        run: python - <<'PY'
+        run: |
+          python - <<'PY'
           import json
           d = json.load(open('/tmp/capital_matrix.json'))
           assert d['case_count'] == 12
@@ -31,7 +32,8 @@ jobs:
       - name: Run stress matrix harness
         run: python scripts/run_stress_matrix.py > /tmp/stress_matrix.json
       - name: Validate stress matrix coverage
-        run: python - <<'PY'
+        run: |
+          python - <<'PY'
           import json
           d = json.load(open('/tmp/stress_matrix.json'))
           assert d['case_count'] == 12
@@ -39,3 +41,12 @@ jobs:
           assert d['result_count'] == 60
           print('stress matrix: 12 cases x 5 scenarios = 60 results')
           PY
+      - name: Ingest real baseline historical series
+        run: python scripts/ingest_baseline_history.py
+      - name: Upload M1-B machine evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1b-baseline-evidence
+          path: artifacts/baseline_history/
+          if-no-files-found: error
