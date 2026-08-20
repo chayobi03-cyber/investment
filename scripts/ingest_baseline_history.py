@@ -16,7 +16,6 @@ import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -25,11 +24,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.data_qa.validation import (
-    gate_pass,
-    validate_ohlc,
     find_duplicate_timestamps,
     find_missing_timestamps,
     find_point_in_time_violations,
+    validate_ohlc,
 )
 
 MATRIX_PATH = ROOT / "docs/data/BASELINE_PROVENANCE_MATRIX.json"
@@ -66,7 +64,7 @@ def sha256_file(path: Path) -> str:
 
 def fetch_json(url: str) -> dict:
     request = Request(url, headers={"User-Agent": "investment-m1b-ingest/1.0"})
-    with urlopen(request, timeout=30) as response:  # noqa: S310 - fixed public sources from provenance matrix
+    with urlopen(request, timeout=30) as response:  # noqa: S310 - fixed public secondary source
         return json.loads(response.read().decode("utf-8"))
 
 
@@ -141,14 +139,14 @@ def fetch_yahoo_secondary(symbol: str, start: str, retrieval_timestamp: str) -> 
     return rows
 
 
-def issues_for(rows: Iterable[Observation]) -> list[dict]:
-    payload = [asdict(row) | {"symbol": row.symbol, "timestamp": row.timestamp} for row in rows]
-    expected = {rows[0].symbol: [row.timestamp for row in rows]} if rows else {}
-    issues = []
+def issues_for(rows: list[Observation]) -> list[dict]:
+    payload = [asdict(row) for row in rows]
+    issues: list[dict] = []
     issues.extend(asdict(issue) for issue in validate_ohlc(payload))
     issues.extend(asdict(issue) for issue in find_duplicate_timestamps(payload))
     issues.extend(asdict(issue) for issue in find_point_in_time_violations(payload))
-    if expected:
+    if rows:
+        expected = {rows[0].symbol: [row.timestamp for row in rows]}
         issues.extend(asdict(issue) for issue in find_missing_timestamps(payload, expected))
     return issues
 
@@ -183,9 +181,8 @@ def main() -> int:
             primary_rows = load_csv(primary_path, symbol, spec["primary_source"]["provider"], retrieval_timestamp, decision_timestamp)
             result["primary_sha256"] = sha256_file(primary_path)
             result["primary_rows"] = len(primary_rows)
-            primary_issues = issues_for(primary_rows)
-            result["primary_issues"] = primary_issues
-            all_gate_issues.extend(primary_issues)
+            result["primary_issues"] = issues_for(primary_rows)
+            all_gate_issues.extend(result["primary_issues"])
         else:
             result["primary_issues"] = [
                 {
@@ -213,7 +210,7 @@ def main() -> int:
                     writer.writerows([[r.timestamp, r.open, r.high, r.low, r.close, r.volume] for r in secondary_rows])
                 result["secondary_sha256"] = sha256_file(raw_path)
                 result["secondary_rows"] = len(secondary_rows)
-            except Exception as exc:  # noqa: BLE001 - evidence must record the failure deterministically
+            except Exception as exc:  # noqa: BLE001 - evidence records failure deterministically
                 result["secondary_fetch_error"] = f"{type(exc).__name__}: {exc}"
                 all_gate_issues.append(
                     {
@@ -238,14 +235,16 @@ def main() -> int:
         else:
             result["cross_source"] = {"status": "NOT_RUN"}
 
+        result["status"] = (
+            "GREEN"
+            if not result["primary_issues"] and not result.get("secondary_fetch_error")
+            else "BLOCKING"
+        )
         series_results.append(result)
 
-    gate_green = len(all_gate_issues) == 0 and all(
+    gate_green = bool(series_results) and not all_gate_issues and all(
         item["status"] == "GREEN" for item in series_results
-    ) if series_results else False
-
-    for item in series_results:
-        item["status"] = "GREEN" if not item.get("primary_issues") and not item.get("secondary_fetch_error") else "BLOCKING"
+    )
 
     evidence = {
         "schema_version": "1.0",
@@ -268,9 +267,7 @@ def main() -> int:
 
     evidence_path = ARTIFACT_DIR / "m1b_evidence.json"
     evidence_path.write_text(json.dumps(evidence, ensure_ascii=False, indent=2), encoding="utf-8")
-
-    summary_path = ARTIFACT_DIR / "m1b_summary.txt"
-    summary_path.write_text(
+    (ARTIFACT_DIR / "m1b_summary.txt").write_text(
         f"status={evidence['status']}\n"
         f"promotion_decision={evidence['promotion_decision']}\n"
         f"primary_raw_present={evidence['machine_check']['all_primary_raw_present']}\n"
