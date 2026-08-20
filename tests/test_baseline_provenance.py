@@ -23,7 +23,7 @@ def test_baseline_series_identity_and_provenance():
         assert urlparse(item["secondary_source"]["url"]).scheme == "https"
         assert item["pit_rule"]
         assert item["adjustment_rule"]["return_formula"]
-        assert item["adjustment_rule"]["vendor_adjusted_close"] == "validation-only_cross_check"
+        assert item["adjustment_rule"]["vendor_adjusted_close"] == "validation-only_cross-check"
 
 
 def test_bil_reverse_split_rule_is_explicit():
