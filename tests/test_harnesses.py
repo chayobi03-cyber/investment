@@ -8,13 +8,18 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def run_script(path: str) -> dict:
-    result = subprocess.run(
-        [sys.executable, str(ROOT / path)],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            [sys.executable, str(ROOT / path)],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise AssertionError(
+            f"harness failed: {path}\nstdout:\n{exc.stdout}\nstderr:\n{exc.stderr}"
+        ) from exc
     return json.loads(result.stdout)
 
 
