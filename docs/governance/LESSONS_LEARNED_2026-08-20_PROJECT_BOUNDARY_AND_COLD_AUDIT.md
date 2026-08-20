@@ -39,7 +39,7 @@ Do not infer project ownership from the name of the repository currently being i
 
 Project audits must start from the objective of the **top-level project**, not the local objective of a supporting implementation repository.
 
-For Investment, the current top-level objective is capital preservation and risk-adjusted compounding for a public-equity research system. The current milestone gates are M0 Risk Contract, M1 Data Integrity, M2 Portfolio Risk Engine, and M3 Asset Allocation Backtest. cite-placeholder
+For Investment, the current top-level objective is capital preservation and risk-adjusted compounding for a public-equity research system. The current milestone gates are M0 Risk Contract, M1 Data Integrity, M2 Portfolio Risk Engine, and M3 Asset Allocation Backtest.
 
 ### Rule 4 — Do Not Reclassify Supporting Work as Contamination Without Ownership Evidence
 
