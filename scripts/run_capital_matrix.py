@@ -7,12 +7,15 @@ backtest and must not be interpreted as an investment performance result.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from src.risk_engine.core import annualized_volatility, cagr, max_drawdown
 from src.risk_engine.portfolio import portfolio_returns
-
-ROOT = Path(__file__).resolve().parents[1]
 
 CAPITAL_TIERS = {"T1": 10_000_000, "T2": 50_000_000, "T3": 100_000_000}
 PORTFOLIOS = {
@@ -43,12 +46,14 @@ def main() -> None:
             "periods": len(p_returns),
         }
         for tier_id, capital in CAPITAL_TIERS.items():
-            rows.append({
-                "case_id": f"{portfolio_id}-{tier_id}",
-                "capital_tier": tier_id,
-                "capital_krw": capital,
-                **rows_for_portfolio,
-            })
+            rows.append(
+                {
+                    "case_id": f"{portfolio_id}-{tier_id}",
+                    "capital_tier": tier_id,
+                    "capital_krw": capital,
+                    **rows_for_portfolio,
+                }
+            )
 
     output = {"type": "risk_engine_fixture_harness", "cases": rows, "case_count": len(rows)}
     print(json.dumps(output, ensure_ascii=False, indent=2))
