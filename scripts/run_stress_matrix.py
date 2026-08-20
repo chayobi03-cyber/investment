@@ -7,11 +7,15 @@ no market prediction or strategy performance claim is made here.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from src.risk_engine.portfolio import stress_loss
 
-ROOT = Path(__file__).resolve().parents[1]
 CAPITAL_TIERS = {"T1": 10_000_000, "T2": 50_000_000, "T3": 100_000_000}
 PORTFOLIOS = {
     "P0": {"Equity": 1.00},
@@ -35,15 +39,17 @@ def main() -> None:
             for scenario_id, shocks in SCENARIOS.items():
                 applicable = {asset: shocks.get(asset, 0.0) for asset in weights}
                 loss = stress_loss(weights, applicable, capital)
-                rows.append({
-                    "case_id": f"{portfolio_id}-{tier_id}",
-                    "portfolio": portfolio_id,
-                    "capital_tier": tier_id,
-                    "scenario": scenario_id,
-                    "capital_krw": capital,
-                    "loss_krw": loss,
-                    "loss_pct": loss / capital,
-                })
+                rows.append(
+                    {
+                        "case_id": f"{portfolio_id}-{tier_id}",
+                        "portfolio": portfolio_id,
+                        "capital_tier": tier_id,
+                        "scenario": scenario_id,
+                        "capital_krw": capital,
+                        "loss_krw": loss,
+                        "loss_pct": loss / capital,
+                    }
+                )
     output = {
         "type": "stress_matrix",
         "scenario_count": len(SCENARIOS),
