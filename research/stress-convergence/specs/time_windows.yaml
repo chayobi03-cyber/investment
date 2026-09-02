@@ -1,0 +1,30 @@
+time_windows:
+  - name: ultra_short
+    max_days: 1
+    meaning: "1일 이내 즉시 확인"
+  - name: short
+    max_days: 7
+    meaning: "7일 이내 단기 확인"
+  - name: near_medium
+    max_days: 30
+    meaning: "30일 이내 중기 확인"
+  - name: primary
+    max_days: 90
+    meaning: "90일 이내 실제 위기 확인; primary evaluation"
+  - name: long_term
+    max_days: 365
+    meaning: "91-365일 장기 연결; performance confirmation 아님"
+classification:
+  negative: "PRE_EW"
+  0_1: "ULTRA_SHORT_1D"
+  2_7: "SHORT_7D"
+  8_30: "NEAR_MEDIUM_30D"
+  31_90: "VALID_MEDIUM_90D"
+  91_365: "LONG_TERM_365D"
+  over_365: "UNRELATED_GT365D"
+linking:
+  direction: "Crisis Confirmation must occur after Early Warning"
+  primary_rule: "0 <= TTC <= 90"
+  long_term_rule: "91 <= TTC <= 365"
+  unrelated_rule: "TTC > 365"
+  pre_ew_rule: "TTC < 0 cannot confirm the Early Warning"
