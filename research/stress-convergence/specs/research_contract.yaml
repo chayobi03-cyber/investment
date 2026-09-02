@@ -1,0 +1,37 @@
+contract_version: "1.0"
+experiment: stress-convergence
+principles:
+  evidence_first: true
+  no_fabrication: true
+  full_traceability: true
+  fixed_benchmark: true
+artifact_status:
+  OFFICIAL: "Directly preserved execution/spec/result artifact with traceable provenance."
+  RECOVERED: "Official historical artifact rehydrated from a preserved execution system; not independently rerun."
+  RECONSTRUCTED: "Newly regenerated artifact from upstream inputs because the historical output was unavailable."
+  MISSING: "Required artifact not currently available."
+run_gate:
+  required:
+    - fixture_manifest
+    - anchor_registry
+    - rule_specs
+    - code_commit
+    - environment_spec
+    - run_manifest
+    - output_hashes
+  promotion_rule: "No v0.2.x experiment is considered official unless all required items are present."
+benchmark:
+  count: 11
+  frozen: true
+  cases:
+    - 1994_tightening
+    - 2000_dotcom
+    - 2004_05_tightening
+    - 2008_gfc
+    - 2013_taper
+    - 2016_china_energy
+    - 2017_reflation_fed
+    - 2018_q4_tightening_selloff
+    - 2020_covid
+    - 2021_reflation_taper
+    - 2022_rate_shock
