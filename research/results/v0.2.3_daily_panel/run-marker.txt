@@ -1,0 +1,1 @@
+Trigger reproducible 11-window daily-panel validation.
