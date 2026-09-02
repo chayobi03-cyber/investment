@@ -10,6 +10,7 @@
     "specs/signal_rules.yaml",
     "specs/time_windows.yaml"
   ],
+  "runner_commit": "0d3aea4f004f8523f2c076e52504153492bbbcea",
   "source_execution": {
     "workflow_run_id": 33640923172,
     "artifact_id": 9850771333,
@@ -24,7 +25,7 @@
     "directional_constraint": "Crisis Confirmation must be after Early Warning"
   },
   "outputs": {
-    "window_stage_results.csv": "sha256:19b40578a57f91b1dbdb480cb20aee899fa5b592ffae784d8545209b56a9cf1a",
+    "window_stage_results.csv": "sha256:219b27f67d4dce9aeaeff97eb36bd04854140e6dda89c733aafd671e6d7cb568",
     "summary_metrics.json": "sha256:f124078edbc084672118d68df92d9051559094940ad6b7db0da4cafae8fe8982"
   }
 }
