@@ -1,0 +1,12 @@
+window,kind,anchor,early_warning_date,tightening_state_date,v023_cc_trigger_in_window,cc_after_ew_date,ttc_days,ttc_class,confirm_1d,confirm_7d,confirm_30d,confirm_90d,confirm_365d,unrelated_gt365d,anchor_minus_cc_days,linked_confirmation_90d,pre_anchor_linked_confirmation_90d,coverage_ok
+1994_tightening,FP,,1994-08-12,1994-08-12,,2001-04-12,2435.0,UNRELATED_GT365D,False,False,False,False,False,True,,False,False,False
+2000_dotcom,CRISIS,2000-03-24,1999-04-09,1999-04-09,,2001-04-12,734.0,UNRELATED_GT365D,False,False,False,False,False,True,-384.0,False,False,True
+2004_05_tightening,FP,,2004-05-14,2004-05-14,,2008-02-20,1377.0,UNRELATED_GT365D,False,False,False,False,False,True,,False,False,True
+2008_gfc,CRISIS,2007-10-09,2006-06-09,2006-06-09,,2008-02-20,621.0,UNRELATED_GT365D,False,False,False,False,False,True,-134.0,False,False,True
+2013_taper,FP,,2013-07-12,,,2020-03-17,2440.0,UNRELATED_GT365D,False,False,False,False,False,True,,False,False,True
+2016_china_energy,FP,,2015-12-11,2015-12-11,,2020-03-17,1558.0,UNRELATED_GT365D,False,False,False,False,False,True,,False,False,True
+2017_reflation_fed,FP,,2016-11-04,2016-11-14,,2020-03-17,1229.0,UNRELATED_GT365D,False,False,False,False,False,True,,False,False,True
+2018_q4_tightening_selloff,FP,,,,,,,NO_CONFIRMATION,False,False,False,False,False,False,,False,False,True
+2020_covid,CRISIS,2020-02-19,2019-12-27,,,2020-03-17,81.0,VALID_MEDIUM_90D,False,False,False,True,True,False,-27.0,True,False,True
+2021_reflation_taper,FP,,2021-02-12,2021-10-27,2021-02-02,,,NO_CONFIRMATION,False,False,False,False,False,False,,False,False,True
+2022_rate_shock,CRISIS,2022-01-03,2021-02-12,2021-10-27,2021-02-02,,,NO_CONFIRMATION,False,False,False,False,False,False,,False,False,True
