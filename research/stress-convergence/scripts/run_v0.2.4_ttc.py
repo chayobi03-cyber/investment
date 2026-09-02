@@ -51,7 +51,7 @@ def run(fixture: Path, out_dir: Path) -> pd.DataFrame:
     for name, start, end, anchor, kind, coverage_ok in BENCHMARKS:
         ew = first_onset(ew_index, start, end)
         ts = first_onset(ts_index, start, end)
-        v023_cc = first_onset(cc_index, start, end) if kind == 'FP' and coverage_ok else None
+        v023_cc = first_onset(cc_index, start, end) if coverage_ok else None
         cc_after_ew = first_after(cc_index, ew)
         ttc_days = (cc_after_ew - ew).days if ew is not None and cc_after_ew is not None else None
         anchor_minus_cc = (pd.Timestamp(anchor) - cc_after_ew).days if anchor and cc_after_ew is not None else None
@@ -72,6 +72,8 @@ def run(fixture: Path, out_dir: Path) -> pd.DataFrame:
             'confirm_365d': bool(ttc_days is not None and 0 <= ttc_days <= 365),
             'unrelated_gt365d': bool(ttc_days is not None and ttc_days > 365),
             'anchor_minus_cc_days': anchor_minus_cc,
+            'linked_confirmation_90d': bool(kind == 'CRISIS' and ttc_days is not None and 0 <= ttc_days <= 90),
+            'pre_anchor_linked_confirmation_90d': bool(kind == 'CRISIS' and ttc_days is not None and 0 <= ttc_days <= 90 and cc_after_ew is not None and cc_after_ew <= pd.Timestamp(anchor)),
             'coverage_ok': coverage_ok,
         })
     result = pd.DataFrame(rows)
