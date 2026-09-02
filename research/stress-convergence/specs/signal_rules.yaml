@@ -1,0 +1,16 @@
+rule_version: v0.2.3
+signals:
+  R: "10Y Treasury >= trailing 365-day minimum + 0.40 percentage points"
+  I: "CPI YoY >= CPI YoY from 3 months earlier + 0.40 percentage points; CPI evaluated monthly then mapped to daily"
+  L: "Unemployment >= trailing 365-day minimum + 0.30 percentage points"
+  C: "HY OAS >= trailing 183-day minimum + 0.75 percentage points"
+  V: "VIX >= 25 for at least 5 consecutive trading observations"
+  E: "S&P 500 <= trailing 60-trading-observation high * 0.90"
+stages:
+  early_warning: "R AND I sustained for two consecutive Friday week-end observations"
+  tightening_state: "Early Warning AND D2 >= +40bp from trailing 365-day minimum"
+  crisis_confirmation:
+    credit_liquidity: "C AND V AND (L OR E)"
+    growth_exogenous: "L AND (E OR V) AND (C OR R)"
+    combined: "credit_liquidity OR growth_exogenous"
+    d2_is_gate: false
