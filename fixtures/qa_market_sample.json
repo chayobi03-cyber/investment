@@ -1,0 +1,9 @@
+{
+  "description": "Synthetic fixture for data-integrity tests only; not market performance data.",
+  "rows": [
+    {"symbol":"VALID","timestamp":"2026-01","open":100.0,"high":105.0,"low":98.0,"close":102.0},
+    {"symbol":"VALID","timestamp":"2026-02","open":102.0,"high":108.0,"low":101.0,"close":107.0},
+    {"symbol":"SPY","timestamp":"2026-02","open":689.58,"high":697.14,"low":69.005,"close":685.99},
+    {"symbol":"BAD","timestamp":"2026-01","open":10.0,"high":11.0,"low":0.0,"close":10.0}
+  ]
+}

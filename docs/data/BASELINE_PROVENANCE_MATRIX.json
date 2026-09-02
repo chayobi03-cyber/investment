@@ -1,0 +1,193 @@
+{
+  "schema_version": "1.0",
+  "as_of_date": "2026-08-18",
+  "purpose": "M1-B historical market-data provenance and adjustment contract; not investment-performance evidence",
+  "canonical_policy": {
+    "market_ohlc": "raw_exchange_observation",
+    "research_return_input": "split_normalized_close_plus_explicit_cash_distributions",
+    "vendor_adjusted_close": "prohibited_as_the_only_PIT_signal_input",
+    "outlier_policy": "flag_and_quarantine_until_verified; never_silently_delete",
+    "missing_duplicate_policy": "blocking",
+    "point_in_time_policy": "decision_timestamp_must_be_at_or_after_observation_availability_and_corporate_action_knowledge_timestamp",
+    "cross_source_policy": "all_review_or_error_events_require_independent_source_confirmation_or_documented_exception"
+  },
+  "series": [
+    {
+      "series_id": "SPY",
+      "instrument": "SPDR S&P 500 ETF Trust",
+      "issuer": "State Street Global Advisors",
+      "role": "equity_proxy",
+      "currency": "USD",
+      "exchange": "NYSE Arca",
+      "inception_or_start": "1993-01-22",
+      "primary_source": {
+        "provider": "State Street SPDR",
+        "url": "https://www.ssga.com/us/en/intermediary/etfs/funds/spdr-sp-500-etf-trust-spy",
+        "source_type": "official_issuer",
+        "required_fields": ["date", "open", "high", "low", "close", "volume", "distribution_events"]
+      },
+      "secondary_source": {
+        "provider": "Yahoo Finance",
+        "url": "https://finance.yahoo.com/quote/SPY/history/",
+        "source_type": "independent_market_data"
+      },
+      "adjustment_rule": {
+        "split_events": "none_known_for_SPY_baseline; verify against issuer/corporate-action feed",
+        "split_price_factor": 1.0,
+        "cash_distributions": "keep explicit distribution ledger; do not overwrite raw OHLC",
+        "return_formula": "(split_normalized_close_t + cash_distribution_t) / split_normalized_close_{t-1} - 1",
+        "vendor_adjusted_close": "validation-only_cross_check"
+      },
+      "known_anomalies": [
+        {
+          "observation": "2026-02 monthly low 69.005",
+          "classification": "ERROR",
+          "action": "quarantine; replace only after primary/secondary source reconciliation",
+          "cross_source_reference": "Yahoo daily history shows February 2026 lows around 675-689, not 69"
+        }
+      ],
+      "pit_rule": "Use only observations available by decision timestamp; distribution/corporate-action knowledge must also be available by decision timestamp"
+    },
+    {
+      "series_id": "IEF",
+      "instrument": "iShares 7-10 Year Treasury Bond ETF",
+      "issuer": "BlackRock/iShares",
+      "role": "intermediate_bond_proxy",
+      "currency": "USD",
+      "exchange": "NASDAQ",
+      "inception_or_start": "2002-07-22",
+      "primary_source": {
+        "provider": "iShares",
+        "url": "https://www.ishares.com/us/products/239456/ishares-7-10-year-treasury-bond-etf",
+        "source_type": "official_issuer",
+        "required_fields": ["date", "open", "high", "low", "close", "volume", "distribution_events"]
+      },
+      "secondary_source": {
+        "provider": "Yahoo Finance",
+        "url": "https://finance.yahoo.com/quote/IEF/history/",
+        "source_type": "independent_market_data"
+      },
+      "adjustment_rule": {
+        "split_events": "none_known_for_baseline; verify against corporate-action feed",
+        "split_price_factor": 1.0,
+        "cash_distributions": "explicit_distribution_ledger",
+        "return_formula": "(split_normalized_close_t + cash_distribution_t) / split_normalized_close_{t-1} - 1",
+        "vendor_adjusted_close": "validation-only_cross-check"
+      },
+      "known_anomalies": [],
+      "pit_rule": "Only data and distribution/corporate-action knowledge available by decision timestamp may enter a signal or portfolio decision"
+    },
+    {
+      "series_id": "TLT",
+      "instrument": "iShares 20+ Year Treasury Bond ETF",
+      "issuer": "BlackRock/iShares",
+      "role": "long_duration_bond_proxy",
+      "currency": "USD",
+      "exchange": "NASDAQ",
+      "inception_or_start": "2002-07-22",
+      "primary_source": {
+        "provider": "iShares",
+        "url": "https://www.ishares.com/us/products/239454/ishares-20-year-treasury-bond-etf",
+        "source_type": "official_issuer",
+        "required_fields": ["date", "open", "high", "low", "close", "volume", "distribution_events"]
+      },
+      "secondary_source": {
+        "provider": "Yahoo Finance",
+        "url": "https://finance.yahoo.com/quote/TLT/history/",
+        "source_type": "independent_market_data"
+      },
+      "adjustment_rule": {
+        "split_events": "none_known_for_baseline; verify against corporate-action feed",
+        "split_price_factor": 1.0,
+        "cash_distributions": "explicit_distribution_ledger",
+        "return_formula": "(split_normalized_close_t + cash_distribution_t) / split_normalized_close_{t-1} - 1",
+        "vendor_adjusted_close": "validation-only_cross-check"
+      },
+      "known_anomalies": [],
+      "pit_rule": "Only data and distribution/corporate-action knowledge available by decision timestamp may enter a signal or portfolio decision"
+    },
+    {
+      "series_id": "GLD",
+      "instrument": "SPDR Gold Shares",
+      "issuer": "State Street Global Advisors",
+      "role": "gold_proxy",
+      "currency": "USD",
+      "exchange": "NYSE Arca",
+      "inception_or_start": "2004-11-18",
+      "primary_source": {
+        "provider": "State Street SPDR",
+        "url": "https://www.ssga.com/us/en/intermediary/etfs/funds/spdr-gold-shares-gld",
+        "source_type": "official_issuer",
+        "required_fields": ["date", "open", "high", "low", "close", "volume", "distribution_events"]
+      },
+      "secondary_source": {
+        "provider": "Yahoo Finance",
+        "url": "https://finance.yahoo.com/quote/GLD/history/",
+        "source_type": "independent_market_data"
+      },
+      "adjustment_rule": {
+        "split_events": "none_known_for_baseline; verify against corporate-action feed",
+        "split_price_factor": 1.0,
+        "cash_distributions": "explicit_distribution_ledger; gold-trust distributions are not assumed zero without source verification",
+        "return_formula": "(split_normalized_close_t + cash_distribution_t) / split_normalized_close_{t-1} - 1",
+        "vendor_adjusted_close": "validation-only_cross-check"
+      },
+      "known_anomalies": [],
+      "pit_rule": "Only data and distribution/corporate-action knowledge available by decision timestamp may enter a signal or portfolio decision"
+    },
+    {
+      "series_id": "BIL",
+      "instrument": "SPDR Bloomberg 1-3 Month T-Bill ETF",
+      "issuer": "State Street Global Advisors",
+      "role": "cash_proxy",
+      "currency": "USD",
+      "exchange": "NYSE Arca",
+      "inception_or_start": "2007-05-25",
+      "primary_source": {
+        "provider": "State Street SPDR",
+        "url": "https://www.ssga.com/us/en/intermediary/etfs/funds/spdr-bloomberg-1-3-month-t-bill-etf-bil",
+        "source_type": "official_issuer",
+        "required_fields": ["date", "open", "high", "low", "close", "volume", "distribution_events", "corporate_actions"]
+      },
+      "secondary_source": {
+        "provider": "Yahoo Finance",
+        "url": "https://finance.yahoo.com/quote/BIL/history/",
+        "source_type": "independent_market_data"
+      },
+      "adjustment_rule": {
+        "split_events": "2017-11-30 reverse split 1-for-2",
+        "split_price_factor_before_effective_date": 2.0,
+        "cash_distributions": "explicit_distribution_ledger",
+        "return_formula": "(split_normalized_close_t + cash_distribution_t) / split_normalized_close_{t-1} - 1",
+        "vendor_adjusted_close": "validation-only_cross-check",
+        "rule_order": ["apply_verified_split_factor_to_pre-event_OHLC", "then_join_explicit_cash_distributions", "then_compute_returns"]
+      },
+      "known_anomalies": [
+        {
+          "observation": "price-level discontinuity around 2017-11-30",
+          "classification": "REVIEW",
+          "action": "explain through verified 1-for-2 reverse split before performance integration",
+          "cross_source_reference": "independent split-history records report 2017-11-30 1-for-2 reverse split"
+        }
+      ],
+      "pit_rule": "The corporate-action event must be recognized no earlier than its documented effective/knowledge timestamp; do not use future adjustment metadata to create a PIT signal"
+    }
+  ],
+  "promotion_requirements": {
+    "series_count": 5,
+    "all_primary_sources_present": true,
+    "all_secondary_sources_present": true,
+    "all_adjustment_rules_machine_readable": true,
+    "all_known_anomalies_have_classification": true,
+    "no_silent_repairs": true,
+    "m1b_green_requires": [
+      "source_identity_verified",
+      "timestamp_semantics_verified",
+      "duplicate_missing_checks_passed",
+      "ohlc_checks_passed",
+      "corporate_action_rules_verified",
+      "PIT_rule_verified",
+      "cross_source_checks_passed_or_explicit_exception_recorded"
+    ]
+  }
+}
