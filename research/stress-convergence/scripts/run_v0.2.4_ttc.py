@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+import sys
 import pandas as pd
 
+SRC = Path(__file__).resolve().parents[1] / 'src'
+sys.path.insert(0, str(SRC))
 from ttc import classify_ttc
 
 BENCHMARKS = [
