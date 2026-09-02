@@ -1,0 +1,83 @@
+name: SC-FIX-0002 v0.2.4 verification
+
+on:
+  push:
+    branches: [ research/sc-fix-0002-v0.2.4 ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pinned dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pandas==2.2.3 numpy==2.1.3 requests==2.32.3 tabulate==0.9.0
+
+      - name: Build SC-FIX-0002
+        run: python stress-convergence/scripts/build_sc_fix_0002.py
+
+      - name: Run v0.2.4 TTC verification
+        run: |
+          rm -rf stress-convergence/runs/SC-FIX-0002-V024
+          python stress-convergence/scripts/run_v0.2.4_ttc.py \
+            --fixture stress-convergence/fixtures/SC-FIX-0002/daily_panel.csv \
+            --out stress-convergence/runs/SC-FIX-0002-V024
+
+      - name: Create verification report
+        run: |
+          python - <<'PY'
+          import json, pathlib, pandas as pd, subprocess
+          root = pathlib.Path('stress-convergence')
+          manifest = json.loads((root/'fixtures/SC-FIX-0002/manifest.json').read_text())
+          result = pd.read_csv(root/'runs/SC-FIX-0002-V024/window_stage_results.csv')
+          lines = []
+          lines.append('# SC-FIX-0002 / v0.2.4 verification')
+          lines.append('')
+          lines.append(f"Fixture: `{manifest['fixture_id']}`")
+          lines.append(f"Fixture status: `{manifest['status']}`")
+          lines.append(f"Retrieved: `{manifest['retrieved_at_utc']}`")
+          lines.append(f"Panel SHA-256: `{manifest['derived_artifact']['daily_panel.csv']}`")
+          lines.append(f"Code commit at fixture build: `{manifest['code_commit']}`")
+          lines.append('')
+          lines.append('## Scope gate')
+          lines.append('')
+          lines.append('- 11 fixed benchmark windows.')
+          lines.append('- Crisis linkage accepted only for 0–90 days after Early Warning.')
+          lines.append('- Confirmation must remain inside the declared benchmark scope.')
+          lines.append('')
+          lines.append('## Raw v0.2.4 output')
+          lines.append('')
+          lines.append(result.to_markdown(index=False))
+          lines.append('')
+          lines.append('## Provenance')
+          lines.append('')
+          lines.append('| file | sha256 | source |')
+          lines.append('|---|---|---|')
+          for row in manifest['source_snapshots']:
+              lines.append(f"| {row['file']} | `{row['sha256']}` | {row['url']} |")
+          lines.append('')
+          lines.append('## Gate interpretation')
+          lines.append('')
+          lines.append('This run verifies v0.2.4 on a newly reconstructed, provenance-aware fixture. Any metric delta versus SC-FIX-0001 is not attributable to algorithmic improvement alone until fixture effects are separated.')
+          (root/'runs/SC-FIX-0002-V024/verification_report.md').write_text('\n'.join(lines)+'\n', encoding='utf-8')
+          PY
+
+      - name: Upload immutable verification bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: SC-FIX-0002-v0.2.4-${{ github.run_id }}
+          path: |
+            stress-convergence/fixtures/SC-FIX-0002/
+            stress-convergence/runs/SC-FIX-0002-V024/
