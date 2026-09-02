@@ -1,0 +1,30 @@
+{
+  "run_id": "SC-RUN-0007",
+  "experiment": "stress-convergence",
+  "version": "v0.2.4",
+  "status": "OFFICIAL_DERIVED_FROM_FROZEN_BASELINE",
+  "fixture_id": "SC-FIX-0001",
+  "fixture_sha256": "d889cc428077c18dc0fe470b267a518a7de33e7a74b89adbfdf34b4c559e9919",
+  "anchor_registry": "fixtures/v0.2.3/anchors.yaml",
+  "rule_specs": [
+    "specs/signal_rules.yaml",
+    "specs/time_windows.yaml"
+  ],
+  "source_execution": {
+    "workflow_run_id": 33640923172,
+    "artifact_id": 9850771333,
+    "artifact_digest": "sha256:94d74c114e3197b3f01c2cadb9378fc987a1a95e08977ce563404e8aed9c529d",
+    "implementation_commit": "36ce6c8c15ef5211d64c5f8b563749e893ce7ad3",
+    "execution_head_sha": "616cdd6c78f3ffe754833a51fc504a8a08332734"
+  },
+  "method": {
+    "ttc": "Crisis Confirmation onset date - Early Warning onset date",
+    "primary_window_days": 90,
+    "long_term_window_days": 365,
+    "directional_constraint": "Crisis Confirmation must be after Early Warning"
+  },
+  "outputs": {
+    "window_stage_results.csv": "sha256:19b40578a57f91b1dbdb480cb20aee899fa5b592ffae784d8545209b56a9cf1a",
+    "summary_metrics.json": "sha256:f124078edbc084672118d68df92d9051559094940ad6b7db0da4cafae8fe8982"
+  }
+}
