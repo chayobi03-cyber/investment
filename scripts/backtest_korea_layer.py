@@ -79,9 +79,11 @@ def load_daily() -> pd.DataFrame:
 
 def persistence_5d(s: pd.Series, threshold: float, direction: str = "gt") -> pd.Series:
     x = s > threshold if direction == "gt" else s < threshold
-    # v0.2: 5 consecutive trading days OR 2-of-3 observations within 5 days.
+    # v0.2: 5 consecutive trading days OR 2-of-3 consecutive observations.
+    # The previous implementation accidentally used 2-of-5, which could
+    # materially over-trigger the stress state.
     five = x.rolling(5, min_periods=5).sum() >= 5
-    two_of_three = x.rolling(5, min_periods=5).sum() >= 2
+    two_of_three = x.rolling(3, min_periods=3).sum() >= 2
     return five | two_of_three
 
 
@@ -340,67 +342,40 @@ def main() -> int:
     benchmark_df = pd.DataFrame(benchmark_rows)
 
     entries.to_csv(OUT / "korea_layer_entry_events.csv", index=False)
-    pd.DataFrame(band_rows).to_csv(OUT / "absolute_to_drawdown_mapping.csv", index=False)
-    if not summary.empty:
-        summary.to_csv(OUT / "korea_layer_entry_summary.csv", index=False)
+    summary.to_csv(OUT / "korea_layer_entry_summary.csv", index=False)
     event_df.to_csv(OUT / "stress_convergence_kospi_events.csv", index=False)
     fp_df.to_csv(OUT / "stress_convergence_false_positives.csv", index=False)
+    pd.DataFrame(band_rows).to_csv(OUT / "absolute_to_drawdown_mapping.csv", index=False)
     benchmark_df.to_csv(OUT / "stress_convergence_benchmark_episodes.csv", index=False)
 
     metrics = {
         "analysis_date": analysis_date.date().isoformat(),
         "current_close": current_close,
         "current_252d_high": current_high,
-        "absolute_zone_backtest_status": "INSUFFICIENT_HISTORY_FOR_STATISTICAL_VALIDATION",
-        "absolute_zone_reason": "The 6000-6750 index-level zones only exist in the current high-level 2026 regime; historical validation uses drawdown-equivalent zones.",
-        "drawdown_target_threshold": -0.15,
-        "stress_l2_trigger_count": int(df["l2_trigger"].sum()),
-        "stress_l2_first_trigger": df.index[df["l2_trigger"]][0].date().isoformat() if bool(df["l2_trigger"].any()) else None,
-        "drawdown_event_count": len(event_df),
-        "false_positive_trigger_count": len(fp_df),
-        "target_event_detected": int(event_df["trigger"].notna().sum()) if not event_df.empty else 0,
-        "target_event_missed": int(event_df["trigger"].isna().sum()) if not event_df.empty else 0,
-        "median_lead_days": float(event_df["lead_days"].median()) if not event_df.empty and event_df["lead_days"].notna().any() else None,
-        "mean_lead_days": float(event_df["lead_days"].mean()) if not event_df.empty and event_df["lead_days"].notna().any() else None,
-        "l2_proxy_limitation": "Fed hike probability and AI financing axes are not reconstructed; full v0.2 0-24 score is therefore not claimed.",
+        "drawdown_events_n": len(events),
+        "l2_trigger_days": int(df["l2_trigger"].sum()),
+        "false_positive_days_n": len(fp_df),
+        "data_start": df.index.min().date().isoformat(),
+        "data_end": df.index.max().date().isoformat(),
+        "persistence_definition": "5 consecutive trading days OR 2-of-3 consecutive observations",
+        "note": "Research-only; full 0-24 Stress Convergence score is not reconstructed.",
     }
-    (OUT / "run_metrics.json").write_text(json.dumps(metrics, indent=2, ensure_ascii=False), encoding="utf-8")
+    (OUT / "run_metrics.json").write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
 
-    md = [
-        "# Korea Layer Backtest v0.1 — Machine Result",
+    result_lines = [
+        "# Korea Layer Backtest Result",
         "",
-        f"Execution date: {analysis_date.date().isoformat()}",
+        f"Analysis date: {analysis_date.date().isoformat()}",
+        f"KOSPI close: {current_close:.2f}",
+        f"252-day high: {current_high:.2f}",
+        f">=15% drawdown events: {len(events)}",
+        f"L2 trigger days: {int(df['l2_trigger'].sum())}",
+        f"False-positive trigger days (60d horizon): {len(fp_df)}",
         "",
-        "## Current regime mapping",
-        f"- KOSPI close: **{current_close:,.2f}**",
-        f"- 252-trading-day high: **{current_high:,.2f}**",
-        "- Absolute 6,000–6,750 bands are **not** treated as statistically comparable across 2000–2026.",
-        "- Historical test uses the drawdown-equivalent bands derived from the current 252-day high.",
-        "",
-        "## Stress Convergence linkage",
-        f"- L2 proxy triggers: **{metrics['stress_l2_trigger_count']}**",
-        f"- Drawdown events (>=15% from 252-day high): **{metrics['drawdown_event_count']}**",
-        f"- Detected events: **{metrics['target_event_detected']}**",
-        f"- Missed events: **{metrics['target_event_missed']}**",
-        f"- False-positive L2 triggers (no >=15% drawdown in 60d): **{metrics['false_positive_trigger_count']}**",
-        f"- Median lead time: **{metrics['median_lead_days']} days**",
-        f"- Mean lead time: **{metrics['mean_lead_days']} days**",
-        "",
-        "## Scope limitation",
-        "The executable proxy implements the v0.2 Energy / Rates / Credit / VIX / NFCI topology and the T5Y5Y inflation persistence where available. Fed futures probability and AI-financing axes are not backfilled, so this run does not claim a full 0–24 v0.2 score.",
-        "",
-        "## Output files",
-        "- `absolute_to_drawdown_mapping.csv`",
-        "- `korea_layer_entry_events.csv`",
-        "- `korea_layer_entry_summary.csv`",
-        "- `stress_convergence_kospi_events.csv`",
-        "- `stress_convergence_false_positives.csv`",
-        "- `stress_convergence_benchmark_episodes.csv`",
-        "- `run_metrics.json`",
+        "Persistence definition: 5 consecutive trading days OR 2-of-3 consecutive observations.",
+        "This backtest remains research-only and does not reconstruct the full 0-24 Stress Convergence score.",
     ]
-    (OUT / "RESULT.md").write_text("\n".join(md) + "\n", encoding="utf-8")
-
-    print(json.dumps(metrics, ensure_ascii=False, sort_keys=True))
+    (OUT / "RESULT.md").write_text("\n".join(result_lines) + "\n", encoding="utf-8")
     return 0
 
 
