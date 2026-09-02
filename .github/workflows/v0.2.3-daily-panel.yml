@@ -23,6 +23,12 @@ jobs:
         run: python -m pip install --upgrade pip pandas numpy requests tabulate
       - name: Run 11-window daily panel
         run: python research/scripts/run_v0.2.3_daily_panel.py
+      - name: Print results
+        run: |
+          echo '=== SUMMARY METRICS ==='
+          cat research/results/v0.2.3_daily_panel/summary_metrics.csv
+          echo '=== WINDOW-STAGE RESULTS ==='
+          cat research/results/v0.2.3_daily_panel/window_stage_results.csv
       - name: Upload results
         uses: actions/upload-artifact@v4
         with:
