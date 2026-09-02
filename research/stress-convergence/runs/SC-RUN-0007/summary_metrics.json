@@ -1,0 +1,18 @@
+{
+  "fixture_rows": 8459,
+  "crisis_windows_evaluable": 4,
+  "v023_crisis_confirmation_fp_windows": 1,
+  "v023_crisis_confirmation_fp_rate": 0.16666666666666666,
+  "v023_crisis_confirmation_fn_windows": 3,
+  "v024_primary_90d_fp_windows": 0,
+  "v024_primary_90d_fn_windows": 3,
+  "v024_primary_90d_confirmation_rate": 0.25,
+  "v024_pre_anchor_90d_successes": 0,
+  "v024_pre_anchor_90d_rate": 0.0,
+  "ttc_1d_rate": 0.0,
+  "ttc_7d_rate": 0.0,
+  "ttc_30d_rate": 0.0,
+  "ttc_90d_rate": 0.25,
+  "ttc_365d_rate": 0.25,
+  "ttc_gt365d_rate": 0.5
+}

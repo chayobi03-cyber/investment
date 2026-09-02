@@ -1,0 +1,28 @@
+{
+  "fixture_id": "SC-FIX-0001",
+  "version": "v0.2.3",
+  "status": "OFFICIAL_RECOVERED",
+  "source": {
+    "system": "GitHub Actions",
+    "workflow_run_id": 33640923172,
+    "artifact_id": 9850771333,
+    "artifact_name": "v0.2.3-daily-panel-results",
+    "artifact_digest": "sha256:94d74c114e3197b3f01c2cadb9378fc987a1a95e08977ce563404e8aed9c529d",
+    "head_sha": "616cdd6c78f3ffe754833a51fc504a8a08332734",
+    "implementation_commit": "36ce6c8c15ef5211d64c5f8b563749e893ce7ad3",
+    "workflow_conclusion": "success"
+  },
+  "files": {
+    "daily_panel.csv": "sha256:d889cc428077c18dc0fe470b267a518a7de33e7a74b89adbfdf34b4c559e9919",
+    "window_stage_results.csv": "sha256:afd9c4a2419ba2df19f7b6c803883fe0b0a0c63be96b1e3b46e460213293e8b4",
+    "summary_metrics.csv": "sha256:14b3520f55ed7b16c04fc367763f7a711bed12a63aa503c930dfc0958f24d6db",
+    "report.md": "sha256:f9ba6d7f6e31730ce2915a0392b4c12c514160e717e35dd2427d52d9888037c9",
+    "run-marker.txt": "sha256:334f52ea2e3eba06f663d0d734ceaa7f10ed35073809b94d31e176f1d5cc592b"
+  },
+  "coverage": {
+    "rows": 8459,
+    "date_min": "1993-01-01",
+    "date_max": "2026-07-30"
+  },
+  "provenance_gap": "Raw FRED/Yahoo/HY source snapshots were not stored in the original run; the baseline is therefore frozen as an official execution artifact, not as a complete upstream-data fixture."
+}

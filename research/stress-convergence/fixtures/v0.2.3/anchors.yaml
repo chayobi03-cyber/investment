@@ -1,0 +1,58 @@
+anchor_registry_version: v0.2.3
+cases:
+  - id: 1994_tightening
+    start: 1994-01-01
+    end: 1994-12-31
+    anchor: null
+    kind: FP
+    crisis_confirmation_coverage: unavailable
+  - id: 2000_dotcom
+    start: 1999-01-01
+    end: 2000-03-24
+    anchor: 2000-03-24
+    kind: CRISIS
+  - id: 2004_05_tightening
+    start: 2004-01-01
+    end: 2005-12-31
+    anchor: null
+    kind: FP
+  - id: 2008_gfc
+    start: 2006-01-01
+    end: 2007-10-09
+    anchor: 2007-10-09
+    kind: CRISIS
+  - id: 2013_taper
+    start: 2013-05-01
+    end: 2013-09-30
+    anchor: null
+    kind: FP
+  - id: 2016_china_energy
+    start: 2015-08-01
+    end: 2016-02-29
+    anchor: null
+    kind: FP
+  - id: 2017_reflation_fed
+    start: 2016-11-01
+    end: 2017-12-31
+    anchor: null
+    kind: FP
+  - id: 2018_q4_tightening_selloff
+    start: 2018-09-01
+    end: 2018-12-31
+    anchor: null
+    kind: FP
+  - id: 2020_covid
+    start: 2019-01-01
+    end: 2020-02-19
+    anchor: 2020-02-19
+    kind: CRISIS
+  - id: 2021_reflation_taper
+    start: 2021-01-01
+    end: 2021-12-31
+    anchor: null
+    kind: FP
+  - id: 2022_rate_shock
+    start: 2021-01-01
+    end: 2022-01-03
+    anchor: 2022-01-03
+    kind: CRISIS
