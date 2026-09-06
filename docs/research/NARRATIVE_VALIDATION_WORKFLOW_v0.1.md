@@ -1,9 +1,10 @@
 # Narrative-to-Evidence Validation Workflow v0.1
 
 **Project:** Investment — Capital Preservation Research  
-**Status:** FROZEN CONTRACT v0.1  
+**Status:** AMENDED FROZEN CONTRACT v0.1  
 **Effective date:** 2026-09-04  
-**Purpose:** Convert market/news narratives into falsifiable hypotheses and validate them against independent sources, cross-asset evidence, and fixed time windows before they can influence investment or stress-detection decisions.
+**Amendment date:** 2026-09-07  
+**Purpose:** Convert market/news narratives into falsifiable hypotheses and validate them against independent sources, cross-asset evidence, fixed time windows, and flow-attribution controls before they can influence investment or stress-detection decisions.
 
 ---
 
@@ -24,6 +25,7 @@ It does **not** treat news volume, analyst consensus, or a persuasive article as
 - Search explicitly for counterarguments and falsifying evidence.
 - Determine whether apparently similar articles are genuinely independent.
 - Align narrative claims with observable market data.
+- Separate discretionary investor flow from mechanical / non-discretionary flow before interpreting capital-flow signals.
 - Feed validated evidence into the existing stress-convergence framework.
 
 ### Out of scope
@@ -32,6 +34,7 @@ It does **not** treat news volume, analyst consensus, or a persuasive article as
 - Portfolio position sizing.
 - Replacing authoritative market/economic data with news articles.
 - Declaring a financial crisis solely from narrative strength.
+- Treating investor-category flow statistics as pure investor sentiment without attribution checks.
 
 ---
 
@@ -54,17 +57,19 @@ INPUT ARTICLE / CLAIM
         ↓
 6. MARKET-EVIDENCE VALIDATION
         ↓
-7. CROSS-ASSET CONVERGENCE CHECK
+7. MECHANICAL-FLOW ATTRIBUTION CHECK
         ↓
-8. TIME-WINDOW ALIGNMENT
+8. CROSS-ASSET CONVERGENCE CHECK
         ↓
-9. NARRATIVE / EVIDENCE SCORING
+9. TIME-WINDOW ALIGNMENT
         ↓
-10. EXISTING STRESS-DETECTOR COMPARISON
+10. NARRATIVE / EVIDENCE SCORING
         ↓
-11. FINAL CLASSIFICATION
+11. EXISTING STRESS-DETECTOR COMPARISON
         ↓
-12. LESSON LEARNED / RULE CANDIDATE
+12. FINAL CLASSIFICATION
+        ↓
+13. LESSON LEARNED / RULE CANDIDATE
 ```
 
 ### Mandatory separation
@@ -291,6 +296,78 @@ The analyst MUST NOT require every asset group for every narrative. Only causall
 
 ---
 
+## 8.1 Mechanical / Non-Discretionary Flow Adjustment Contract
+
+Investor-category flow statistics MUST NOT be interpreted as pure investor sentiment until material mechanical or non-discretionary flows have been identified and annotated.
+
+### Typical mechanical-flow sources
+
+- corporate share buybacks
+- ETF creations/redemptions and passive rebalancing
+- index reconstitution
+- benchmark tracking flows
+- scheduled corporate actions
+- central-bank or sovereign operations when they enter the relevant market statistics
+- forced or rule-based mandate flows
+
+### Required fields
+
+```yaml
+mechanical_flow_adjustment:
+  present: true
+  flow_type:
+  entity:
+  scheduled_or_discretionary:
+  expected_notional:
+  execution_window:
+  actual_notional:
+  market_statistics_bucket:
+  attribution_confidence:
+  residual_unexplained_flow:
+```
+
+### Mandatory rules
+
+1. Before using an investor-category flow as evidence of risk appetite, determine whether a material portion is mechanically generated.
+2. Corporate buybacks MUST be separated from discretionary “other corporate investor” demand when the data permit.
+3. A category such as `other_corporations` / `other_entities` MUST NOT be treated as a homogeneous sentiment signal.
+4. If exact attribution is unavailable, mark the flow as **partially attributed / unresolved**, rather than assigning it entirely to discretionary demand.
+5. Mechanical-flow adjustment changes the interpretation of the flow signal; it does not by itself create or confirm crisis status.
+6. When a mechanical flow is large enough to plausibly mask underlying selling pressure, the execution MUST explicitly test the market with and without that flow.
+
+### Canonical interpretation pattern
+
+```text
+reported investor-category flow
+        ↓
+identify mechanical / non-discretionary component
+        ↓
+attribute known component
+        ↓
+calculate residual discretionary flow
+        ↓
+interpret residual as the stronger sentiment signal
+```
+
+### Example
+
+If:
+
+```text
+foreigners      -X
+institutions    -Y
+individuals     -Z
+other entities  +A
+```
+
+and a known corporate buyback accounts for most of `+A`, the workflow MUST NOT conclude that `other entities` represent broad discretionary demand. The relevant question becomes whether the **residual flow after mechanical adjustment** remains materially negative or positive.
+
+### Evidence-strength implication
+
+Unadjusted material mechanical flow does not automatically subtract a fixed number of Evidence Strength points. Instead, it MUST be reported as an attribution limitation and the resulting conclusion MUST avoid treating the raw investor-category number as a clean sentiment measure.
+
+---
+
 ## 9. Cross-Asset Convergence Contract
 
 A narrative is considered **cross-asset supported** only when at least two causally distinct market observations are directionally consistent with the proposed mechanism.
@@ -416,6 +493,17 @@ Interpretation:
 | 70–84 | strong evidence |
 | 85–100 | very strong evidence |
 
+### Mechanical-flow qualification
+
+Where a material capital-flow indicator is used, Evidence Strength MUST include a note on whether the observed flow is:
+
+- fully attributed;
+- mechanically adjusted;
+- partially attributed; or
+- unresolved.
+
+Raw flow totals with material unresolved mechanical components MUST NOT be described as clean investor-sentiment evidence.
+
 ---
 
 ## 13. Crisis Confirmation Contract
@@ -432,6 +520,8 @@ Narrative
 Hypothesis
   ↓
 Market Evidence
+  ↓
+Mechanical-flow Attribution Check
   ↓
 Cross-Asset Convergence
   ↓
@@ -463,6 +553,8 @@ High narrative + high evidence + no crisis criteria
 High narrative + high evidence + existing crisis criteria satisfied
 → crisis confirmation candidate
 ```
+
+Mechanical-flow attribution does not replace the crisis gate.
 
 ---
 
@@ -511,6 +603,17 @@ market_evidence:
     expected_direction:
     supports_claim: true
     source:
+mechanical_flow_adjustment:
+  present:
+  flow_type:
+  entity:
+  scheduled_or_discretionary:
+  expected_notional:
+  execution_window:
+  actual_notional:
+  market_statistics_bucket:
+  attribution_confidence:
+  residual_unexplained_flow:
 cross_asset:
   groups_checked: []
   convergence_count:
@@ -547,13 +650,13 @@ git_artifact:
 
 ## 15. Fixed Prompt — v0.1
 
-The following prompt is the canonical execution prompt. Changes to its logic require a version increment.
+The following prompt is the canonical execution prompt. This amendment adds a flow-attribution control without changing the project's crisis definition or time-window semantics.
 
 ```text
 You are executing NARRATIVE_VALIDATION_WORKFLOW_v0.1 for the Investment — Capital Preservation Research project.
 
 Objective:
-Convert the supplied market/news narrative into falsifiable claims and validate those claims using independent sources, counter-evidence, observable market data, cross-asset convergence, and fixed time windows.
+Convert the supplied market/news narrative into falsifiable claims and validate those claims using independent sources, counter-evidence, observable market data, mechanical-flow attribution, cross-asset convergence, and fixed time windows.
 
 Rules:
 1. Do not treat the article's conclusion as a fact.
@@ -572,7 +675,11 @@ Rules:
 14. Clearly distinguish facts, sourced interpretations, hypotheses, and unresolved uncertainty.
 15. If evidence is missing, report "not established" rather than infer it.
 16. If sources conflict, preserve the conflict and explain which evidence has higher quality or relevance.
-17. End with: (a) final classification, (b) implications for the investment research system, (c) lesson learned, and (d) whether a rule/schema change is justified.
+17. Before interpreting investor-category flow as sentiment, identify material mechanical/non-discretionary components and record the attribution status.
+18. Corporate buybacks and other known mechanical flows MUST be separated from discretionary demand when the data permit.
+19. If exact attribution is unavailable, label the flow as partially attributed or unresolved rather than treating the full category as discretionary demand.
+20. If a mechanical flow is large enough to mask underlying selling/buying pressure, test the market with and without the identified mechanical component.
+21. End with: (a) final classification, (b) implications for the investment research system, (c) lesson learned, and (d) whether a rule/schema change is justified.
 
 Required output order:
 A. Executive conclusion
@@ -581,16 +688,17 @@ C. Causal mechanisms
 D. Independent supporting sources
 E. Counter-evidence / falsification
 F. Market evidence
-G. Cross-asset convergence
-H. Time-window alignment
-I. Narrative Strength score
-J. Evidence Strength score
-K. Existing stress-detector comparison
-L. Crisis Confirmation status
-M. Final classification
-N. Lesson learned
-O. Rule/schema change recommendation
-P. Artifact/Git recommendation
+G. Mechanical-flow attribution
+H. Cross-asset convergence
+I. Time-window alignment
+J. Narrative Strength score
+K. Evidence Strength score
+L. Existing stress-detector comparison
+M. Crisis Confirmation status
+N. Final classification
+O. Lesson learned
+P. Rule/schema change recommendation
+Q. Artifact/Git recommendation
 
 Use concise, evidence-linked reasoning. Never convert a plausible narrative into a confirmed event without market evidence.
 ```
@@ -676,6 +784,9 @@ Existing stress-convergence research remains the downstream quantitative gate.
                 MARKET EVIDENCE
                        │
                        ▼
+            MECHANICAL-FLOW CHECK
+                       │
+                       ▼
               CROSS-ASSET CHECK
                        │
                        ▼
@@ -708,6 +819,8 @@ The workflow itself must be periodically falsified.
 8. **Price-confirmation bias** — one market move is interpreted without checking alternatives.
 9. **Source-quality inflation** — a high-profile source is treated as proof rather than interpretation.
 10. **Narrative-to-crisis leakage** — strong media concern directly changes crisis status without passing the existing quantitative gate.
+11. **Mechanical-flow attribution error** — scheduled or rule-based corporate/passive flows are interpreted as discretionary investor conviction.
+12. **Flow masking error** — a large mechanical bid/offer hides the direction of residual discretionary demand.
 
 ### Required defense
 
@@ -743,10 +856,13 @@ docs/research/NARRATIVE_VALIDATION_WORKFLOW_v0.1.md
 - Changes to wording that do not change logic: patch documentation update.
 - Changes to schema fields: minor version increment.
 - Changes to scoring, source independence rules, time-window logic, or crisis-gate semantics: new workflow version and validation cycle.
+- A **flow-attribution clarification** may be applied as a contract amendment only when it does not alter the crisis definition, scoring formula, or time-window semantics; such amendments MUST state the amendment date and rationale.
 
 ### Git rule
 
-Do not modify the workflow contract silently during an execution. Record proposed changes separately, validate them, then update the contract with a new version.
+Do not modify the workflow contract silently during an execution. Record proposed changes separately, validate them, then update the contract with a traceable amendment.
+
+This amendment records the 2026-09-07 lesson that material mechanical/non-discretionary market flows can distort investor-category interpretation. The amendment adds attribution controls while preserving the existing crisis gate, score formulas, source hierarchy, and time-window rules.
 
 ---
 
@@ -762,18 +878,32 @@ Result
 → Did the workflow encourage confirmation bias?
 → Did time-window logic hold?
 → Did source independence hold?
+→ Did mechanical-flow attribution hold?
 → Is a rule/schema/prompt change justified?
 → Git artifact required?
 ```
 
 A lesson learned becomes a permanent rule only after it is shown to improve reproducibility, falsifiability, or decision quality.
 
+### 2026-09-07 lesson learned
+
+A large investor-category flow can be mechanically generated by corporate actions such as share buybacks. Therefore, raw category flow MUST NOT be used as a clean proxy for investor sentiment until the mechanical component has been identified or explicitly marked unresolved.
+
 ---
 
-## 22. v0.1 Freeze Statement
+## 22. v0.1 Amendment Statement
 
-v0.1 establishes the minimum reproducible contract for converting external market narratives into testable evidence without allowing narrative consensus to substitute for market confirmation.
+The baseline v0.1 contract remains the reference workflow. The 2026-09-07 amendment adds a **mechanical / non-discretionary flow attribution control** to prevent corporate buybacks and other rule-based flows from being misinterpreted as discretionary investor conviction.
 
-The central invariant is:
+The following remain unchanged:
 
-> **News can raise a hypothesis. Independent evidence can strengthen it. Cross-asset and time-aligned market data can validate it. Only the existing stress-convergence gate can confirm a crisis.**
+- Narrative Strength definition and score.
+- Evidence Strength definition and score formula.
+- Crisis Confirmation definition.
+- Existing stress-convergence gate.
+- Source hierarchy and source-independence principle.
+- Fixed early-warning → confirmation time-window compatibility.
+
+The central invariant remains:
+
+> **News can raise a hypothesis. Independent evidence can strengthen it. Cross-asset and time-aligned market data can validate it. Mechanical flows must be attributed before being interpreted as investor sentiment. Only the existing stress-convergence gate can confirm a crisis.**
