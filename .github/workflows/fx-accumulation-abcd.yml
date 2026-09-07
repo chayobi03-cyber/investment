@@ -1,0 +1,30 @@
+name: FX accumulation A/B/C/D replay
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas numpy requests
+      - name: Run FX accumulation A/B/C/D replay
+        run: python research/scripts/run_fx_accumulation_abcd.py
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: fx-accumulation-abcd-results
+          path: research/results/fx_accumulation_abcd/
