@@ -1,7 +1,7 @@
 name: FX accumulation A/B/C/D replay
 on:
   push:
-    branches: [ main ]
+    branches: [ main, 'claude/**' ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
