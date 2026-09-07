@@ -30,8 +30,27 @@
 - USD/JPY 155선 하회 신호의 오탐/미탐/조기 탐지 시간/경보 발생 횟수를 기존 스트레스 benchmark와 비교한다.
 - 금리·유가·엔화·반도체의 결합 신호가 매수강도 조정에 실제로 유용한지 replay/backtest한다.
 
+## 6. 2026-09-08 JPY overlay AND-gate replay 결과 (후속 기록)
+
+`research/jpy-overlay-v0.1-seven-window-replay-result-2026-09-08.md` 참고.
+
+기존 v0.2.2 Stress Convergence Candidate B/C(bounded persistence)/D(independent
+discriminator) 조기경보에 JPY overlay(850~950 KRW/100엔 + 5관측치 모멘텀 조건)를
+**AND 조건**으로 결합해 7-window(4 crisis + 3 FP) benchmark로 replay한 결과:
+
+- 오탐(FP)은 감소했지만(D는 33%→0%), 미탐(FN)이 급증하고(D는 25%→100%, 즉 신호
+  완전소실) 평균 lead time도 ~304/282일 → ~31/39일로 붕괴.
+- 결론: **AND-gate 결합 설계는 기각.** JPY 155선/850~950 관측 레벨 자체를 부정하는
+  것이 아니라, "필수 게이트"가 아니라 OR/confidence-boost 방식의 보조신호로만
+  다뤄야 한다는 기존 프레임워크의 cascade 원칙(Level 1~4)을 재확인.
+- 이 benchmark는 v0.2.3 원시 anchor(붕괴시점 기준)를 쓴 것으로, 동결된 v0.2.4
+  TTC registry(SC-RUN-0007)와는 다른 버전이며 추후 그 registry로 재검증 필요.
+
 ## Rule update
 1. 미국시장 세션/휴장 여부를 시장점검의 선행 검증 단계로 고정.
 2. AI/반도체 상대강도와 broad risk-on을 분리.
 3. 엔화 155선은 보조 경보 후보로만 사용하고 하드 매도 규칙으로 승격하지 않음.
 4. 매수강도는 금리·유가·FX·반도체·목표비중의 결합판단으로 유지.
+5. JPY overlay는 AND-gate(필수조건)로 기존 조기경보와 결합하지 않는다 — TP/lead
+   time을 크게 훼손함이 replay로 확인됨. OR/confidence-boost 방식만 향후 검증
+   대상으로 유지한다.
