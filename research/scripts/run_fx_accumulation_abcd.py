@@ -146,17 +146,27 @@ def strategy_curves(valid: pd.DataFrame, strat: str) -> pd.DataFrame:
     )
 
 
-def irr_weekly(cashflows: np.ndarray) -> float:
-    lo, hi = -0.5, 1.0
-    def npv(r):
-        t = np.arange(len(cashflows))
-        return float(np.sum(cashflows / (1.0 + r) ** t))
+def irr_annualized(cashflows: np.ndarray) -> float:
+    """Money-weighted annualized return via bisection on an annual rate.
+
+    Exponents use t in years (index / 52) rather than raw weekly steps, so
+    a ~20-year, ~1000-period cashflow series does not overflow (1+r)**t.
+    """
+    t_years = np.arange(len(cashflows)) / 52.0
+
+    def npv(r: float) -> float:
+        with np.errstate(over="ignore", invalid="ignore"):
+            return float(np.sum(cashflows / (1.0 + r) ** t_years))
+
+    lo, hi = -0.99, 5.0
     f_lo, f_hi = npv(lo), npv(hi)
-    if f_lo * f_hi > 0:
+    if not (np.isfinite(f_lo) and np.isfinite(f_hi)) or f_lo * f_hi > 0:
         return math.nan
     for _ in range(200):
         mid = (lo + hi) / 2
         f_mid = npv(mid)
+        if not np.isfinite(f_mid):
+            return math.nan
         if abs(f_mid) < 1e-6:
             return mid
         if f_lo * f_mid < 0:
@@ -176,8 +186,7 @@ def strategy_metrics(valid: pd.DataFrame, strat: str) -> dict:
     cashflows = -valid[f"invested_{strat}"].to_numpy(dtype=float)
     cashflows = cashflows.copy()
     cashflows[-1] += final_value
-    weekly_irr = irr_weekly(cashflows)
-    annual_irr = (1 + weekly_irr) ** 52 - 1 if not math.isnan(weekly_irr) else math.nan
+    annual_irr = irr_annualized(cashflows)
 
     mdd = float(curves["drawdown"].min())
 
