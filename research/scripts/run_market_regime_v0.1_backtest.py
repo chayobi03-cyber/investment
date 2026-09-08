@@ -299,9 +299,19 @@ def main():
     yahoo = pd.concat(yahoo_raw, axis=1)
 
     df = fred.join(hy_s, how="outer").join(yahoo, how="outer").sort_index()
+
+    print("Per-series raw coverage (before ffill/dropna):")
+    for col in df.columns:
+        s = df[col].dropna()
+        if len(s):
+            print(f"  {col:12s} first={s.index.min().date()} last={s.index.max().date()} n={len(s)}")
+        else:
+            print(f"  {col:12s} NO DATA")
+
     ffill_cols = [c for c in df.columns if c not in ()]
     df[ffill_cols] = df[ffill_cols].ffill()
-    df = df.dropna(subset=["KOSPI", "SP500", "VIX", "HY_OAS", "UST10Y", "UST2Y", "UST3M"])
+    required_cols = ["KOSPI", "SP500", "VIX", "HY_OAS", "UST10Y", "UST2Y", "UST3M"]
+    df = df.dropna(subset=required_cols)
 
     print(f"Combined panel: {df.index.min().date()} to {df.index.max().date()}, {len(df)} rows")
 
