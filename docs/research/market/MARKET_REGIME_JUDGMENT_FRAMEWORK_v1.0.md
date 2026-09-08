@@ -296,6 +296,36 @@ Before any Market Score is used for a live decision, run:
 
 A monotonic (or near-monotonic) relationship between score bucket and forward return, replicated across horizons and markets, is the minimum bar to advance past Level 3 in §10. A disordered relationship (e.g., mid-score buckets outperforming high-score buckets) is a rejection signal, not something to patch by re-fitting weights on the same sample.
 
+### 9.1 First exploratory result (2026-09-08) -- falsification condition triggered
+
+Ran the §4.1/§6.2 candidate spec (`research/scripts/run_market_regime_v0.1_backtest.py`, GitHub Actions run `34189772007`) against real KOSPI, KOSDAQ, S&P 500, Russell 2000, VIX, gold, and UST-yield data covering **1996-12-11 to 2026-09-08 (9,342 trading days, ~30 years)** -- this session's own network egress blocks FRED/Yahoo Finance directly, so the script ran in CI, matching the existing `run_v0.2.3_daily_panel.py` pattern. Status: **EXPLORATORY**, not an OFFICIAL run (no frozen fixture/spec hash yet, per `research/stress-convergence/README.md`'s reproducibility gate).
+
+**Result: the score-bucket vs. forward-return relationship is not monotonic, and at the 60-120 day horizons the lowest-score bucket and the Panic (R6) regime often show among the *strongest* forward returns, not the weakest.**
+
+Selected figures (full tables in the CI run's `report.md` artifact):
+
+| Market | Horizon | 0-20 bucket mean fwd return | 80-100 bucket mean fwd return |
+|---|---:|---:|---:|
+| KOSPI | 60d | **+7.97%** (n=378) | +0.66% (n=23) |
+| KOSPI | 120d | **+8.25%** (n=378) | +13.16% (n=23, noisy) |
+| S&P 500 | 120d | **+8.84%** (n=420) | +2.49% (n=106) |
+
+| Market | Horizon | R6 (Panic) mean fwd return / win rate | R2 (Normal Risk-On) mean fwd return / win rate |
+|---|---:|---:|---:|
+| KOSPI | 120d | **+4.86%** / 81.5% (n=162) | +5.87% / 62.8% (n=1571) |
+| S&P 500 | 120d | **+7.65%** / 82.8% (n=262) | +3.87% / 75.9% (n=2077) |
+
+This is precisely falsification condition **§11.1** ("score-bucket vs. forward-return relationship is not monotonic across at least two independent forward horizons") **being triggered**, on real data, across both markets tested, at the 60d and 120d horizons specifically. Per §11's own instruction, this is a signal to revise the current axis weighting, not something to patch by re-fitting weights on this same sample.
+
+**Read this result carefully, not as "the framework failed" but as informative:**
+
+1. **The pattern looks like classic post-drawdown mean reversion / panic-recovery**, not evidence that the five axes are meaningless. Low Market Score and R6 (Panic) days are disproportionately drawn from a small number of major crisis-recovery episodes (2000-2002, 2008-2009, 2020 COVID crash, 2022 rate shock); a single-bucket average over 30 years does not distinguish "this score level generically predicts a bounce" from "a handful of well-known V-shaped recoveries dominate the average of a small bucket." This has not yet been decomposed by episode.
+2. **Sample sizes at the extremes are thin and the R1/R6 boolean conditions in §6.2 are evidently too strict**: KOSPI R1 fired on only 6 of 9,342 days in 30 years; S&P 500 R1 fired on only 1 day. A rule that essentially never fires cannot be evaluated meaningfully and needs its own cut-point recalibration (§10.6) before its bucket/regime statistics are trusted at all.
+3. **This is a single full-sample run, not out-of-sample or walk-forward** (§10 Levels 4-5). A full-sample bucket table is exactly the Level-3 evidence this document's own validation stack says is insufficient on its own -- this result is the concrete illustration of why L4/L5 are required next, not a reason to promote or reject any rule yet.
+4. The Trend axis's own economic anchor (Moskowitz/Ooi/Pedersen 2012, §1.2) documents momentum operating on a 1-12 month continuation basis with reversal over longer horizons -- so a reversal-dominated pattern at 60-120 days is not inherently inconsistent with that literature; it may indicate this candidate's blend of axes (particularly Risk/Macro, weighted toward "conditions have already normalized" rather than "conditions are currently deteriorating") is capturing something closer to a recovery-confirmation signal than a forward-looking risk-on signal as currently specified.
+
+**Immediate implication for §7 (Buy Intensity connection):** the current Risk Gate mapping (R1 = full deployment, R6 = no new deployment) is **not** supported by this result as specified, and must not be treated as validated. It is explicitly still gated behind the unmet §10 L1-L3 bar (§8, §12), and this result adds a concrete reason it should not advance further without the decomposition and OOS/walk-forward work in §12.
+
 ## 10. Validation stack (Levels 1-10)
 
 This is the gate a rule must pass before promotion to a decision rule, and it extends the project's existing research loop (`INVESTMENT_RESEARCH_LOOP.md`) with the additional overfitting-control steps this document's originating memo specified.
@@ -383,7 +413,7 @@ These two techniques remain **optional strengthening steps for L9/L10**, applica
 
 Reject or revise this framework, in whole or in the relevant axis/weight, if any of the following is demonstrated on a frozen benchmark:
 
-1. Score-bucket vs. forward-return relationship (§9) is not monotonic across at least two independent forward horizons.
+1. Score-bucket vs. forward-return relationship (§9) is not monotonic across at least two independent forward horizons. **TRIGGERED 2026-09-08 — see §9.1**: the first exploratory ~30-year run showed a non-monotonic, partly-inverted relationship at the 60d/120d horizons on both KOSPI and S&P 500. Per this section's own rule, the current axis weighting/cut points may not be promoted from this evidence and require the episode-decomposition and OOS/walk-forward work in §12 before any revision is drafted.
 2. Regime classification (§6) shows no meaningful separation in realized volatility/drawdown/return across R1-R6.
 3. The 25/20/20/20/15 axis weighting or the 70/30-60/40-40/60 horizon blend is not robust to reasonable parameter perturbation (§10.6).
 4. Results do not replicate out-of-sample (§10.4) or across markets (§10.8).
@@ -398,9 +428,12 @@ Consistent with the existing "Immediate Open Work" convention (`CLAUDE_HANDOVER_
 
 - **P0 — Indicator/source freeze.** Select the concrete series for each of the 5 axes and freeze their exact definitions and sources (§1-§2) before any scoring code is written.
 - **P0 — Cross-Asset (Axis E) methodological anchor.** §1.2 found no canonical academic/institutional template for this axis (unlike NFCI for Axis D or the breadth literature for Axis B); define and justify this project's own cross-asset composite before treating it as equally evidenced as the other four axes.
-- **P1 — Score-bucket vs. forward-return backtest (§9).** Run on at least one long-history market first; this is the cheapest possible falsification test and should run before building R1-R6 or any live scoring.
+- **P1 — Score-bucket vs. forward-return backtest (§9).** DONE (2026-09-08, exploratory) — see §9.1. Falsification condition §11.1 triggered; do not repeat this step without addressing the P0 items below first.
 - **P1 — Regime vs. Stress-Convergence cross-check (§6.1).** Once Market Regime exists historically, compare its labels against the existing Stress Convergence window results already computed in `research/stress-convergence/`.
-- **P1 — Implement and backtest the §4.1/§6.2 candidate spec.** It is concrete enough to code directly; run it through §9's score-bucket/forward-return backtest with the hardcoded cut points first, then re-run with the §4 trailing-percentile transform substituted in, and compare — this both exercises §9 and produces the first real §10.6 sensitivity evidence for this framework.
+- **P1 — Implement and backtest the §4.1/§6.2 candidate spec.** DONE (2026-09-08, exploratory, `research/scripts/run_market_regime_v0.1_backtest.py`, GitHub Actions run `34189772007`) — see §9.1 for results. Both the hardcoded-cut-point and trailing-percentile-transform variants share the same underlying axis inputs in this run; the two have not yet been run and compared separately, which remains open.
+- **P0 — Episode decomposition of the §9.1 result.** Break the score-bucket and regime-performance tables down by known historical episode (2000-2002, 2008-2009, 2020 COVID crash, 2022 rate shock, and the "normal" periods between them) to test whether the mean-reversion pattern found is generic or driven by a small number of V-shaped recoveries dominating a thin low-score/R6 bucket.
+- **P0 — Out-of-sample / walk-forward split before any weight revision.** Per §10 L4-L5: freeze a training sub-period, evaluate on an untouched later period, and repeat with rolling windows, before drawing any conclusion about whether the current axis weights should change. Do not re-fit weights on the same full sample that produced the §9.1 result.
+- **P0 — Recalibrate the R1/R6 boolean cut points (§6.2).** §9.1 found R1 fired on only 6 of 9,342 KOSPI days and 1 of 9,342 S&P 500 days in 30 years -- too rare to evaluate meaningfully. Test alternative cut points (per §10.6 parameter sensitivity) before trusting any R1/R6 statistic.
 - **P2 — Risk Gate wiring (§7).** Only after L1-L3 pass: connect Market Regime output to the Buy Intensity Risk Gate term as a documented, versioned function, not a discretionary override.
 - **P2 — Parameter sensitivity and cross-market replication (§10.6, §10.8).**
 - **P3 — Data-snooping correction and Rule Confidence Score tooling (§10, §10.1).**
