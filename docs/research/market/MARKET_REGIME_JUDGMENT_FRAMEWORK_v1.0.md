@@ -106,6 +106,68 @@ Rules for the transform itself (all falsifiable, not fixed):
 
 Axis sub-score = average (or documented weighted average) of its component percentile scores. Component weights within an axis are themselves subject to §10.7 parameter-sensitivity testing.
 
+### 4.1 Concrete candidate indicator construction (v0.1, 2026-09-08 addendum)
+
+A follow-up memo proposed a fully worked-out version of §1 and §4: named component indicators per axis, an explicit sub-weight for each, and specific numeric cut points for the 0-100 transform. This is recorded here as the project's first **executable candidate specification** — concrete enough for §9's backtest code to implement directly — but with the same caveat applied throughout this document: **every numeric cut point below is an untested candidate, not a frozen rule**, and most of the memo's own citations for these cut points were SEO/blog-tier sources (profitma.com, mastermind-x.com, finwiz.io, deanfi.com, thetrading.tools, tapeboard.com, buildalpha.com, etc.), which sit below this project's evidence bar (`INVESTMENT_RESEARCH_LOOP.md` §2) and are not adopted as authority for the thresholds — only as a source of candidate starting values to calibrate away from in §10.6/§10.7. Where a cut point conflicts with the stronger academic/institutional anchors already recorded in §1.2, §1.2 takes precedence (see the 10Y-3M note under Axis D below).
+
+**Axis A — Trend**
+
+| Component | Definition | Candidate sub-weight |
+|---|---|---|
+| Short momentum | 5D, 20D return | 0.25 |
+| Medium momentum | 60D, 120D return | 0.25 |
+| Long trend | position vs. 200D MA, 200D MA slope | 0.25 |
+| MA alignment | boolean: 20D > 60D > 200D | 0.15 |
+| Drawdown from 52W high | (price - 52W high) / 52W high | 0.10 |
+
+Candidate transform notes: MA alignment as a 3-tier step function (fully aligned up / partially aligned / fully aligned down) rather than a continuous percentile; drawdown as a step function (shallower drawdown scores higher). Both are simplifications of the general percentile-rank rule in §4 and must be tested against the continuous version in §10.6 rather than assumed superior.
+
+**Axis B — Breadth**
+
+| Component | Definition | Candidate sub-weight |
+|---|---|---|
+| Advance ratio | advancing / (advancing + declining) | 0.20 |
+| Advance-Decline Ratio (ADR) | advancing count / declining count | 0.20 |
+| New-high minus new-low (NH-NL) | 52W new highs - 52W new lows, trailing z-score | 0.20 |
+| % above 200D MA | count above 200D MA / total | 0.25 |
+| % above 50D MA | count above 50D MA / total | 0.15 |
+
+This sub-weight split (25% to the 200D-MA breadth measure, the single largest component) is directionally consistent with the independently-verified breadth literature in §1.2 (Zaremba et al., 2019/2020) treating broad-based participation as the dominant breadth signal, but the specific split has not itself been tested by this project.
+
+**Axis C — Volatility/Risk**
+
+| Component | Definition | Candidate sub-weight |
+|---|---|---|
+| VIX level | index close | 0.25 |
+| VIX term structure | VIX3M - VIX (contango positive / backwardation negative) | 0.15 |
+| Realized volatility | 20D return std, annualized | 0.20 |
+| Max drawdown | current drawdown from trailing high | 0.15 |
+| Credit spread | HY OAS - IG OAS | 0.25 |
+
+**Axis D — Rates/Liquidity/Credit**
+
+| Component | Definition | Candidate sub-weight | Note |
+|---|---|---|---|
+| Yield-curve slope | 10Y-2Y **and** 10Y-3M | 0.25 | Per §1.2, the NY Fed's own official model uses 10Y-3M; a candidate scoring rule should not rely on 10Y-2Y alone the way the original follow-up memo did |
+| Real yield | 10Y nominal - breakeven inflation | 0.20 | |
+| Dollar (DXY) | trailing return | 0.20 | |
+| HY credit spread | HY OAS level | 0.35 | Largest single sub-weight, consistent with credit spreads being one of the three NFCI categories (§1.2) |
+
+**Axis E — Cross-asset flow**
+
+| Component | Definition | Candidate sub-weight |
+|---|---|---|
+| US equities | S&P 500 20D return | 0.30 |
+| US rates | 10Y yield 20D change | 0.15 |
+| Dollar/KRW | USD/KRW 20D change (KRW strength scores higher, per the existing FX Benefit logic in `CLAUDE_HANDOVER_2026-09-08.md` §6) | 0.15 |
+| Oil | WTI 20D change | 0.15 |
+| Gold | Gold 20D change (direction-inverted: gold strength scores as *lower* risk appetite) | 0.10 |
+| Semiconductors | SOX 20D return | 0.15 |
+
+Per §1.2, Axis E has the weakest external methodological anchor of the five; this component/weight table is a starting candidate for the project's own P0 design work, not an imported validated model.
+
+**Illustrative step-function cut points** (candidate only — e.g. VIX ≤ 18 → high sub-score, HY OAS ≤ 250bp → high sub-score, breadth ≥ 60% advancing → high sub-score, and their symmetric low-score counterparts) are a reasonable starting grid for implementing §4's percentile-rank transform in code, but must be replaced by this project's own trailing-percentile calculation (§4) once historical data is loaded — hardcoded absolute levels do not adapt across regimes or over multi-year drift the way a trailing percentile does, and are kept here only as a bootstrap default before real history exists.
+
 ## 5. Composite Market Score
 
 ```
@@ -160,6 +222,23 @@ Working (unvalidated) mapping to keep them consistent rather than contradictory:
 - R5/R6 should be the regimes most likely to co-occur with **Crisis Confirmation**, but co-occurrence is an empirical question for §9, not an assumption.
 
 This cross-check is itself a falsification target (§10): if R-regime and Stress Convergence state routinely disagree with no explainable cause, one or both classification schemes need revision.
+
+### 6.2 Concrete candidate regime decision rule (v0.1, 2026-09-08 addendum)
+
+The §6 table above is deliberately qualitative ("illustrative"). A follow-up memo proposed a fully computable boolean version, evaluated top-down (first matching rule wins):
+
+```
+R1  if  Market_Score >= 80  AND  Breadth_Score >= 70  AND  VIX <= 18            AND  HY_OAS <= 250bp
+R2  if  60 <= Market_Score < 80  AND  Breadth_Score >= 50
+R3  if  Market_Score >= 60  AND  (Breadth_Score < 50  OR  VIX > 22)
+R4  if  40 <= Market_Score < 60
+R5  if  20 <= Market_Score < 40  OR  (Drawdown > 15%  AND  VIX > 25)
+R6  if  Market_Score < 20  OR  (VIX > 35  AND  HY_OAS > 500bp)
+```
+
+This is recorded as this framework's first testable Regime formula — concrete enough to run against history in §9 — but every numeric threshold in it (80/70/18/250bp/60/50/22/40/20/15%/25/35/500bp) is an untested candidate carried over from the same follow-up memo discussed in §4.1, sourced mostly from blog-tier restatements rather than this project's own data. Before this rule is used for anything beyond a backtest input, it must clear at minimum §10 Levels 1-3 (economic logic — already partially established in §1.2; statistical relationship; historical backtest), and its specific cut points must survive the §10.6 parameter-sensitivity sweep (e.g., does R1 still separate cleanly if 80 is replaced with 75/85, or 18 with 16/20?) rather than being adopted because they look reasonable.
+
+Two structural notes carried over from the qualitative §6 table still apply and are not superseded by the boolean form: (1) R1-R6 must be cross-checked against the Stress Convergence three-state system per §6.1, and (2) mid-band regimes (R3/R4) that AND/OR-combine on both a level and a divergence condition are exactly the "index up, internals weak" case this framework exists to catch (`LESSONS_LEARNED_2026-09-08_MARKET_SESSION.md`) — a pure Market_Score cutoff without the breadth/VIX override would miss it.
 
 ---
 
@@ -311,6 +390,7 @@ Reject or revise this framework, in whole or in the relevant axis/weight, if any
 5. Adding an axis or indicator only improves in-sample fit and fails L9 data-snooping correction.
 6. Market Regime and Stress Convergence state disagree systematically without an identifiable, documented cause (§6.1).
 7. A DSR/PBO acceptance threshold copied from a secondary source (rather than calibrated on this project's own L1-L8 results, per §10.2) is used to justify promoting a rule.
+8. Any of the §4.1/§6.2 candidate numeric cut points (e.g., VIX <= 18, HY OAS <= 250bp, the 80/60/40/20 Market_Score bands) is used in a live decision before it has been recalibrated on this project's own trailing-percentile data (§4) and passed §10.6 parameter-sensitivity testing.
 
 ## 12. Immediate open work (P-items)
 
@@ -320,6 +400,7 @@ Consistent with the existing "Immediate Open Work" convention (`CLAUDE_HANDOVER_
 - **P0 — Cross-Asset (Axis E) methodological anchor.** §1.2 found no canonical academic/institutional template for this axis (unlike NFCI for Axis D or the breadth literature for Axis B); define and justify this project's own cross-asset composite before treating it as equally evidenced as the other four axes.
 - **P1 — Score-bucket vs. forward-return backtest (§9).** Run on at least one long-history market first; this is the cheapest possible falsification test and should run before building R1-R6 or any live scoring.
 - **P1 — Regime vs. Stress-Convergence cross-check (§6.1).** Once Market Regime exists historically, compare its labels against the existing Stress Convergence window results already computed in `research/stress-convergence/`.
+- **P1 — Implement and backtest the §4.1/§6.2 candidate spec.** It is concrete enough to code directly; run it through §9's score-bucket/forward-return backtest with the hardcoded cut points first, then re-run with the §4 trailing-percentile transform substituted in, and compare — this both exercises §9 and produces the first real §10.6 sensitivity evidence for this framework.
 - **P2 — Risk Gate wiring (§7).** Only after L1-L3 pass: connect Market Regime output to the Buy Intensity Risk Gate term as a documented, versioned function, not a discretionary override.
 - **P2 — Parameter sensitivity and cross-market replication (§10.6, §10.8).**
 - **P3 — Data-snooping correction and Rule Confidence Score tooling (§10, §10.1).**
