@@ -182,21 +182,37 @@ backtested at these exact multiplier values.
 6. **Residual Dry Powder** = Dry Powder balance − amount deployed this
    cycle. Recompute Portfolio Gap from this residual before the next cycle.
 
-### Dry Powder floor (new, unvalidated)
+### Dry Powder floor — REPLAYED 2026-09-08
 
-> Proposed floor: do not let active-sandbox Dry Powder fall below the
-> **Aggressive scenario's 28% floor** (Portfolio Allocation Rule v0.1
-> section 5) without an explicit, separately recorded risk-state decision.
+> Floor: do not *deploy* a tranche that would push active-sandbox Dry
+> Powder below the **Aggressive scenario's 28% floor** (Portfolio
+> Allocation Rule v0.1 section 5) without an explicit, separately recorded
+> risk-state decision.
 
-This is a **PROPOSED-UNVALIDATED** guardrail, not yet backtested. Its
-purpose is to prevent the staging ladder from mechanically draining Dry
-Powder to zero across repeated corrections. It should be replayed (does a
-hard floor materially change outcomes on the existing benchmarks?) before
-being promoted.
+**Interpretation clarified by the replay:** this is a **deployment-time
+constraint** — it governs the decision to deploy a new tranche, and is
+algebraically guaranteed to hold at the instant of every deployment. It
+does **not**, by itself, guarantee Dry Powder never *reads* below 28% at
+other times: strong risk-asset price appreciation between deployments (with
+no new purchase) can still mechanically dilute the ratio below 28% until
+the next rebalance. Guaranteeing the ratio never reads below 28% at any
+time would require an additional **sell-side rebalancing rule** (trim
+appreciated risk assets back to cash), which is not currently defined in
+this framework.
 
-**Status: WORKING** for the ranking/guard/bookkeeping mechanics (these are
-direct applications of already-frozen rules); **PROPOSED-UNVALIDATED** for
-the Dry Powder floor specifically.
+`research/deployment-engine-v0.1-dry-powder-floor-backtest-result-2026-09-08.md`
+replayed this floor on a 2004–2026 S&P 500/USD-KRW benchmark: it prevented
+full Dry Powder exhaustion (NOFLOOR hit 0%; WITHFLOOR's minimum was 24.67%)
+and reduced max drawdown from −28.1% to −20.7% at negligible CAGR cost
+(7.79% vs. 7.82%, WITHFLOOR marginally *better*). This is a materially more
+favorable result than the Risk Gate cap (section 4.1), which cost return
+with no measured drawdown benefit.
+
+**Status: WORKING** for the ranking/guard/bookkeeping mechanics (direct
+applications of already-frozen rules) and for the floor concept, now
+**REPLAYED with a favorable result on one benchmark** — a reasonable
+candidate for adoption, but per the Investment Research Loop's decision
+discipline, one benchmark does not yet make it a frozen hard rule.
 
 ## 8. What has and has not been validated
 
@@ -208,7 +224,7 @@ the Dry Powder floor specifically.
 | FX Benefit bounded modifier (×0.3–×1.2) | **Not backtested** — bound values are a design choice, not a measured optimum |
 | EARLY_WARNING/TIGHTENING Stage-≤2 cap (as ×1.5 combined-intensity cap) | **REPLAYED 2026-09-08 — result argues against adopting this specific cap design; not promoted, not permanently rejected.** See `research/deployment-engine-v0.1-risk-gate-cap-backtest-result-2026-09-08.md`: on a 1993–2022 benchmark it cost ~0.1pp of annualized IRR versus no cap while leaving max drawdown statistically unchanged. |
 | CRISIS_CONFIRMATION pause-and-require-reset (as ×0.3 forced multiplier) | **REPLAYED 2026-09-08 — same result and same caveat as the row above** (tested together as one combined cap/force design, not separately isolated). |
-| Dry Powder 28% floor | **Not backtested** |
+| Dry Powder 28% floor | **REPLAYED 2026-09-08 — reduced max drawdown −28.1%→−20.7% at negligible CAGR cost on one 2004–2026 benchmark; clarified as a deployment-time constraint, not a permanent state guarantee. Reasonable candidate for adoption; not yet a frozen hard rule.** See `research/deployment-engine-v0.1-dry-powder-floor-backtest-result-2026-09-08.md`. |
 | The full five-stage pipeline end-to-end | **Not backtested as a single system** |
 
 Per the Investment Research Loop's decision discipline, none of the
