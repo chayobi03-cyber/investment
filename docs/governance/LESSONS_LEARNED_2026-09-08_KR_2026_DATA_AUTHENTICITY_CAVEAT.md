@@ -18,10 +18,27 @@ This session's system clock is set to 2026-09-08, and the free data sources used
 2. This does not invalidate the ~30-year historical backtest (framework §9.1) itself, which spans 1996-2026 and is dominated by long-settled historical data; the concern is specific to the most recent slice.
 3. `research/scripts/run_kr_2026_case_study.py` and its CI output are retained as exploratory tooling output, but the 2026 KOSPI level figures it produced must not be cited as confirmed market fact until cross-checked.
 
+## 5. Verification result (2026-09-08, same session) — CONFIRMED REAL
+
+Per the rule above, this was cross-checked via WebSearch against multiple independent sources: CNBC (twice), Korea Herald, KED Global, Yahoo Finance (news, not just the data API), Fortune, TechTimes, Seeking Alpha, The Diplomat, Trading Economics, GuruFocus, Seoul Economic Daily, KuCoin, Babypips, EBC Financial Group, and Korean financial media (머니투데이, 헤럴드경제, Investing.com KR).
+
+**Result: the 2026 KOSPI move is real and extensively documented, not an artifact of this session's data pipeline.** Confirmed details, precise enough to resolve the earlier uncertainty:
+
+- KOSPI opened 2026 at a record closing high of 4,309.63 (Jan 2), then rallied through the year on an AI/semiconductor (SK Hynix, Samsung Electronics) capex theme, reaching an intraday record of 9,385.59 on **2026-06-19**.
+- A severe correction followed, driven by AI-bubble/leveraged-ETF-crowding concerns and increased AI competition from China: circuit breakers were triggered on **2026-06-26, 07-07, 07-13, 07-28, and 07-29** (the last two being the first-ever consecutive-day circuit breakers on the Korean exchange), with an intraday low of 6,429.03 on **2026-07-21** (-31.5% from the June peak) and a closing low near 5,663 by 2026-07-29.
+- July 2026's monthly decline (independent sources cite roughly -22% to -33% depending on the exact window measured) is reported by multiple outlets as **exceeding both the October 1997 Asian Financial Crisis (-27%) and the October 2008 Global Financial Crisis (-23%) monthly declines** -- the worst single month in KOSPI history.
+- August brought a confirmed rebound (+20% from the July low, described as a return to "bull market territory" by 2026-08-13), consistent with the September levels (KOSPI closing 6,579-6,995 across Sept 3-8) already present in this project's own pulled data.
+
+This **retracts the specific suspicion in §2-3 above that the data might be synthetic** -- it was real, and the general cross-verification discipline in §4 worked exactly as intended (flag uncertainty, then verify, then update the conclusion). The rule in §4 is kept as standing practice; only the conclusion about this specific dataset changes.
+
+## 6. New, more important finding: this real crisis exposes a concrete Risk-axis gap
+
+Cross-referencing these confirmed dates against `research/scripts/run_kr_2026_case_study.py`'s named-date lookup (added after this verification) turns this from a data-authenticity question into direct evidence for `MARKET_REGIME_JUDGMENT_FRAMEWORK_v1.0.md`'s Risk axis limitation already flagged in the parent script's docstring ("shared VIX/HY-OAS... no free Korea-local volatility index equivalent"): see the companion lessons-learned file for the 2026 KOSPI AI-bubble crash episode for the regime-label results on each confirmed date and the resulting P0 item.
+
 ## Session close
 
 ```text
-Lesson Learned: This environment's free-data APIs (FRED, Yahoo Finance) returned 2026 KOSPI figures showing a historically unprecedented +109% then -29% swing within a session whose system clock is itself set to 2026-09-08 -- a combination that means "the API call succeeded" is not sufficient evidence the returned current-year data is real-world market history. Cross-verification against a primary source is now required before treating recent-period figures from these sources as fact.
-Rule Change: YES — new cross-verification requirement for current-year/latest-period data pulled from these APIs in this environment.
-Git Commit: YES — new governance rule, material to how this project should trust its own data pipeline going forward.
+Lesson Learned: The 2026 KOSPI data pulled by this project's pipeline is real and independently confirmed (CNBC, Korea Herald, Fortune, TechTimes, Trading Economics, and Korean financial media all report the same 9,385.59 June peak, the July circuit-breaker crash exceeding 1997/2008 in monthly magnitude, and the August recovery) -- the earlier synthetic-data suspicion is retracted for this dataset, though the general cross-verification rule stays in force for future current-year pulls.
+Rule Change: NO further change beyond the §4 rule already recorded — this entry resolves the open question, it does not add a new rule.
+Git Commit: YES — resolves a previously-recorded open concern with sourced evidence; leaves a pointer to the more important follow-on finding (Risk-axis gap) recorded separately.
 ```

@@ -78,6 +78,52 @@ def main():
     })
     onsets_df.to_csv(OUT / "kospi_2026_regime_onsets.csv", index=False)
 
+    # Named-date lookup: what did this candidate system's Regime label say on
+    # specific, independently-confirmed 2026 KOSPI crisis dates? (peak, each
+    # circuit-breaker date, the trough, and the confirmed bull-market-return
+    # date), cross-checked via web search against CNBC, Korea Herald, Yahoo
+    # Finance, Fortune, TechTimes, and Korean financial media (headline.co.kr
+    # / mt.co.kr) reporting a >31% intraday / >33% monthly KOSPI decline in
+    # July 2026 -- described by multiple sources as exceeding the 1997 Asian
+    # Financial Crisis (-27%) and 2008 GFC (-23%) monthly declines. This is
+    # the concrete test of the "shared US VIX, no Korea-local volatility
+    # measure" simplification documented in this script's parent module
+    # docstring: does R5/R6 actually fire on these confirmed crisis dates?
+    high52w = kospi.rolling(252, min_periods=60).max()
+    dd = (kospi / high52w - 1) * 100
+    named_dates = [
+        ("2026-06-19", "Intraday record high 9,385.59 (peak)"),
+        ("2026-06-26", "1st circuit breaker of this crash (-8.18%)"),
+        ("2026-07-07", "Circuit breaker (-8.03%)"),
+        ("2026-07-13", "Circuit breaker (-8.02%, closed -8.95%)"),
+        ("2026-07-21", "Intraday low 6,429.03 (-31.5% from peak)"),
+        ("2026-07-28", "Circuit breaker (1st of back-to-back)"),
+        ("2026-07-29", "Circuit breaker (2nd consecutive day, historic first; close ~5,663)"),
+        ("2026-08-13", "Reported 'stunning comeback' / bull-market return"),
+    ]
+    named_rows = []
+    for date_str, label in named_dates:
+        target = pd.Timestamp(date_str)
+        avail = panel.index[panel.index <= target]
+        if len(avail) == 0:
+            continue
+        actual_dt = avail[-1]
+        named_rows.append({
+            "named_date": date_str, "event": label,
+            "data_date_used": actual_dt.date().isoformat(),
+            "KOSPI": float(kospi.loc[actual_dt]),
+            "drawdown_from_52w_high_pct": float(dd.loc[actual_dt]),
+            "KR_Market_Score": float(panel.loc[actual_dt, "KR_Market_Score"]),
+            "KR_Breadth": float(panel.loc[actual_dt, "KR_Breadth"]),
+            "VIX": float(panel.loc[actual_dt, "VIX"]),
+            "HY_OAS": float(panel.loc[actual_dt, "HY_OAS"]) if pd.notna(panel.loc[actual_dt, "HY_OAS"]) else None,
+            "KR_Regime": panel.loc[actual_dt, "KR_Regime"],
+        })
+    named_df = pd.DataFrame(named_rows)
+    named_df.to_csv(OUT / "kospi_2026_named_crisis_dates.csv", index=False)
+    print("\n=== KR_Regime on confirmed 2026 KOSPI crisis dates (cross-checked via web search) ===")
+    print(named_df.to_string(index=False))
+
     # realized forward returns for 2026 start dates, using the SAME row-based
     # shift(-h) convention as score_bucket_table/regime_performance_table in
     # the parent script (not a separate calendar-day computation), so results
@@ -127,6 +173,15 @@ def main():
         "## Regime onsets during 2026",
         "",
         onsets_df.to_markdown(index=False),
+        "",
+        "## KR_Regime on confirmed 2026 KOSPI crisis dates",
+        "",
+        "Cross-checked via web search against CNBC, Korea Herald, Yahoo Finance, Fortune, "
+        "TechTimes, and Korean financial media reporting a >31% intraday / >33% monthly "
+        "KOSPI decline in July 2026, described by multiple independent sources as exceeding "
+        "the 1997 Asian Financial Crisis (-27%) and 2008 GFC (-23%) monthly declines.",
+        "",
+        named_df.to_markdown(index=False),
         "",
     ]
     if len(matured_120d):
