@@ -283,11 +283,25 @@ def main():
     fred_raw = {sid: get_fred(sid) for sid in FRED_SERIES}
     fred = pd.concat({FRED_SERIES[k]: v for k, v in fred_raw.items()}, axis=1)
 
-    print("Downloading HY OAS archive...")
-    hy = requests.get(HY_OAS_ARCHIVE_URL, timeout=60)
-    hy.raise_for_status()
-    hy_s = pd.read_csv(io.StringIO(hy.text), parse_dates=["observation_date"]).set_index("observation_date")["value"]
-    hy_s.name = "HY_OAS"
+    print("Downloading HY OAS (FRED direct, falling back to GitHub archive mirror)...")
+    hy_s = None
+    try:
+        hy_direct = get_fred("BAMLH0A0HYM2")
+        hy_direct.name = "HY_OAS"
+        earliest = hy_direct.dropna().index.min()
+        if pd.notna(earliest) and earliest <= pd.Timestamp("2000-01-01"):
+            hy_s = hy_direct
+            print(f"  using FRED direct, earliest={earliest.date()}, n={hy_direct.dropna().shape[0]}")
+        else:
+            print(f"  FRED direct returned insufficient history (earliest={earliest}); falling back to archive mirror")
+    except Exception as e:
+        print(f"  FRED direct HY OAS fetch failed ({e}); falling back to archive mirror")
+    if hy_s is None:
+        hy = requests.get(HY_OAS_ARCHIVE_URL, timeout=60)
+        hy.raise_for_status()
+        hy_s = pd.read_csv(io.StringIO(hy.text), parse_dates=["observation_date"]).set_index("observation_date")["value"]
+        hy_s.name = "HY_OAS"
+        print(f"  using GitHub archive mirror, earliest={hy_s.dropna().index.min()}, n={hy_s.dropna().shape[0]}")
 
     print("Downloading Yahoo Finance series...")
     yahoo_raw = {}
