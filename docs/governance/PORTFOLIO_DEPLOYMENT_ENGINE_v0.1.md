@@ -163,7 +163,8 @@ backtested at these exact multiplier values.
 1. **Compute Portfolio Gap** for every functional bucket: `target weight
    (Balanced scenario, Portfolio Allocation Rule v0.1 section 5) − current
    weight`, using the *active-sandbox* denominator only (fixed Samsung core
-   excluded — see the open reconciliation item in section 9).
+   excluded — see section 9; the account-reconciliation question that once
+   affected this denominator was resolved 2026-09-08).
 2. **Rank buckets** by Portfolio Gap, largest underweight first.
 3. **Apply the Concentration Guard** (Portfolio Allocation Rule v0.1 section 6)
    before finalizing a target bucket:
@@ -205,8 +206,8 @@ the Dry Powder floor specifically.
 | JPY overlay as confidence-only, not AND-gate | Replayed and rejected-as-gate 2026-09-08 |
 | Asset-price trigger > FX-only trigger for staging | Replayed 2026-09-08 (one asset pair, one historical path) |
 | FX Benefit bounded modifier (×0.3–×1.2) | **Not backtested** — bound values are a design choice, not a measured optimum |
-| EARLY_WARNING/TIGHTENING Stage-≤2 cap | **Not backtested** |
-| CRISIS_CONFIRMATION pause-and-require-reset | **Not backtested** |
+| EARLY_WARNING/TIGHTENING Stage-≤2 cap (as ×1.5 combined-intensity cap) | **REPLAYED 2026-09-08 — result argues against adopting this specific cap design; not promoted, not permanently rejected.** See `research/deployment-engine-v0.1-risk-gate-cap-backtest-result-2026-09-08.md`: on a 1993–2022 benchmark it cost ~0.1pp of annualized IRR versus no cap while leaving max drawdown statistically unchanged. |
+| CRISIS_CONFIRMATION pause-and-require-reset (as ×0.3 forced multiplier) | **REPLAYED 2026-09-08 — same result and same caveat as the row above** (tested together as one combined cap/force design, not separately isolated). |
 | Dry Powder 28% floor | **Not backtested** |
 | The full five-stage pipeline end-to-end | **Not backtested as a single system** |
 
