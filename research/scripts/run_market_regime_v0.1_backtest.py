@@ -26,6 +26,16 @@ framework section 12 for the follow-up work these motivate):
   - A single shared VIX + HY OAS credit read is used as the Risk-axis input
     for both the Korea-anchored and US-anchored regimes (no free Korea-local
     volatility index equivalent was available).
+  - HY OAS (BAMLH0A0HYM2) is only available for roughly the last 3 years
+    through the free public sources tried here (both FRED's direct
+    fredgraph.csv and the GitHub archive-mirror fallback), almost certainly
+    an ICE BofA licensing restriction rather than a fetch bug. weighted_axis()
+    therefore renormalizes the Risk/Macro axis weights over whichever
+    components are actually available on a given date, so the ~1995-2026
+    Trend/Breadth backtest is not truncated down to HY OAS's ~3-year window;
+    dates before HY OAS (or DXY, real yields, etc.) becomes available get an
+    axis score from fewer components, which is a documented lower-confidence
+    period, not an error.
 """
 import io
 import math
@@ -107,13 +117,26 @@ def trailing_percentile(s: pd.Series, window=TRAILING_WINDOW, min_periods=MIN_PE
 
 def weighted_axis(components: dict) -> pd.Series:
     """components: {name: (score_series 0-100, weight)}. Renormalizes weights
-    over the components actually present (all are present here; kept generic
-    in case a future run drops one)."""
-    total_w = sum(w for _, w in components.values())
-    out = None
-    for _, (s, w) in components.items():
-        term = s * (w / total_w)
-        out = term if out is None else out.add(term, fill_value=np.nan)
+    ROW-BY-ROW over whichever components are actually non-NaN on that date,
+    rather than requiring every component to be present for the whole history.
+    This matters here specifically because some raw inputs (e.g. HY OAS credit
+    spread, DXY, real yields) start later than others (e.g. price/VIX series
+    back to 1995) -- see the module docstring and framework section 12 P0 note
+    on data-source freezing. A date where only some components are available
+    still gets an axis score, computed from the components that exist, with
+    their weights rescaled to sum to 1; only a date with NO components present
+    is NaN. This trades a documented, date-varying effective weighting for a
+    much longer usable backtest history, which for this EXPLORATORY run is the
+    right tradeoff -- an OFFICIAL run should treat the pre-full-coverage period
+    as lower-confidence, not equivalent to the fully-covered period."""
+    names = list(components.keys())
+    scores = pd.concat({k: components[k][0] for k in names}, axis=1)
+    weights = pd.Series({k: components[k][1] for k in names})
+    present = scores.notna()
+    active_weight = present.mul(weights, axis=1).sum(axis=1)
+    weighted_sum = scores.fillna(0.0).mul(weights, axis=1).sum(axis=1)
+    out = weighted_sum / active_weight
+    out[active_weight == 0] = np.nan
     return out
 
 
@@ -324,7 +347,16 @@ def main():
 
     ffill_cols = [c for c in df.columns if c not in ()]
     df[ffill_cols] = df[ffill_cols].ffill()
-    required_cols = ["KOSPI", "SP500", "VIX", "HY_OAS", "UST10Y", "UST2Y", "UST3M"]
+    # HY_OAS is deliberately NOT required here: both FRED direct and the
+    # archive-mirror fallback for BAMLH0A0HYM2 currently only cover roughly
+    # the last 3 years (see the per-series coverage log below and the
+    # get_hy_oas fallback logic above) -- almost certainly an ICE BofA
+    # licensing restriction on FRED's public fredgraph.csv endpoint, not a
+    # bug in this script. Requiring it here would cut the whole backtest
+    # down to ~3 years the way the first run did. weighted_axis() instead
+    # drops HY_OAS from the Risk/Macro axis weighting (renormalizing the
+    # remaining components) on any date before it is available.
+    required_cols = ["KOSPI", "SP500", "VIX", "UST10Y", "UST2Y", "UST3M"]
     df = df.dropna(subset=required_cols)
 
     print(f"Combined panel: {df.index.min().date()} to {df.index.max().date()}, {len(df)} rows")
