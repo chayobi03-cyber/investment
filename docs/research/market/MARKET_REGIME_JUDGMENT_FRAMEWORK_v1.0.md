@@ -326,6 +326,34 @@ This is precisely falsification condition **§11.1** ("score-bucket vs. forward-
 
 **Immediate implication for §7 (Buy Intensity connection):** the current Risk Gate mapping (R1 = full deployment, R6 = no new deployment) is **not** supported by this result as specified, and must not be treated as validated. It is explicitly still gated behind the unmet §10 L1-L3 bar (§8, §12), and this result adds a concrete reason it should not advance further without the decomposition and OOS/walk-forward work in §12.
 
+### 9.2 Named episode: the 2026 KOSPI AI-bubble crash -- R5/R6 miss confirmed on real, dated events
+
+Following §9.1, a Korea-2026 case study (`research/scripts/run_kr_2026_case_study.py`) was cross-checked against independently reported KOSPI history via WebSearch (CNBC, Korea Herald, Yahoo Finance, Fortune, TechTimes, Trading Economics, Korean financial media). It confirmed a real, extensively documented, historically severe event: KOSPI hit an intraday record of 9,385.59 on 2026-06-19, then crashed on AI-bubble/leveraged-ETF-deleveraging concerns, triggering circuit breakers on 06-26, 07-07, 07-13, 07-28, and 07-29 (the last two the first-ever consecutive-day circuit breakers on the Korean exchange), bottoming near 5,663-6,429 in late July (-31.5% to -38% from the June peak) -- a monthly decline multiple independent sources describe as **exceeding both the 1997 Asian Financial Crisis (-27%) and the 2008 Global Financial Crisis (-23%)**, the worst single month in KOSPI history. August brought a confirmed rebound to bull-market territory.
+
+This is not a hypothetical stress test: it is a real, named, precisely dated crisis, and the candidate §6.2 Regime formula can be checked against it directly.
+
+**Result: R5/R6 almost entirely missed this crisis.**
+
+| Date | Event | Drawdown from 52w high | VIX | KR_Market_Score | KR_Regime |
+|---|---|---:|---:|---:|---|
+| 2026-06-19 | Record high (peak) | -0.1% | 16.4 | 51.9 | R4 |
+| 2026-06-26 | 1st circuit breaker (-8.18%) | -7.7% | 18.4 | 41.1 | R4 |
+| 2026-07-07 | Circuit breaker (-8.03%) | -16.0% | 16.1 | 49.0 | R4 |
+| 2026-07-13 | Circuit breaker (-8.02%, closed -8.95%) | -25.3% | 17.2 | 62.5 | **R2 (Normal Risk-On)** |
+| 2026-07-21 | Intraday low (-31.5% from peak) | -26.0% | 17.0 | 55.3 | R4 |
+| 2026-07-28 | Circuit breaker (1st of back-to-back) | -33.9% | 18.2 | 52.1 | R4 |
+| 2026-07-29 | Circuit breaker (2nd consecutive day, historic first) | **-37.9%** | 20.7 | 48.0 | R4 |
+| 2026-08-13 | Confirmed bull-market return | -25.2% | 14.6 | 65.6 | **R2 (Normal Risk-On)** |
+
+Across the entire year, KOSPI's R5 (Risk-Off) share was 1.6% of trading days and **R6 (Panic) share was 0.0%** -- despite a drawdown that reached -37.9% from peak with two historic, consecutive-day circuit breakers. On 2026-07-13 and 2026-08-13 the system labeled the market **R2, "Normal Risk-On,"** not merely "not panic" but actively risk-on, while KOSPI sat 25% below its recent high.
+
+**Root cause, now confirmed rather than theoretical:**
+
+1. **The shared-US-VIX design flaw (already flagged in the parent script's docstring as a documented simplification) is the primary driver.** VIX never exceeded ~21 throughout the entire crash (16.1-20.7 across the table above). Both R5's `VIX > 25` branch and R6's `VIX > 35` branch structurally cannot fire when the crisis is Korea/AI-chip-sector-specific and US volatility does not spike in sympathy -- exactly the scenario that occurred. R5's other branch (`20 <= Market_Score < 40`) also mostly failed to fire because Market_Score stayed in the 41-66 range throughout, itself partly a consequence of Risk/Macro (40% combined weight) drawing on US/global inputs (VIX, HY OAS, UST yields, DXY) that did not reflect the Korea-specific stress.
+2. **A second, previously undocumented issue**: the Breadth axis proxy (KOSPI vs. KOSDAQ relative 20-day return, §4.1) appears to have scored *unusually high* on 07-13 and 08-13 specifically (Breadth 98-99.6 per the CI run's full output), which is a plausible reason those two dates crossed into R2. A large-cap-concentrated selloff (the crash was driven by mega-cap semiconductor names, SK Hynix and Samsung Electronics) can mechanically produce a *large-vs-small relative-return* reading that looks like "broadening participation" under this proxy, even though the actual event was a large-cap-led crash, not genuine breadth improvement. This is a candidate failure mode of the large/small-cap breadth proxy itself, separate from the already-documented "no true advance/decline data" limitation, and needs its own investigation.
+
+This single named episode is more informative than the abstract §9.1 statistics for one reason: it removes all ambiguity about "is this just noise in a thin bucket." A -38% drawdown with back-to-back historic circuit breakers is unambiguously a crisis by any reasonable definition, and this candidate system did not classify it as one.
+
 ## 10. Validation stack (Levels 1-10)
 
 This is the gate a rule must pass before promotion to a decision rule, and it extends the project's existing research loop (`INVESTMENT_RESEARCH_LOOP.md`) with the additional overfitting-control steps this document's originating memo specified.
@@ -414,7 +442,7 @@ These two techniques remain **optional strengthening steps for L9/L10**, applica
 Reject or revise this framework, in whole or in the relevant axis/weight, if any of the following is demonstrated on a frozen benchmark:
 
 1. Score-bucket vs. forward-return relationship (§9) is not monotonic across at least two independent forward horizons. **TRIGGERED 2026-09-08 — see §9.1**: the first exploratory ~30-year run showed a non-monotonic, partly-inverted relationship at the 60d/120d horizons on both KOSPI and S&P 500. Per this section's own rule, the current axis weighting/cut points may not be promoted from this evidence and require the episode-decomposition and OOS/walk-forward work in §12 before any revision is drafted.
-2. Regime classification (§6) shows no meaningful separation in realized volatility/drawdown/return across R1-R6.
+2. Regime classification (§6) shows no meaningful separation in realized volatility/drawdown/return across R1-R6. **TRIGGERED 2026-09-08 — see §9.2**: on the real, independently-confirmed 2026 KOSPI AI-bubble crash (peak-to-trough -37.9%, two historic back-to-back circuit breakers), the candidate system classified R4 ("neutral") on most crisis dates and R2 ("Normal Risk-On") on two of them (07-13, 08-13), never R5 or R6. KOSPI's full-year 2026 R6 (Panic) share was 0.0%.
 3. The 25/20/20/20/15 axis weighting or the 70/30-60/40-40/60 horizon blend is not robust to reasonable parameter perturbation (§10.6).
 4. Results do not replicate out-of-sample (§10.4) or across markets (§10.8).
 5. Adding an axis or indicator only improves in-sample fit and fails L9 data-snooping correction.
@@ -433,7 +461,9 @@ Consistent with the existing "Immediate Open Work" convention (`CLAUDE_HANDOVER_
 - **P1 — Implement and backtest the §4.1/§6.2 candidate spec.** DONE (2026-09-08, exploratory, `research/scripts/run_market_regime_v0.1_backtest.py`, GitHub Actions run `34189772007`) — see §9.1 for results. Both the hardcoded-cut-point and trailing-percentile-transform variants share the same underlying axis inputs in this run; the two have not yet been run and compared separately, which remains open.
 - **P0 — Episode decomposition of the §9.1 result.** Break the score-bucket and regime-performance tables down by known historical episode (2000-2002, 2008-2009, 2020 COVID crash, 2022 rate shock, and the "normal" periods between them) to test whether the mean-reversion pattern found is generic or driven by a small number of V-shaped recoveries dominating a thin low-score/R6 bucket.
 - **P0 — Out-of-sample / walk-forward split before any weight revision.** Per §10 L4-L5: freeze a training sub-period, evaluate on an untouched later period, and repeat with rolling windows, before drawing any conclusion about whether the current axis weights should change. Do not re-fit weights on the same full sample that produced the §9.1 result.
-- **P0 — Recalibrate the R1/R6 boolean cut points (§6.2).** §9.1 found R1 fired on only 6 of 9,342 KOSPI days and 1 of 9,342 S&P 500 days in 30 years -- too rare to evaluate meaningfully. Test alternative cut points (per §10.6 parameter sensitivity) before trusting any R1/R6 statistic.
+- **P0 — Recalibrate the R1/R6 boolean cut points (§6.2).** §9.1 found R1 fired on only 6 of 9,342 KOSPI days and 1 of 9,342 S&P 500 days in 30 years -- too rare to evaluate meaningfully. §9.2 shows this is not just a rarity problem: on a real, confirmed -37.9% drawdown with historic back-to-back circuit breakers, R6 never fired at all and R5 fired on only 1.6% of 2026's days. Test alternative cut points (per §10.6 parameter sensitivity) before trusting any R1/R5/R6 statistic.
+- **P0 — Replace the shared-US-VIX Risk axis input with a Korea-local stress measure (§9.2).** No longer a theoretical simplification: it is the confirmed, primary reason R5/R6 missed the 2026 KOSPI crash (VIX stayed in the 16-21 range throughout a -37.9% KOSPI drawdown with two historic circuit breakers). Candidates to investigate: a KOSPI-derived realized-volatility proxy (already partly present via the Risk axis's realized-vol component, but currently computed on S&P 500, not KOSPI, per `build_risk_score`'s call signature), a Korea CDS spread, or a KOSPI options-implied-vol series if one can be sourced.
+- **P0 — Investigate the large/small-cap Breadth proxy's failure mode under a large-cap-led crash (§9.2).** The KOSPI-vs-KOSDAQ relative-return proxy scored unusually high (98-99.6) on two 2026 crisis dates where mega-cap semiconductor names drove the selloff, plausibly because large-cap underperformance vs. small-cap looks like "broadening participation" under this proxy even when the actual event is a large-cap-led crash. This is a distinct issue from the already-documented "no true advance/decline data" limitation and needs its own test before the Breadth axis proxy is trusted during a large-cap-concentrated stress event.
 - **P2 — Risk Gate wiring (§7).** Only after L1-L3 pass: connect Market Regime output to the Buy Intensity Risk Gate term as a documented, versioned function, not a discretionary override.
 - **P2 — Parameter sensitivity and cross-market replication (§10.6, §10.8).**
 - **P3 — Data-snooping correction and Rule Confidence Score tooling (§10, §10.1).**
