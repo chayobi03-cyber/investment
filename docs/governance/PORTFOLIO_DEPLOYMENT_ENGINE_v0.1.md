@@ -221,18 +221,26 @@ discipline, one benchmark does not yet make it a frozen hard rule.
 | Stress Convergence v0.2.4 90-day TTC gate | Frozen, replayed (SC-RUN-0007) |
 | JPY overlay as confidence-only, not AND-gate | Replayed and rejected-as-gate 2026-09-08 |
 | Asset-price trigger > FX-only trigger for staging | Replayed 2026-09-08 (one asset pair, one historical path) |
-| FX Benefit bounded modifier (×0.3–×1.2) | **Not backtested** — bound values are a design choice, not a measured optimum |
+| FX Benefit bounded modifier (×0.3–×1.2) | **Tested only bundled with JPY caution in the 2026-09-08 full-pipeline replay, not standalone — the bundle added no benefit (small negative) on top of Asset Opportunity + Dry Powder floor.** Bound values remain a design choice, not a measured optimum; individual attribution not yet isolated. |
 | EARLY_WARNING/TIGHTENING Stage-≤2 cap (as ×1.5 combined-intensity cap) | **REPLAYED 2026-09-08 — result argues against adopting this specific cap design; not promoted, not permanently rejected.** See `research/deployment-engine-v0.1-risk-gate-cap-backtest-result-2026-09-08.md`: on a 1993–2022 benchmark it cost ~0.1pp of annualized IRR versus no cap while leaving max drawdown statistically unchanged. |
 | CRISIS_CONFIRMATION pause-and-require-reset (as ×0.3 forced multiplier) | **REPLAYED 2026-09-08 — same result and same caveat as the row above** (tested together as one combined cap/force design, not separately isolated). |
 | Dry Powder 28% floor | **REPLAYED 2026-09-08 — reduced max drawdown −28.1%→−20.7% at negligible CAGR cost on one 2004–2026 benchmark; clarified as a deployment-time constraint, not a permanent state guarantee. Reasonable candidate for adoption; not yet a frozen hard rule.** See `research/deployment-engine-v0.1-dry-powder-floor-backtest-result-2026-09-08.md`. |
-| The full five-stage pipeline end-to-end | **Not backtested as a single system** |
+| The full five-stage pipeline end-to-end | **REPLAYED 2026-09-08 — Asset Opportunity + Dry Powder floor combination beat BASELINE on CAGR (7.79% vs 7.49%) and recovered most of tactical-tilting's max-drawdown cost (−20.7% vs −28.0% no-floor, vs −16.6% baseline); layering FX Benefit + JPY caution on top added no benefit and a small consistent cost. Directional support only.** See `research/deployment-engine-v0.1-full-pipeline-backtest-result-2026-09-08.md`. |
 
-Per the Investment Research Loop's decision discipline, none of the
-"Not backtested" rows should be treated as a hard rule. The next research
-priority for this engine is an end-to-end replay of the full pipeline
-against the same style of benchmark used for the FX and JPY replays,
-reporting the same metric families (acquisition cost, IRR, max drawdown,
-trigger frequency, FP/FN where applicable).
+**Summary as of 2026-09-08: all five rows above have now been replayed at
+least once.** Two design choices were rejected outright (the Risk Gate
+cap, both as an EW/Tightening cap and as a Crisis Confirmation force). One
+showed a real, close-to-free benefit (the Dry Powder floor). The full
+end-to-end test found that the engine's **best-supported configuration is
+Asset Opportunity tiers + Dry Powder floor**, without the Risk Gate cap and
+without stacking the FX Benefit/JPY caution modifiers on top of that pair
+— those two did not earn their complexity in this run. Per the Investment
+Research Loop's decision discipline, this is directional research support
+from a single benchmark and single asset pair, not a frozen hard rule or a
+green light for live-capital use. The next research priority, if this
+engine is pursued further, is (a) a second, more adversarial benchmark or
+asset pair, and (b) isolated standalone attribution of the FX Benefit and
+JPY caution modifiers rather than testing them only as a bundle.
 
 ## 9. Portfolio-account reconciliation — RESOLVED 2026-09-08
 
