@@ -301,7 +301,11 @@ def regime_performance_table(regime: pd.Series, price: pd.Series, label: str, ho
     return pd.DataFrame(rows)
 
 
-def main():
+def load_and_score():
+    """Fetch all raw series, build the KR/US axis scores and regime labels, and
+    return (df, panel, regions). Factored out of main() so other scripts (e.g.
+    a single-market/single-year case study) can reuse the same data pipeline
+    without duplicating the fetch/scoring logic."""
     print("Downloading FRED series...")
     fred_raw = {sid: get_fred(sid) for sid in FRED_SERIES}
     fred = pd.concat({FRED_SERIES[k]: v for k, v in fred_raw.items()}, axis=1)
@@ -399,6 +403,11 @@ def main():
         "US_Trend": us_trend, "US_Breadth": us_breadth, "US_Market_Score": us_market, "US_Regime": us_regime,
     })
     panel.to_csv(OUT / "daily_panel.csv", index_label="date")
+    return df, panel, regions
+
+
+def main():
+    df, panel, regions = load_and_score()
 
     bucket_tables = []
     regime_tables = []

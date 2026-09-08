@@ -28,3 +28,10 @@ jobs:
         with:
           name: market-regime-v0.1-backtest-results
           path: research/results/market_regime_v0.1/
+      - name: Run KOSPI 2026 case study
+        run: python research/scripts/run_kr_2026_case_study.py
+      - name: Upload KOSPI 2026 case study results
+        uses: actions/upload-artifact@v4
+        with:
+          name: kr-2026-case-study-results
+          path: research/results/kr_2026_case_study/
