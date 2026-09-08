@@ -242,6 +242,44 @@ Per the originating research memo, this framework additionally tracks how far a 
 
 `Investment Score` and `Validation Score` must always be reported together for any rule surfaced in a live decision, e.g. "Market Score = 82, Validation Score = 43 (L1-L3 only — not eligible for sizing decisions yet)."
 
+### 10.2 L9 methodology detail — verified against primary sources (2026-09-08 addendum)
+
+A follow-up research memo proposed concrete formulas/thresholds for the L9 data-snooping step and beyond (DSR, PBO/CSCV, White's Reality Check, Hansen's SPA). Before adopting any of it, the underlying citations were checked against this project's evidence hierarchy (`INVESTMENT_RESEARCH_LOOP.md` §2). Result:
+
+**Primary sources confirmed to exist and be correctly attributed** (via search, not direct PDF fetch — this session's network policy blocked outbound fetches to davidhbailey.com, wikipedia.org, sdm.lbl.gov, and arxiv.org, so formula text below is stated from established prior knowledge of these papers, not a fresh read of the PDFs; a future session with fetch access should confirm directly before this framework is finalized):
+
+- Bailey, D.H. & López de Prado, M. (2014). "The Deflated Sharpe Ratio: Correcting for Selection Bias, Backtest Overfitting and Non-Normality." *Journal of Portfolio Management*, 40(5), 94-107. (SSRN #2460551)
+- Bailey, D.H., Borwein, J., López de Prado, M., & Zhu, Q.J. (2017, working paper 2014). "The Probability of Backtest Overfitting." *Journal of Computational Finance*, 20(4), 39-69. (SSRN #2326253)
+- White, H. (2000). "A Reality Check for Data Snooping." *Econometrica*, 68(5), 1097-1126.
+- Hansen, P.R. (2005). "A Test for Superior Predictive Ability." *Journal of Business & Economic Statistics*, 23(4), 365-380.
+
+**Rejected as citation-quality sources for this project**: most of the numbered links attached to the follow-up memo (e.g. saral.money, usekeel.io, surmount.ai, aifinhub.io, globalmarketstructure.com) are secondary blog/SEO-tier restatements of the above papers. Per this project's rule against counting re-publications of the same original as independent evidence, they are not cited further here; the four primary sources above are the ones this framework relies on.
+
+**Formula/procedure (candidate, pending direct primary-source re-verification):**
+
+```
+DSR = Z( (SR_hat - SR0) * sqrt(T-1) / sqrt(1 - gamma3*SR_hat + ((gamma4-1)/4)*SR_hat^2) )
+```
+
+- `Z(.)`: standard normal CDF.
+- `SR_hat`: the strategy's estimated (non-annualized, per-period) Sharpe ratio.
+- `SR0`: the *expected maximum* Sharpe ratio obtainable from N independent trials under the null of zero true skill, estimated via extreme-value theory from the variance of Sharpe ratios across trials and N (not simply 0).
+- `gamma3`, `gamma4`: skewness and kurtosis of the strategy's return distribution.
+- `T`: number of return observations.
+- `N`: number of independent strategy/parameter trials considered (this is the number that must be honestly reported — see L9 note above).
+
+CSCV / PBO procedure:
+
+1. Build a `T x N` matrix of returns (T periods, N candidate rule/parameter configurations).
+2. Split the T periods into `S` contiguous, equal-length blocks (the original paper's illustrative examples commonly use S=16; S is a design choice, not fixed by theory).
+3. Form all `C(S, S/2)` ways to select half the blocks as an in-sample (IS) combination, with the complementary half as out-of-sample (OS).
+4. For each combination: pick the configuration with the best IS performance statistic, then find that same configuration's relative rank among all N configurations' OS performance.
+5. PBO = the share of combinations in which the IS-selected winner ranks at or below the OS median (i.e., the in-sample winner is a below-median out-of-sample performer).
+
+**On numeric acceptance thresholds**: the follow-up memo's "DSR >= 0.95" and "PBO <= 0.10" are **not being adopted as this project's pass/fail lines**. DSR is a probability-style statistic and 0.95 is simply the conventional significance level an analyst can choose (analogous to p<0.05), not a value mandated by the original paper. The PBO paper reports PBO as a diagnostic — its own empirical examples include cases with PBO around 0.5 (i.e., near-certain overfitting) — and does not itself prescribe a universal cutoff. Per this project's rule against importing externally-asserted thresholds as hard governance rules without independent testing, `DSR` and `PBO` acceptance lines for this project must instead be calibrated from this project's own L1-L8 backtests once they exist, and recorded as a new candidate threshold with its own falsification condition, not copied from secondary sources.
+
+These two techniques remain **optional strengthening steps for L9/L10**, applicable only after a rule has already cleared L1-L8; they do not substitute for out-of-sample, walk-forward, parameter-sensitivity, transaction-cost, or cross-market testing.
+
 ---
 
 ## 11. Falsification conditions (framework-level)
@@ -254,6 +292,7 @@ Reject or revise this framework, in whole or in the relevant axis/weight, if any
 4. Results do not replicate out-of-sample (§10.4) or across markets (§10.8).
 5. Adding an axis or indicator only improves in-sample fit and fails L9 data-snooping correction.
 6. Market Regime and Stress Convergence state disagree systematically without an identifiable, documented cause (§6.1).
+7. A DSR/PBO acceptance threshold copied from a secondary source (rather than calibrated on this project's own L1-L8 results, per §10.2) is used to justify promoting a rule.
 
 ## 12. Immediate open work (P-items)
 
@@ -265,6 +304,7 @@ Consistent with the existing "Immediate Open Work" convention (`CLAUDE_HANDOVER_
 - **P2 — Risk Gate wiring (§7).** Only after L1-L3 pass: connect Market Regime output to the Buy Intensity Risk Gate term as a documented, versioned function, not a discretionary override.
 - **P2 — Parameter sensitivity and cross-market replication (§10.6, §10.8).**
 - **P3 — Data-snooping correction and Rule Confidence Score tooling (§10, §10.1).**
+- **P3 — Primary-source re-verification for §10.2.** Directly fetch and re-check the DSR (Bailey & López de Prado, 2014) and PBO/CSCV (Bailey, Borwein, López de Prado & Zhu, 2017) papers once network/fetch access allows, since this session could only confirm them via search, not a direct PDF read.
 
 ## 13. What this document does not do
 
