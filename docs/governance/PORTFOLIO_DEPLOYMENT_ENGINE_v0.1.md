@@ -217,17 +217,20 @@ against the same style of benchmark used for the FX and JPY replays,
 reporting the same metric families (acquisition cost, IRR, max drawdown,
 trigger frequency, FP/FN where applicable).
 
-## 9. Known blocking dependency
+## 9. Portfolio-account reconciliation — RESOLVED 2026-09-08
 
 Stage ⑤'s Portfolio Gap calculation requires the *active-sandbox
-denominator*, which is currently unresolved: per
-`docs/governance/PORTFOLIO_ALLOCATION_RULE_v0.1.md` section on "계좌 수량
-정합성 주의," a second Samsung Electronics 79-share holding may exist in a
-separate account, and it is not yet confirmed whether it is truly fixed
-core or should join the active sandbox denominator. **This engine cannot
-compute a live Portfolio Gap until that reconciliation (P2, tracked
-separately) is resolved.** Until then, treat any Portfolio Gap number this
-engine produces as provisional and re-check the denominator explicitly.
+denominator*. `docs/governance/CLAUDE_HANDOVER_2026-09-08.md` had flagged a
+possible second Samsung Electronics 79-share holding in a separate account
+(which would have required recomputing the fixed-core/active-sandbox split).
+**User-confirmed 2026-09-08: this was a mistake — Samsung Electronics is
+79 shares in a single account, not 158 across two.** The fixed core stays
+at 79 shares as originally documented in
+`docs/governance/PORTFOLIO_ALLOCATION_RULE_v0.1.md`, and the active-sandbox
+denominator structure is unchanged. This stage's Portfolio Gap calculation
+is no longer blocked; the usual caveat still applies that current prices
+and weights must be refreshed each session, independent of this
+reconciliation.
 
 ## 10. Session-close record
 

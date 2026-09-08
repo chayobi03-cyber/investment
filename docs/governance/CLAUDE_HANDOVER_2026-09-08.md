@@ -126,18 +126,17 @@ Git Commit? YES / NO
 - 전체 포트폴리오 비중: 약 **14.6%**
 - Active reallocation 대상에서 제외
 
-### 계좌 수량 정합성 주의
+### 계좌 수량 정합성 주의 — RESOLVED 2026-09-08
 
 최근 포트폴리오 대화에서는 별도 계좌에 **Samsung Electronics 79 shares가 추가로 존재**한다는 정보가 있었다.
 
-따라서 다음 포트폴리오 재계산 시 반드시:
+**2026-09-08 확인 결과: 착오였음.** 사용자 확인 결과 삼성전자는 한 계좌에 **79주만** 존재하며, 158주(두 계좌 합산)가 아니다. 따라서:
 
-1. 계좌별 삼성전자 보유량을 재확인하고,
-2. 어느 79주가 truly fixed/non-sellable core인지 구분하고,
-3. 추가 79주가 active allocation 대상인지 확인한 뒤,
-4. 전체 포트폴리오와 active sandbox의 분모를 다시 계산한다.
+1. 계좌별 삼성전자 보유량 재확인 → 완료 (79주, 단일 계좌).
+2. Fixed core는 그대로 **79주**이며 확대되지 않는다.
+3. 전체 포트폴리오/active sandbox 분모 재계산 불필요 — 기존 14.6%/15.50M 스냅샷 구조가 유지된다(단, 정확한 현재가/비중은 여전히 매 세션 최신 시세로 재확인한다 — 이는 계좌 수 문제와 무관한 일반 원칙).
 
-**기존 14.6%/15.50M 수치는 2026-09-07 작업용 스냅샷이며, 이를 그대로 실시간 전체비중으로 사용하지 않는다.**
+`docs/governance/PORTFOLIO_DEPLOYMENT_ENGINE_v0.1.md` section 9의 "blocking dependency"는 이 확인으로 해소되었다.
 
 ### Active Allocation Sandbox
 
@@ -582,9 +581,11 @@ Market State
 
 첫 S-1/prospectus 전에는 headline만으로 thesis를 상향조정하지 않는다.
 
-### P2 — Portfolio account reconciliation
+### P2 — Portfolio account reconciliation — RESOLVED 2026-09-08
 
 다음 재계산 전에 계좌별 실제 보유수량을 다시 받아 전체 포트폴리오 분모와 fixed/non-fixed Samsung exposure를 정합화한다.
+
+**결과: 착오였음.** 삼성전자는 단일 계좌 79주가 맞고, 158주(두 계좌 합산)가 아니다. 분모/fixed core 재계산 불필요. 자세한 내용은 §3 "계좌 수량 정합성 주의 — RESOLVED".
 
 ---
 
