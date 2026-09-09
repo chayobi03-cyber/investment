@@ -1,16 +1,29 @@
 #!/usr/bin/env python3
-"""KRX EOD + 수급 + 섹터 3-stage factor pipeline (data completeness -> raw
-factor -> normalized factor), for the 10-ticker universe agreed with the
-user on 2026-09-08/09.
+"""KRX EOD + Naver investor-flow/valuation + sector 3-stage factor pipeline
+(data completeness -> raw factor -> normalized factor), for the 10-ticker
+universe agreed with the user on 2026-09-08/09.
 
-Scope note: OpenDART (financial-statement-level fundamentals: revenue,
-margins, etc.) is NOT included yet -- it requires a user-issued API key
-(opendart.fss.or.kr) that this session cannot obtain itself. This script
-uses only KRX's own public data (via the `pykrx` library, no API key
-required), which already includes per-ticker PER/PBR/EPS/BPS/DIV -- a
-usable basic valuation factor without DART. A DART-based deeper
-fundamentals layer can be added once DART_API_KEY exists as a repo
-secret; see the "DART (not yet wired up)" section at the bottom.
+Data source history (see git log for the full story):
+  - EOD OHLCV: KRX public data via `pykrx` (works anonymously, no login).
+  - Investor-type net-buy flow and PER/PBR/EPS/BPS/DIV: originally attempted
+    via pykrx's KRX-hosted endpoints, but as of pykrx 1.2.8 those specific
+    endpoints (and index/sector-index endpoints) require a logged-in KRX
+    session (KRX_ID/KRX_PW). KRX itself moved to a member-only "Data
+    Marketplace" on 2025-12-27 with Naver/Kakao social login as the
+    promoted signup path, and pykrx has an open, unresolved compatibility
+    issue for that change (github.com/sharebook-kr/pykrx/issues/244) as of
+    this writing. Rather than block on that, this script sources
+    investor-flow and valuation data directly from Naver Finance
+    (finance.naver.com), an unrelated site with no such login gate.
+  - Sector benchmark: rather than resolving a separate KRX sector index
+    (also login-gated), this script reuses KODEX 반도체 (091160), which is
+    already in the 10-ticker universe, as the semiconductor-sector proxy.
+    The KOSPI reference trading-day calendar is likewise derived from
+    KODEX 200 (069500)'s own OHLCV instead of a separate KOSPI index call.
+  - OpenDART (financial-statement-level fundamentals: revenue, margins,
+    etc.) is NOT included yet -- it requires a user-issued API key
+    (opendart.fss.or.kr) that this session cannot obtain itself. See the
+    "DART (not yet wired up)" note near the end of this script.
 
 Three stages, one CSV each, all indexed by ticker:
 
@@ -20,8 +33,8 @@ Three stages, one CSV each, all indexed by ticker:
      project's evidence discipline, a missing value is reported as
      missing, never silently imputed.
   2. raw_factors.csv        - momentum, volatility, drawdown, investor-flow
-     sums, and KRX-published valuation ratios, computed as of the most
-     recent trading day in the window.
+     sums, and valuation ratios, computed as of the most recent trading
+     day in the window.
   3. normalized_factors.csv - each raw factor converted to a cross-sectional
      percentile rank (0-100) within this 10-ticker universe. These
      percentile columns are the intended future inputs to the per-asset
@@ -36,13 +49,18 @@ Research pipeline only, not a live trading signal.
 """
 from __future__ import annotations
 
+import io
 import json
+import os
+import re
 import sys
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import requests
 
 try:
     from pykrx import stock
@@ -69,6 +87,8 @@ TICKERS = {
 # semantics identical to common stock -- flagged explicitly, not silently
 # treated the same as the eight operating companies.
 ETF_TICKERS = {"069500", "091160"}
+MARKET_REFERENCE_TICKER = "069500"  # KODEX 200 stands in for a KOSPI trading-day calendar
+SECTOR_REFERENCE_TICKER = "091160"  # KODEX 반도체 stands in for a semiconductor sector index
 
 LOOKBACK_DAYS = 400  # calendar days back, to comfortably cover 252 trading days for 52w-high
 END = datetime.today()
@@ -76,32 +96,114 @@ START = END - timedelta(days=LOOKBACK_DAYS)
 FROMDATE = START.strftime("%Y%m%d")
 TODATE = END.strftime("%Y%m%d")
 
-INVESTOR_COLUMNS_WANTED = ["기관합계", "외국인합계", "개인"]
+NAVER_FLOW_PAGES = 7  # ~10 rows/page => up to ~70 trading days of investor flow
+NAVER_HEADERS = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"}
+REQUEST_DELAY_SEC = 0.3  # be a polite scraper
 
 
 def log(msg: str) -> None:
     print(msg, file=sys.stderr, flush=True)
 
 
-def find_sector_index_code(name_substring: str) -> tuple[str, str] | None:
-    """Search KRX-published index codes for one whose name contains
-    `name_substring` (e.g. '반도체'). Returns (code, full_name) or None.
-    Markets are tried in order; the first match wins and is logged so the
-    exact index used is auditable, not hardcoded from memory."""
-    for market in ["KRX", "KOSPI", "KOSDAQ", "테마"]:
+def fetch_naver_investor_flow(code: str) -> pd.DataFrame:
+    """Scrapes finance.naver.com/item/frgn.naver for daily 기관/외국인 net
+    trading volume (share counts, not KRW value -- see column names).
+    Naver does not publish a direct 개인(individual) net-buy figure on this
+    page; a residual approximation (-(기관+외국인)) is computed separately
+    downstream and explicitly labeled as an estimate, not a measured value.
+    """
+    frames = []
+    for page in range(1, NAVER_FLOW_PAGES + 1):
+        url = f"https://finance.naver.com/item/frgn.naver?code={code}&page={page}"
         try:
-            codes = stock.get_index_ticker_list(market=market)
+            resp = requests.get(url, headers=NAVER_HEADERS, timeout=15)
+            resp.encoding = "euc-kr"
+            tables = pd.read_html(io.StringIO(resp.text))
         except Exception as exc:  # noqa: BLE001
-            log(f"WARN get_index_ticker_list(market={market}) failed: {type(exc).__name__}: {exc}")
-            continue
-        for code in codes:
-            try:
-                name = stock.get_index_ticker_name(code)
-            except Exception:  # noqa: BLE001
-                continue
-            if name_substring in name:
-                return code, name
-    return None
+            log(f"ERROR Naver investor-flow fetch failed for {code} page {page}: {type(exc).__name__}: {exc}")
+            break
+        time.sleep(REQUEST_DELAY_SEC)
+
+        data_table = None
+        for t in tables:
+            cols = [str(c) for c in t.columns]
+            if any("날짜" in c for c in cols) and any("기관" in c for c in cols):
+                data_table = t
+                break
+        if data_table is None:
+            log(f"WARN no matching investor-flow table found for {code} page {page}; table shapes={[t.shape for t in tables]}")
+            break
+
+        data_table = data_table.dropna(how="all")
+        data_table = data_table[data_table.iloc[:, 0].astype(str).str.match(r"^\d{4}\.\d{2}\.\d{2}$", na=False)]
+        if data_table.empty:
+            break
+        frames.append(data_table)
+
+    if not frames:
+        return pd.DataFrame()
+
+    df = pd.concat(frames, ignore_index=True)
+    df.columns = [str(c) for c in df.columns]
+    date_col = next(c for c in df.columns if "날짜" in c)
+    close_col = next((c for c in df.columns if "종가" in c), None)
+    inst_col = next((c for c in df.columns if "기관" in c), None)
+    frgn_col = next((c for c in df.columns if c.startswith("외국인") and "보유" not in c), None)
+
+    df["date"] = pd.to_datetime(df[date_col], format="%Y.%m.%d")
+    for c in [close_col, inst_col, frgn_col]:
+        if c is not None:
+            df[c] = pd.to_numeric(df[c].astype(str).str.replace(",", "", regex=False), errors="coerce")
+
+    out = pd.DataFrame({"date": df["date"]})
+    out["close"] = df[close_col] if close_col else np.nan
+    out["inst_net_shares"] = df[inst_col] if inst_col else np.nan
+    out["frgn_net_shares"] = df[frgn_col] if frgn_col else np.nan
+    out = out.dropna(subset=["date"]).drop_duplicates(subset=["date"]).set_index("date").sort_index()
+    return out
+
+
+def fetch_naver_valuation(code: str) -> dict:
+    """Scrapes finance.naver.com/item/main.naver for current PER/PBR/EPS/BPS
+    and dividend yield. These are point-in-time snapshots (Naver's page
+    shows the latest value, not a history), unlike the OHLCV/flow series."""
+    url = f"https://finance.naver.com/item/main.naver?code={code}"
+    result = {"per": np.nan, "pbr": np.nan, "eps": np.nan, "bps": np.nan, "div": np.nan}
+    try:
+        resp = requests.get(url, headers=NAVER_HEADERS, timeout=15)
+        resp.encoding = "euc-kr"
+        html = resp.text
+    except Exception as exc:  # noqa: BLE001
+        log(f"ERROR Naver valuation fetch failed for {code}: {type(exc).__name__}: {exc}")
+        return result
+    time.sleep(REQUEST_DELAY_SEC)
+
+    def find_metric(label: str) -> float:
+        # Naver renders "라벨 | 값" pairs (e.g. "PER l 12.34배 l ..."); this
+        # regex looks for the label followed by the first plausible number,
+        # tolerant of the surrounding markup rather than depending on exact
+        # tag structure. This interactive session's network egress policy
+        # blocks finance.naver.com the same way it blocks data.krx.co.kr,
+        # Yahoo Finance, and FRED (see the FX-accumulation/JPY-overlay
+        # scripts' commit history for the established pattern), so this
+        # regex was written from documented HTML conventions, not verified
+        # against the live page -- the first CI run is the real test.
+        m = re.search(rf"{label}[^\d\-]{{0,40}}?(-?[\d,]+\.?\d*)", html)
+        if not m:
+            return np.nan
+        try:
+            return float(m.group(1).replace(",", ""))
+        except ValueError:
+            return np.nan
+
+    result["per"] = find_metric(r"PER\s*(?:<[^>]*>\s*)*l?\s*(?:<[^>]*>\s*)*")
+    result["eps"] = find_metric(r"EPS\s*(?:<[^>]*>\s*)*l?\s*(?:<[^>]*>\s*)*")
+    result["pbr"] = find_metric(r"PBR\s*(?:<[^>]*>\s*)*l?\s*(?:<[^>]*>\s*)*")
+    result["bps"] = find_metric(r"BPS\s*(?:<[^>]*>\s*)*l?\s*(?:<[^>]*>\s*)*")
+    result["div"] = find_metric(r"배당수익률\s*(?:<[^>]*>\s*)*l?\s*(?:<[^>]*>\s*)*")
+    if all(np.isnan(v) for v in result.values()):
+        log(f"WARN could not extract any valuation metric for {code} from Naver page -- regex likely needs adjustment for the live HTML structure")
+    return result
 
 
 def fetch_ticker_data(code: str) -> dict:
@@ -114,22 +216,12 @@ def fetch_ticker_data(code: str) -> dict:
         log(f"ERROR OHLCV fetch failed for {code} ({TICKERS[code]}): {type(exc).__name__}: {exc}")
         result["ohlcv"] = pd.DataFrame()
 
-    try:
-        flow = stock.get_market_trading_value_by_date(FROMDATE, TODATE, code, on="순매수")
-        result["flow"] = flow
-    except Exception as exc:  # noqa: BLE001
-        log(f"ERROR investor-flow fetch failed for {code} ({TICKERS[code]}): {type(exc).__name__}: {exc}")
-        result["flow"] = pd.DataFrame()
+    result["flow"] = fetch_naver_investor_flow(code)
 
     if code not in ETF_TICKERS:
-        try:
-            fundamental = stock.get_market_fundamental(FROMDATE, TODATE, code)
-            result["fundamental"] = fundamental
-        except Exception as exc:  # noqa: BLE001
-            log(f"ERROR fundamental fetch failed for {code} ({TICKERS[code]}): {type(exc).__name__}: {exc}")
-            result["fundamental"] = pd.DataFrame()
+        result["valuation"] = fetch_naver_valuation(code)
     else:
-        result["fundamental"] = pd.DataFrame()
+        result["valuation"] = {"per": np.nan, "pbr": np.nan, "eps": np.nan, "bps": np.nan, "div": np.nan}
 
     return result
 
@@ -152,17 +244,13 @@ def completeness_row(code: str, name: str, field: str, df: pd.DataFrame, referen
 
 
 def main() -> int:
-    import os
-
     krx_login_configured = bool(os.getenv("KRX_ID") and os.getenv("KRX_PW"))
     dart_key_configured = bool(os.getenv("DART_API_KEY"))
     log(f"Window: {FROMDATE} - {TODATE} ({LOOKBACK_DAYS} calendar days)")
     log(
-        f"KRX_ID/KRX_PW configured: {krx_login_configured} -- as of pykrx 1.2.8, "
-        "investor-flow (get_market_trading_value_by_date), fundamental "
-        "(get_market_fundamental), and index/sector data all require a "
-        "logged-in KRX session; without KRX_ID/KRX_PW they return empty "
-        "data, not partial data."
+        f"KRX_ID/KRX_PW configured: {krx_login_configured} -- no longer needed by this "
+        "script (investor-flow/valuation now sourced from Naver Finance instead of "
+        "pykrx's KRX-login-gated endpoints); logged for visibility only."
     )
     log(
         f"DART_API_KEY configured: {dart_key_configured} -- presence check only "
@@ -171,73 +259,41 @@ def main() -> int:
         "yet wired up)' note near the end of this script."
     )
 
-    # Reference trading-day calendar from KOSPI index itself.
-    # name_display=False avoids an internal get_index_ticker_name() lookup
-    # that depends on a separate KRX "index master info" endpoint -- that
-    # lookup is not needed just to read the OHLCV series and, in the first
-    # run of this script (2026-09-09), crashed with KeyError: '지수명'
-    # even though the OHLCV fetch itself had already succeeded.
-    try:
-        kospi = stock.get_index_ohlcv(FROMDATE, TODATE, "1001", name_display=False)  # 1001 = KOSPI composite
-        reference_days = len(kospi)
-        log(f"Reference trading days from KOSPI (code 1001): {reference_days}")
-    except Exception as exc:  # noqa: BLE001
-        log(f"ERROR could not fetch KOSPI reference calendar: {type(exc).__name__}: {exc}")
-        kospi = pd.DataFrame()
-        reference_days = 0
-
-    sector_match = find_sector_index_code("반도체")
-    if sector_match:
-        sector_code, sector_name = sector_match
-        log(f"Resolved sector index: {sector_code} = {sector_name}")
-        try:
-            sector_idx = stock.get_index_ohlcv(FROMDATE, TODATE, sector_code, name_display=False)
-        except Exception as exc:  # noqa: BLE001
-            log(f"ERROR sector index OHLCV fetch failed: {type(exc).__name__}: {exc}")
-            sector_idx = pd.DataFrame()
-    else:
-        log(
-            "WARN no '반도체' sector index resolved via get_index_ticker_list/name search "
-            "-- this depends on KRX's index-master-info endpoint, which may itself require "
-            "KRX_ID/KRX_PW; re-test once those are configured before assuming this is broken."
-        )
-        sector_idx = pd.DataFrame()
-        sector_name = None
-
     per_ticker = {code: fetch_ticker_data(code) for code in TICKERS}
+
+    reference_days = len(per_ticker[MARKET_REFERENCE_TICKER]["ohlcv"])
+    log(f"Reference trading days from {TICKERS[MARKET_REFERENCE_TICKER]} ({MARKET_REFERENCE_TICKER}) OHLCV: {reference_days}")
+
+    sector_ohlcv = per_ticker[SECTOR_REFERENCE_TICKER]["ohlcv"]
+    sector_ret_60 = None
+    if not sector_ohlcv.empty and "종가" in sector_ohlcv.columns and len(sector_ohlcv) > 60:
+        sector_ret_60 = float(sector_ohlcv["종가"].iloc[-1] / sector_ohlcv["종가"].iloc[-61] - 1.0)
 
     # ---- Stage 1: data completeness ----
     completeness_rows = []
     for code, d in per_ticker.items():
         completeness_rows.append(completeness_row(code, d["name"], "ohlcv", d["ohlcv"], reference_days))
         completeness_rows.append(completeness_row(code, d["name"], "investor_flow", d["flow"], reference_days))
-        if not d["is_etf"]:
-            completeness_rows.append(completeness_row(code, d["name"], "fundamental", d["fundamental"], reference_days))
-        else:
-            completeness_rows.append(
-                {
-                    "ticker": code, "name": d["name"], "field": "fundamental",
-                    "expected_trading_days": reference_days, "actual_rows": 0,
-                    "completeness_pct": None, "null_cell_count": None,
-                    "first_date": None, "last_date": None,
-                }
-            )
-    completeness_rows.append(
-        completeness_row("SECTOR", sector_name or "반도체(unresolved)", "sector_index", sector_idx, reference_days)
-    )
+        val = d["valuation"]
+        val_rows = 0 if all(pd.isna(v) for v in val.values()) else 1
+        completeness_rows.append(
+            {
+                "ticker": code, "name": d["name"], "field": "valuation",
+                "expected_trading_days": 1, "actual_rows": val_rows,
+                "completeness_pct": (100.0 if val_rows else 0.0) if not d["is_etf"] else None,
+                "null_cell_count": sum(1 for v in val.values() if pd.isna(v)) if not d["is_etf"] else None,
+                "first_date": None, "last_date": None,
+            }
+        )
     completeness_df = pd.DataFrame(completeness_rows)
     completeness_df.to_csv(OUT / "data_completeness.csv", index=False)
 
     # ---- Stage 2: raw factors ----
-    sector_ret_60 = None
-    if not sector_idx.empty and len(sector_idx) > 60:
-        sector_ret_60 = float(sector_idx["종가"].iloc[-1] / sector_idx["종가"].iloc[-61] - 1.0)
-
     raw_rows = []
     for code, d in per_ticker.items():
         ohlcv = d["ohlcv"]
         flow = d["flow"]
-        fundamental = d["fundamental"]
+        valuation = d["valuation"]
         row = {"ticker": code, "name": d["name"], "is_etf": d["is_etf"]}
 
         if not ohlcv.empty and "종가" in ohlcv.columns:
@@ -254,8 +310,8 @@ def main() -> int:
                 row["vol_60"] = np.nan
             roll_high = close.rolling(min(n, 252), min_periods=1).max()
             row["drawdown_from_52w_high"] = float(close.iloc[-1] / roll_high.iloc[-1] - 1.0)
-            if sector_ret_60 is not None and n > 60:
-                row["sector_rel_mom_60"] = float(row["mom_60"] - sector_ret_60) if not np.isnan(row.get("mom_60", np.nan)) else np.nan
+            if sector_ret_60 is not None and n > 60 and not np.isnan(row.get("mom_60", np.nan)):
+                row["sector_rel_mom_60"] = float(row["mom_60"] - sector_ret_60)
             else:
                 row["sector_rel_mom_60"] = np.nan
         else:
@@ -263,25 +319,21 @@ def main() -> int:
                 row[k] = np.nan
 
         if not flow.empty:
-            available_cols = [c for c in INVESTOR_COLUMNS_WANTED if c in flow.columns]
-            for col in available_cols:
-                series = flow[col].astype(float)
-                row[f"flow_{col}_20d_krw"] = float(series.iloc[-20:].sum()) if len(series) >= 1 else np.nan
-            for col in INVESTOR_COLUMNS_WANTED:
-                if col not in available_cols:
-                    row[f"flow_{col}_20d_krw"] = np.nan
-                    log(f"WARN investor column '{col}' not present for {code} ({d['name']}); available={list(flow.columns)}")
+            inst_est_krw = (flow["inst_net_shares"] * flow["close"]).dropna()
+            frgn_est_krw = (flow["frgn_net_shares"] * flow["close"]).dropna()
+            row["flow_기관_20d_est_krw"] = float(inst_est_krw.iloc[-20:].sum()) if len(inst_est_krw) else np.nan
+            row["flow_외국인_20d_est_krw"] = float(frgn_est_krw.iloc[-20:].sum()) if len(frgn_est_krw) else np.nan
+            if not np.isnan(row["flow_기관_20d_est_krw"]) and not np.isnan(row["flow_외국인_20d_est_krw"]):
+                row["flow_개인_20d_est_krw_residual"] = -(row["flow_기관_20d_est_krw"] + row["flow_외국인_20d_est_krw"])
+            else:
+                row["flow_개인_20d_est_krw_residual"] = np.nan
         else:
-            for col in INVESTOR_COLUMNS_WANTED:
-                row[f"flow_{col}_20d_krw"] = np.nan
+            row["flow_기관_20d_est_krw"] = np.nan
+            row["flow_외국인_20d_est_krw"] = np.nan
+            row["flow_개인_20d_est_krw_residual"] = np.nan
 
-        if not fundamental.empty:
-            last_fund = fundamental.iloc[-1]
-            for col in ["PER", "PBR", "DIV", "EPS", "BPS"]:
-                row[col.lower()] = float(last_fund[col]) if col in fundamental.columns else np.nan
-        else:
-            for col in ["per", "pbr", "div", "eps", "bps"]:
-                row[col] = np.nan
+        for k, v in valuation.items():
+            row[k] = v
 
         raw_rows.append(row)
 
@@ -291,8 +343,8 @@ def main() -> int:
     # ---- Stage 3: cross-sectional normalized factors (percentile rank 0-100) ----
     factor_cols = [
         "mom_20", "mom_60", "mom_120", "vol_60", "drawdown_from_52w_high",
-        "sector_rel_mom_60", "flow_기관합계_20d_krw", "flow_외국인합계_20d_krw",
-        "flow_개인_20d_krw", "per", "pbr", "div",
+        "sector_rel_mom_60", "flow_기관_20d_est_krw", "flow_외국인_20d_est_krw",
+        "flow_개인_20d_est_krw_residual", "per", "pbr", "div",
     ]
     norm_df = raw_df[["name", "is_etf"]].copy()
     for col in factor_cols:
@@ -312,16 +364,21 @@ def main() -> int:
         "window_end": TODATE,
         "krx_login_configured": krx_login_configured,
         "dart_key_configured": dart_key_configured,
-        "reference_trading_days_kospi": reference_days,
-        "sector_index_resolved": sector_name,
+        "reference_trading_days": reference_days,
+        "market_reference_ticker": MARKET_REFERENCE_TICKER,
+        "sector_reference_ticker": SECTOR_REFERENCE_TICKER,
+        "investor_flow_source": "Naver Finance (finance.naver.com/item/frgn.naver), share-count based, KRW estimated as shares x close",
+        "valuation_source": "Naver Finance (finance.naver.com/item/main.naver), point-in-time snapshot",
         "tickers": TICKERS,
         "etf_tickers": sorted(ETF_TICKERS),
         "note": (
             "Stage 1-3 pipeline (data completeness -> raw factor -> "
-            "normalized factor) using KRX public data via pykrx only. "
-            "OpenDART financial-statement fundamentals not yet wired up "
-            "(requires user-issued DART_API_KEY). Research pipeline only, "
-            "not a live trading signal."
+            "normalized factor). OHLCV from KRX via pykrx; investor-flow "
+            "and valuation from Naver Finance (KRX's own login-gated "
+            "endpoints are not used). OpenDART financial-statement "
+            "fundamentals not yet wired up (requires user-issued "
+            "DART_API_KEY). Research pipeline only, not a live trading "
+            "signal."
         ),
     }
     (OUT / "run_metrics.json").write_text(json.dumps(metrics, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
