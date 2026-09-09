@@ -25,6 +25,7 @@ jobs:
         env:
           KRX_ID: ${{ secrets.KRX_ID }}
           KRX_PW: ${{ secrets.KRX_PW }}
+          DART_API_KEY: ${{ secrets.DART_API_KEY }}
         run: python research/scripts/run_krx_factor_pipeline.py
       - name: Upload results
         uses: actions/upload-artifact@v4

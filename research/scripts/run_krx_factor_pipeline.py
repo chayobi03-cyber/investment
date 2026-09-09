@@ -155,12 +155,20 @@ def main() -> int:
     import os
 
     krx_login_configured = bool(os.getenv("KRX_ID") and os.getenv("KRX_PW"))
+    dart_key_configured = bool(os.getenv("DART_API_KEY"))
     log(f"Window: {FROMDATE} - {TODATE} ({LOOKBACK_DAYS} calendar days)")
     log(
         f"KRX_ID/KRX_PW configured: {krx_login_configured} -- as of pykrx 1.2.8, "
-        "investor-flow (get_market_trading_value_by_date) and fundamental "
-        "(get_market_fundamental) endpoints require a logged-in KRX session; "
-        "without KRX_ID/KRX_PW they return an error, not partial data."
+        "investor-flow (get_market_trading_value_by_date), fundamental "
+        "(get_market_fundamental), and index/sector data all require a "
+        "logged-in KRX session; without KRX_ID/KRX_PW they return empty "
+        "data, not partial data."
+    )
+    log(
+        f"DART_API_KEY configured: {dart_key_configured} -- presence check only "
+        "(value is never logged); this run does not yet call OpenDART even if "
+        "the key is present -- that stage is still unbuilt, see the 'DART (not "
+        "yet wired up)' note near the end of this script."
     )
 
     # Reference trading-day calendar from KOSPI index itself.
@@ -303,6 +311,7 @@ def main() -> int:
         "window_start": FROMDATE,
         "window_end": TODATE,
         "krx_login_configured": krx_login_configured,
+        "dart_key_configured": dart_key_configured,
         "reference_trading_days_kospi": reference_days,
         "sector_index_resolved": sector_name,
         "tickers": TICKERS,
