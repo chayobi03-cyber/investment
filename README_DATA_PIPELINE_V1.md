@@ -69,3 +69,11 @@ Outputs:
 - `data/processed/normalized_factors.csv`
 
 No missing value is silently replaced by a fabricated proxy.
+
+## Validation before use
+
+A `_score` column from `normalized_factors.csv` must not be connected to BuyStrength/Action until it passes the walk-forward validation gate. See `docs/investment/WALKFORWARD_VALIDATION_METHODOLOGY_V1.md` and run:
+
+```bash
+PYTHONPATH=src python scripts/run_walkforward_validation.py --score-col <col> --price-col close
+```
