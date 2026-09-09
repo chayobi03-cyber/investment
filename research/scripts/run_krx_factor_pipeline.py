@@ -148,7 +148,17 @@ def fetch_naver_investor_flow(code: str) -> pd.DataFrame:
     date_col = next(c for c in df.columns if "날짜" in c)
     close_col = next((c for c in df.columns if "종가" in c), None)
     inst_col = next((c for c in df.columns if "기관" in c), None)
-    frgn_col = next((c for c in df.columns if c.startswith("외국인") and "보유" not in c), None)
+    # NOTE (2026-09-09 bugfix): this used to be `c.startswith("외국인")`, but
+    # Naver's flow table has a two-row header that pandas can flatten into a
+    # tuple-stringified column name (e.g. "('외국인', '순매매량')") which
+    # *contains* "외국인" without *starting with* it -- startswith silently
+    # matched nothing and left this column 100% NaN for every ticker, while
+    # inst_col (substring match) worked fine. Switched to substring matching
+    # for consistency, still excluding the holdings-count/ratio columns.
+    frgn_col = next(
+        (c for c in df.columns if "외국인" in c and "보유" not in c and "지분" not in c),
+        None,
+    )
 
     df["date"] = pd.to_datetime(df[date_col], format="%Y.%m.%d")
     for c in [close_col, inst_col, frgn_col]:
