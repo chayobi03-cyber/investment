@@ -76,7 +76,7 @@ START = END - timedelta(days=LOOKBACK_DAYS)
 FROMDATE = START.strftime("%Y%m%d")
 TODATE = END.strftime("%Y%m%d")
 
-INVESTOR_COLUMNS_WANTED = ["기관합계", "외국인", "개인"]
+INVESTOR_COLUMNS_WANTED = ["기관합계", "외국인합계", "개인"]
 
 
 def log(msg: str) -> None:
@@ -152,11 +152,25 @@ def completeness_row(code: str, name: str, field: str, df: pd.DataFrame, referen
 
 
 def main() -> int:
+    import os
+
+    krx_login_configured = bool(os.getenv("KRX_ID") and os.getenv("KRX_PW"))
     log(f"Window: {FROMDATE} - {TODATE} ({LOOKBACK_DAYS} calendar days)")
+    log(
+        f"KRX_ID/KRX_PW configured: {krx_login_configured} -- as of pykrx 1.2.8, "
+        "investor-flow (get_market_trading_value_by_date) and fundamental "
+        "(get_market_fundamental) endpoints require a logged-in KRX session; "
+        "without KRX_ID/KRX_PW they return an error, not partial data."
+    )
 
     # Reference trading-day calendar from KOSPI index itself.
+    # name_display=False avoids an internal get_index_ticker_name() lookup
+    # that depends on a separate KRX "index master info" endpoint -- that
+    # lookup is not needed just to read the OHLCV series and, in the first
+    # run of this script (2026-09-09), crashed with KeyError: '지수명'
+    # even though the OHLCV fetch itself had already succeeded.
     try:
-        kospi = stock.get_index_ohlcv(FROMDATE, TODATE, "1001")  # 1001 = KOSPI composite
+        kospi = stock.get_index_ohlcv(FROMDATE, TODATE, "1001", name_display=False)  # 1001 = KOSPI composite
         reference_days = len(kospi)
         log(f"Reference trading days from KOSPI (code 1001): {reference_days}")
     except Exception as exc:  # noqa: BLE001
@@ -169,12 +183,16 @@ def main() -> int:
         sector_code, sector_name = sector_match
         log(f"Resolved sector index: {sector_code} = {sector_name}")
         try:
-            sector_idx = stock.get_index_ohlcv(FROMDATE, TODATE, sector_code)
+            sector_idx = stock.get_index_ohlcv(FROMDATE, TODATE, sector_code, name_display=False)
         except Exception as exc:  # noqa: BLE001
             log(f"ERROR sector index OHLCV fetch failed: {type(exc).__name__}: {exc}")
             sector_idx = pd.DataFrame()
     else:
-        log("WARN no '반도체' sector index resolved via get_index_ticker_list/name search")
+        log(
+            "WARN no '반도체' sector index resolved via get_index_ticker_list/name search "
+            "-- this depends on KRX's index-master-info endpoint, which may itself require "
+            "KRX_ID/KRX_PW; re-test once those are configured before assuming this is broken."
+        )
         sector_idx = pd.DataFrame()
         sector_name = None
 
@@ -265,7 +283,7 @@ def main() -> int:
     # ---- Stage 3: cross-sectional normalized factors (percentile rank 0-100) ----
     factor_cols = [
         "mom_20", "mom_60", "mom_120", "vol_60", "drawdown_from_52w_high",
-        "sector_rel_mom_60", "flow_기관합계_20d_krw", "flow_외국인_20d_krw",
+        "sector_rel_mom_60", "flow_기관합계_20d_krw", "flow_외국인합계_20d_krw",
         "flow_개인_20d_krw", "per", "pbr", "div",
     ]
     norm_df = raw_df[["name", "is_etf"]].copy()
@@ -284,6 +302,7 @@ def main() -> int:
         "run_date": END.date().isoformat(),
         "window_start": FROMDATE,
         "window_end": TODATE,
+        "krx_login_configured": krx_login_configured,
         "reference_trading_days_kospi": reference_days,
         "sector_index_resolved": sector_name,
         "tickers": TICKERS,
