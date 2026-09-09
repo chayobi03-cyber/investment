@@ -178,17 +178,15 @@ def fetch_naver_valuation(code: str) -> dict:
         return result
     time.sleep(REQUEST_DELAY_SEC)
 
-    def find_metric(label: str) -> float:
-        # Naver renders "라벨 | 값" pairs (e.g. "PER l 12.34배 l ..."); this
-        # regex looks for the label followed by the first plausible number,
-        # tolerant of the surrounding markup rather than depending on exact
-        # tag structure. This interactive session's network egress policy
-        # blocks finance.naver.com the same way it blocks data.krx.co.kr,
-        # Yahoo Finance, and FRED (see the FX-accumulation/JPY-overlay
-        # scripts' commit history for the established pattern), so this
-        # regex was written from documented HTML conventions, not verified
-        # against the live page -- the first CI run is the real test.
-        m = re.search(rf"{label}[^\d\-]{{0,40}}?(-?[\d,]+\.?\d*)", html)
+    def find_by_element_id(elem_id: str) -> float:
+        # Naver's main.naver page renders these specific per-share metrics
+        # inside elements with fixed, documented DOM ids (id="_per",
+        # id="_eps", id="_pbr", id="_bps") -- anchoring on the id is far
+        # more precise than matching the visible label text, which the
+        # first live CI run (2026-09-09) showed picks up unrelated numbers
+        # elsewhere on the page (e.g. legend/help text), producing
+        # identical bogus values -- PBR=4.0 -- across every ticker.
+        m = re.search(rf'id="{elem_id}"[^>]*>\s*([\-\d,]+\.?\d*)', html)
         if not m:
             return np.nan
         try:
@@ -196,13 +194,24 @@ def fetch_naver_valuation(code: str) -> dict:
         except ValueError:
             return np.nan
 
-    result["per"] = find_metric(r"PER\s*(?:<[^>]*>\s*)*l?\s*(?:<[^>]*>\s*)*")
-    result["eps"] = find_metric(r"EPS\s*(?:<[^>]*>\s*)*l?\s*(?:<[^>]*>\s*)*")
-    result["pbr"] = find_metric(r"PBR\s*(?:<[^>]*>\s*)*l?\s*(?:<[^>]*>\s*)*")
-    result["bps"] = find_metric(r"BPS\s*(?:<[^>]*>\s*)*l?\s*(?:<[^>]*>\s*)*")
-    result["div"] = find_metric(r"배당수익률\s*(?:<[^>]*>\s*)*l?\s*(?:<[^>]*>\s*)*")
+    result["per"] = find_by_element_id("_per")
+    result["eps"] = find_by_element_id("_eps")
+    result["pbr"] = find_by_element_id("_pbr")
+    result["bps"] = find_by_element_id("_bps")
+
+    # No equally specific documented id is used here for dividend yield;
+    # this remains a lower-confidence label-proximity match and may be
+    # wrong or missing -- treated as NaN rather than guessed further if
+    # it doesn't match cleanly.
+    div_match = re.search(r"배당수익률[^\d\-]{0,40}?(-?[\d,]+\.?\d*)\s*(?:</[a-z]+>\s*)*%", html)
+    if div_match:
+        try:
+            result["div"] = float(div_match.group(1).replace(",", ""))
+        except ValueError:
+            result["div"] = np.nan
+
     if all(np.isnan(v) for v in result.values()):
-        log(f"WARN could not extract any valuation metric for {code} from Naver page -- regex likely needs adjustment for the live HTML structure")
+        log(f"WARN could not extract any valuation metric for {code} from Naver page -- id anchors may not match the live HTML structure")
     return result
 
 

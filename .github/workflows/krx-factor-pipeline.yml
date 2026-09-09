@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install dependencies
-        run: python -m pip install --upgrade pip pandas numpy pykrx
+        run: python -m pip install --upgrade pip pandas numpy pykrx lxml requests
       - name: Run KRX factor pipeline
         env:
           KRX_ID: ${{ secrets.KRX_ID }}
