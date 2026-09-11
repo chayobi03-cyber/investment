@@ -17,7 +17,7 @@ publication:
   actual_publication_time: null
   publication_time_precision: date
   publication_date_basis: official_release_page_registration_and_pdf_front_matter
-  scheduled_rule: "Monthly data are normally published on the 15th of the following month; when the scheduled date is a holiday, the next publication day is used."
+  scheduled_rule: "Monthly data are normally published on the 15th of the following month, or the next day when the date is a holiday."
   observed_release_date: true
   release_status: published
   pdf_evidence: "PDF page 2 states 공표일 2025. 8. 18 and 발행일 2025. 8. 18."
@@ -41,6 +41,20 @@ raw_capture:
   raw_capture_verified: true
   integrity_check: passed
   capture_note: "Binary supplied in the current session was independently hashed and structurally inspected with pdfinfo."
+
+methodology:
+  methodology_version: "2025-03-14_change_approved"
+  sample_design_version: "2025-03-14_change_approved"
+  extraction_frame: "공시가격정보체계DB 2024년 기준"
+  weighting_rule: "source_defined; 2025-03 change approval reflected updated housing-type composition"
+  index_base_period: "2025-03"
+  structural_break_risk: true
+  change_evidence:
+    - title: "통계작성의 변경승인(협의) 고시(전국주택가격동향조사)(통계청 고시 제2025-136호)"
+      effective_date: "2025-03-14"
+      source_url: "https://mods.go.kr/board.es?mid=a10403040000&bid=107&act=view&list_no=435631"
+      scope: "작성지역, 표본 추출틀, 표본크기, 지수 기준시점 변경"
+      note: "Monthly index base changed from 2021.6=100.0 to 2025.3=100.0."
 
 availability:
   available_at: "2025-08-18"
