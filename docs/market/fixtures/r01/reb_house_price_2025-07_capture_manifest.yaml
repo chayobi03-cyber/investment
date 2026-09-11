@@ -59,6 +59,12 @@ revision:
   next_revision_expected: unknown
   historical_vintage_reconstruction: NOT_VERIFIED
   evidence_note: "The captured PDF contains no explicit revision/vintage identifier in the inspected front matter; no primary-source version chain has yet been demonstrated."
+  secondary_evidence_candidate:
+    status: FOUND_BUT_NOT_PRIMARY
+    source: "2025년 상반기 실거래가 분석을 통해 본 주택가격동향조사의 문제점 및 개선방안 관련 연구자료"
+    claim: "The study states that the National Housing Price Trend Survey does not conduct retrospective revisions."
+    assessment: "Corroborating evidence only; not sufficient for the R01 primary-source revision_rule requirement because it is not a producer-issued policy/methodology record."
+    search_reference: "turn210879search20"
 
 pit:
   rule: "available_at <= decision_timestamp"
@@ -70,8 +76,9 @@ pit:
 
 promotion:
   eligible_for_primary_verified: false
-  blocker: "Revision/vintage evidence and executable PIT provenance test remain incomplete."
+  blocker: "Primary-source revision/vintage evidence and executable PIT provenance test remain incomplete."
 
 source_evidence:
   data_portal: "https://www.data.go.kr/data/15069821/fileData.do"
   official_research_definition: "https://www.reb.or.kr/r-one/portal/stat/easyStatPage/A_2024_00045.do"
+  official_publication_schedule: "https://www.reb.or.kr/reb/cm/cntnts/cntntsView.do?cntntsId=1036&mi=9790"
