@@ -1,0 +1,95 @@
+name: R01 provenance validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/market/**"
+      - "research/scripts/r01_*.py"
+      - "tests/r01/**"
+      - "requirements.txt"
+      - ".github/workflows/r01-provenance.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/market/**"
+      - "research/scripts/r01_*.py"
+      - "tests/r01/**"
+      - "requirements.txt"
+      - ".github/workflows/r01-provenance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  r01-provenance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run R01 gate tests
+        run: python -m pytest -q tests/r01
+
+      - name: Run PIT date-level matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest="docs/market/fixtures/r01/reb_house_price_2025-07_capture_manifest.yaml"
+
+          python research/scripts/r01_pit_runner.py "$manifest" 2025-08-17 | tee /tmp/r01_pit_pre.yaml
+          test "$(grep '^decision:' /tmp/r01_pit_pre.yaml | awk '{print $2}')" = "BLOCK"
+
+          python research/scripts/r01_pit_runner.py "$manifest" 2025-08-18 | tee /tmp/r01_pit_same.yaml || test $? -eq 2
+          test "$(grep '^decision:' /tmp/r01_pit_same.yaml | awk '{print $2}')" = "HUMAN_REVIEW"
+
+          python research/scripts/r01_pit_runner.py "$manifest" 2025-08-19 | tee /tmp/r01_pit_post.yaml
+          test "$(grep '^decision:' /tmp/r01_pit_post.yaml | awk '{print $2}')" = "ALLOW"
+
+      - name: Generate R01 gate report
+        shell: bash
+        run: |
+          set +e
+          mkdir -p artifacts/r01
+          python research/scripts/r01_gate_report.py \
+            docs/market/fixtures/r01/reb_house_price_2025-07_capture_manifest.yaml \
+            --decision-timestamp 2025-08-19 \
+            --output artifacts/r01/gate_report.yaml
+          status=$?
+          set -e
+
+          # Exit code 2 means the fail-closed gate correctly blocked promotion.
+          # CI execution itself remains GREEN when the report was generated.
+          if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
+            exit "$status"
+          fi
+
+          sha256sum artifacts/r01/gate_report.yaml > artifacts/r01/gate_report.sha256
+
+          cat > artifacts/r01/ci_evidence.yaml <<EOF
+ci_evidence:
+  workflow_name: r01-provenance
+  workflow_status: EXECUTED
+  commit_sha: ${GITHUB_SHA}
+  run_id: ${GITHUB_RUN_ID}
+  job_id: ${GITHUB_JOB}
+  gate_report_exit_code: ${status}
+  promotion_blocked: $([ "$status" -eq 2 ] && echo true || echo false)
+EOF
+
+      - name: Upload R01 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: r01-provenance-evidence
+          path: artifacts/r01/
