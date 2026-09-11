@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "R01 Market Observation Provenance Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "panel_id", "metric_name", "observation_start", "observation_end",
+    "publication_date", "available_at", "retrieved_at", "geographic_scope",
+    "property_scope", "value", "unit", "frequency", "adjustment_rule",
+    "revision_status", "revision_number", "source_id", "dataset_name",
+    "source_locator", "raw_record_id", "raw_sha256", "normalization_rule"
+  ],
+  "properties": {
+    "panel_id": {"type": "string", "minLength": 1},
+    "metric_name": {"type": "string", "minLength": 1},
+    "observation_start": {"type": "string", "format": "date"},
+    "observation_end": {"type": "string", "format": "date"},
+    "publication_date": {"type": "string", "format": "date"},
+    "available_at": {"type": "string", "format": "date-time"},
+    "retrieved_at": {"type": "string", "format": "date-time"},
+    "geographic_scope": {"type": "string", "minLength": 1},
+    "property_scope": {"type": "string", "minLength": 1},
+    "value": {"type": ["number", "integer", "null"]},
+    "unit": {"type": "string", "minLength": 1},
+    "frequency": {"type": "string", "enum": ["daily", "weekly", "monthly", "quarterly", "annual", "event"]},
+    "adjustment_rule": {"type": "string", "minLength": 1},
+    "revision_status": {"type": "string", "enum": ["original", "revised", "provisional", "unknown"]},
+    "revision_number": {"type": "integer", "minimum": 0},
+    "source_id": {"type": "string", "minLength": 1},
+    "dataset_name": {"type": "string", "minLength": 1},
+    "source_locator": {"type": "string", "minLength": 1},
+    "raw_record_id": {"type": "string", "minLength": 1},
+    "raw_sha256": {"type": "string", "pattern": "^sha256:[0-9a-fA-F]{64}$"},
+    "normalization_rule": {"type": "string", "minLength": 1}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"revision_status": {"const": "revised"}}},
+      "then": {"properties": {"revision_number": {"minimum": 1}}}
+    },
+    {
+      "if": {"properties": {"revision_status": {"const": "provisional"}}},
+      "then": {"properties": {"revision_number": {"minimum": 0}}}
+    }
+  ]
+}
