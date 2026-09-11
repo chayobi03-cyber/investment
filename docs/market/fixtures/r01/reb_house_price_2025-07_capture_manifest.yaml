@@ -7,6 +7,7 @@ observation_period:
   start: "2025-07-01"
   end: "2025-07-31"
   basis: monthly_survey
+  evidence: "PDF page 2 states 조사대상기간 2025. 7. 1 ~ 2025. 7. 31."
 
 publication:
   official_release_page: "https://www.reb.or.kr/reb/na/ntt/selectNttInfo.do?mi=9565&nttSn=106925"
@@ -15,10 +16,11 @@ publication:
   actual_publication_date: "2025-08-18"
   actual_publication_time: null
   publication_time_precision: date
-  publication_date_basis: official_release_page_registration
+  publication_date_basis: official_release_page_registration_and_pdf_front_matter
   scheduled_rule: "Monthly data are normally published on the 15th of the following month; when the scheduled date is a holiday, the next publication day is used."
   observed_release_date: true
   release_status: published
+  pdf_evidence: "PDF page 2 states 공표일 2025. 8. 18 and 발행일 2025. 8. 18."
 
 raw_capture:
   artifact_type: official_attachment_pdf
@@ -26,11 +28,19 @@ raw_capture:
   retrieval_url: "https://www.reb.or.kr/reb/na/ntt/selectNttInfo.do?mi=9565&nttSn=106925"
   storage_path: "fixtures/r01/reb_house_price/2025-07/official_attachment.pdf"
   content_type: application/pdf
-  file_size_bytes: null
-  page_count: null
-  raw_sha256: null
-  raw_capture_verified: false
-  capture_blocker: "The current connector can verify the official release page and attachment identity but cannot reliably retrieve the attachment binary bytes for an independently computed SHA-256."
+  file_size_bytes: 19319129
+  page_count: 35
+  pdf_version: "1.4"
+  encrypted: false
+  creator: "Adobe InDesign 19.4 (Windows)"
+  producer: "Adobe PDF Library 17.0"
+  creation_date_utc: "2025-08-14T06:25:55Z"
+  modification_date_utc: "2025-08-14T06:26:15Z"
+  raw_sha256: "6d14bb93128997f635fd4c855c6d5432e7bb8a193f623f310892303ec0944160"
+  independent_local_hash: true
+  raw_capture_verified: true
+  integrity_check: passed
+  capture_note: "Binary supplied in the current session was independently hashed and structurally inspected with pdfinfo."
 
 availability:
   available_at: "2025-08-18"
@@ -48,17 +58,19 @@ revision:
   previous_vintage_id: null
   next_revision_expected: unknown
   historical_vintage_reconstruction: NOT_VERIFIED
+  evidence_note: "The captured PDF contains no explicit revision/vintage identifier in the inspected front matter; no primary-source version chain has yet been demonstrated."
 
 pit:
   rule: "available_at <= decision_timestamp"
   precision: date
   pre_publication_blocked: true
   post_publication_allowed: true
+  timestamp_precision_limitation: true
   provenance_test_passed: false
 
 promotion:
   eligible_for_primary_verified: false
-  blocker: "raw binary capture + SHA-256 + revision/vintage evidence + executable provenance test are incomplete."
+  blocker: "Revision/vintage evidence and executable PIT provenance test remain incomplete."
 
 source_evidence:
   data_portal: "https://www.data.go.kr/data/15069821/fileData.do"
