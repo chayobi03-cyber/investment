@@ -1,0 +1,33 @@
+artifact:
+  artifact_id: reb_house_price_2025_07_pdf
+  source_id: src_reb_house_price
+  artifact_name: "!25.7월 전국주택가격동향조사 보고서.pdf"
+  content_type: application/pdf
+  expected_size_bytes: 19319129
+  expected_sha256: "6d14bb93128997f635fd4c855c6d5432e7bb8a193f623f310892303ec0944160"
+
+storage:
+  backend: NOT_CONFIGURED
+  immutable: false
+  release_tag: null
+  asset_name: null
+  download_url: null
+
+runtime_verification:
+  status: UNKNOWN
+  ci_verified: false
+  last_run_id: null
+  last_commit_sha: null
+  observed_size_bytes: null
+  observed_sha256: null
+  verification_rule: >-
+    Runtime verification requires an immutable CI-accessible artifact whose
+    size, MIME type, and SHA-256 exactly match the expected values above.
+
+promotion_effect:
+  runtime_artifact_integrity: UNKNOWN
+  primary_verified_eligible: false
+  note: >-
+    Historical raw-capture evidence is not sufficient to mark runtime artifact
+    integrity PASS. Until immutable storage is configured and CI verifies the
+    binary, the R01 gate remains fail-closed.
