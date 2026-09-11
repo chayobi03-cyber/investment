@@ -1,0 +1,129 @@
+version: "0.1"
+status: ACTIVE
+purpose: >
+  Register authoritative housing-market sources and measurement contracts
+  before historical pre-event reconstruction or threshold backtesting.
+
+rules:
+  source_type: official_primary_only
+  provenance_required: true
+  pit_backtest_requires: [publication_date, available_at, revision_policy, raw_sha256]
+  unknown_revision_status: PROVISIONAL
+  missing_critical_evidence: REJECTED
+  post_hoc_source_substitution: prohibited
+
+fields:
+  required:
+    - source_id
+    - domain
+    - organization
+    - dataset_name
+    - source_type
+    - geographic_level
+    - property_scope
+    - frequency
+    - observation_basis
+    - publication_basis
+    - revision_policy
+    - unit
+    - adjustment
+    - retrieval_method
+    - provenance_required
+
+sources:
+  - source_id: src_molit_transaction_volume
+    domain: price_transaction
+    organization: 국토교통부
+    dataset_name: 실거래가 공개시스템
+    source_type: official_primary
+    geographic_level: [national, sido, sigungu]
+    property_scope: [housing]
+    frequency: monthly
+    observation_basis: contract_date
+    publication_basis: rolling_disclosure
+    revision_policy: revised_or_updated_check_source
+    unit: count
+    adjustment: none
+    retrieval_method: official_source
+    provenance_required: true
+
+  - source_id: src_reb_house_price
+    domain: price
+    organization: 한국부동산원
+    dataset_name: 전국주택가격동향조사
+    source_type: official_primary
+    geographic_level: [national, regional]
+    property_scope: [apartment, detached_house, row_house]
+    frequency: monthly
+    observation_basis: source_defined
+    publication_basis: official_statistics_release
+    revision_policy: check_source
+    unit: index
+    adjustment: source_defined
+    retrieval_method: official_source
+    provenance_required: true
+
+  - source_id: src_molit_unsold_inventory
+    domain: unsold_housing
+    organization: 국토교통부
+    dataset_name: 미분양주택현황보고
+    source_type: official_primary
+    geographic_level: [national, regional]
+    property_scope: [unsold_new_housing]
+    frequency: monthly
+    observation_basis: source_defined
+    publication_basis: official_statistics_release
+    revision_policy: check_source
+    unit: household
+    adjustment: none
+    retrieval_method: official_source
+    provenance_required: true
+
+  - source_id: src_fsc_household_credit
+    domain: finance
+    organization: 금융위원회
+    dataset_name: 가계대출 동향
+    source_type: official_primary
+    geographic_level: [national]
+    property_scope: [household_credit]
+    frequency: monthly
+    observation_basis: source_defined
+    publication_basis: official_release
+    revision_policy: provisional_then_revised
+    unit: KRW
+    adjustment: source_defined
+    retrieval_method: official_source
+    provenance_required: true
+
+  - source_id: src_court_auction
+    domain: auction_distress
+    organization: 대한민국 법원
+    dataset_name: 법원경매정보
+    source_type: official_primary
+    geographic_level: [court, region, property]
+    property_scope: [auction_case]
+    frequency: daily
+    observation_basis: case_event_date
+    publication_basis: event_updates
+    revision_policy: event_updates
+    unit: case
+    adjustment: none
+    retrieval_method: official_source
+    provenance_required: true
+
+measurement_separation:
+  transaction_volume_contract_date:
+    date_basis: contract_date
+    reporting_basis: source_defined
+    aggregation_basis: monthly
+    inclusion_rule: official_dataset_rule
+  transaction_volume_report_date:
+    date_basis: report_date
+    reporting_basis: source_defined
+    aggregation_basis: monthly
+    inclusion_rule: official_dataset_rule
+
+status_policy:
+  PRIMARY_VERIFIED: all required provenance evidence verified
+  PROVISIONAL: source identified but PIT/revision evidence incomplete
+  REJECTED: source or measurement contract fails R01 requirements
