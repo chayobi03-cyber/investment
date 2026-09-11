@@ -54,21 +54,33 @@ evidence_records:
     observation_definition:
       status: VERIFIED
       basis: monthly housing price index observation defined by the survey
+      evidence: "Captured 2025-07 official PDF states 조사대상기간 2025. 7. 1 ~ 2025. 7. 31."
     publication_rule:
       status: VERIFIED
       rule: "Monthly data are published on the 15th of the following month, or the next day when the date is a holiday."
+      evidence: "Captured PDF states 공표일 2025. 8. 18 and 발행일 2025. 8. 18."
     availability_rule:
       status: PARTIAL
-      rule: "For PIT use, available_at is the actual source release timestamp and must be captured per release."
+      rule: "For PIT use, available_at is the actual source release timestamp; current evidence establishes the release date but not the exact time."
     revision_rule:
       status: NOT_VERIFIED
       rule: null
+      evidence_note: "The captured PDF does not expose an explicit revision/vintage identifier in the inspected front matter. No primary-source version chain has yet been demonstrated."
     unit: index
     frequency: monthly
-    raw_capture_verified: false
-    raw_sha256_recorded: false
+    raw_capture_verified: true
+    raw_sha256_recorded: true
+    raw_capture:
+      artifact_name: "!25.7월 전국주택가격동향조사 보고서.pdf"
+      content_type: application/pdf
+      file_size_bytes: 19319129
+      page_count: 35
+      pdf_version: "1.4"
+      sha256: "6d14bb93128997f635fd4c855c6d5432e7bb8a193f623f310892303ec0944160"
+      integrity_check: passed
+      metadata: "Creator Adobe InDesign 19.4 (Windows); Producer Adobe PDF Library 17.0; CreationDate 2025-08-14T06:25:55Z; ModDate 2025-08-14T06:26:15Z"
     provenance_test_passed: false
-    blocker: "Revision/version behavior and immutable raw capture are not yet verified."
+    blocker: "Raw binary and SHA-256 are now verified, but revision/version evidence and executable PIT provenance test remain incomplete."
 
   - source_id: src_molit_unsold_inventory
     verification_status: PROVISIONAL
@@ -150,10 +162,9 @@ promotion_snapshot:
     - src_court_auction
   REJECTED: []
   rationale: >
-    Official-source semantics are sufficiently established for all five
-    registered sources, but none can be promoted to PRIMARY_VERIFIED until
-    immutable raw capture, raw SHA-256, revision/version handling, and the
-    provenance test are actually demonstrated.
+    The REB July 2025 capture now has independently verified raw binary
+    integrity and SHA-256, but no source is promoted until revision/version
+    handling and the provenance test are actually demonstrated.
 
 next_gate:
   allowed:
