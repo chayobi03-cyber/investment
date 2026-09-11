@@ -17,15 +17,11 @@ from typing import Any
 import yaml
 
 
-REQUIRED_FOR_PRIMARY = (
-    "official_source",
-    "observation_period",
-    "publication",
-    "availability",
-    "revision",
-    "raw_capture",
-    "pit",
-)
+VERIFIED_REVISION_STATES = {
+    "ORIGINAL_VERIFIED",
+    "REVISED_VERIFIED",
+    "NO_REVISION_VERIFIED",
+}
 
 
 def sha256_file(path: Path) -> str:
@@ -43,6 +39,7 @@ def validate_manifest(manifest: dict[str, Any], base_dir: Path) -> dict[str, Any
     availability = manifest.get("availability", {}) or {}
     revision = manifest.get("revision", {}) or {}
     pit = manifest.get("pit", {}) or {}
+    methodology = manifest.get("methodology", {}) or {}
 
     if not manifest.get("source_id"):
         blockers.append("missing source_id")
@@ -60,8 +57,9 @@ def validate_manifest(manifest: dict[str, Any], base_dir: Path) -> dict[str, Any
         blockers.append("raw_sha256 missing")
     if raw.get("content_type") != "application/pdf":
         blockers.append("unexpected MIME type")
-    if revision.get("status") in (None, "NOT_VERIFIED"):
-        blockers.append("revision/vintage policy not verified")
+    revision_status = revision.get("status")
+    if revision_status not in VERIFIED_REVISION_STATES:
+        blockers.append(f"revision/vintage status not verified: {revision_status!r}")
     if not pit.get("provenance_test_passed"):
         blockers.append("PIT provenance test not passed")
 
@@ -85,7 +83,8 @@ def validate_manifest(manifest: dict[str, Any], base_dir: Path) -> dict[str, Any
         "blockers": blockers,
         "expected_sha256": expected_hash,
         "observed_sha256": observed_hash,
-        "methodology": manifest.get("methodology", {}),
+        "revision_status": revision_status,
+        "methodology": methodology,
     }
 
 
@@ -99,7 +98,6 @@ def main() -> int:
         manifest = yaml.safe_load(handle) or {}
 
     result = validate_manifest(manifest, Path.cwd())
-
     print(yaml.safe_dump(result, allow_unicode=True, sort_keys=False).rstrip())
     return 0 if result["primary_verified"] else 2
 
