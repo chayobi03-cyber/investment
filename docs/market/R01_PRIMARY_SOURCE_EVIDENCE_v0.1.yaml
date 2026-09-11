@@ -1,0 +1,167 @@
+version: "0.1"
+status: ACTIVE
+purpose: >
+  Record primary-source verification evidence for the R01 market panel.
+  Metadata verification is separated from raw-capture verification so that
+  PRIMARY_VERIFIED cannot be granted merely because an official URL exists.
+
+verification_policy:
+  primary_verified_requires:
+    - official_source_confirmed
+    - dataset_or_measurement_definition_confirmed
+    - observation_basis_confirmed
+    - publication_rule_confirmed
+    - availability_rule_confirmed
+    - revision_rule_confirmed
+    - unit_and_frequency_confirmed
+    - raw_capture_verified
+    - raw_sha256_recorded
+    - provenance_test_passed
+  otherwise: PROVISIONAL
+  pit_rule: available_at <= decision_timestamp
+  no_historical_reconstruction_from_current_revision: true
+
+evidence_records:
+  - source_id: src_molit_transaction_volume
+    verification_status: PROVISIONAL
+    official_source_url: "https://rt.molit.go.kr/pt/bbs/faqList.do"
+    dataset_definition_status: VERIFIED
+    observation_definition:
+      status: VERIFIED
+      basis: contract_date
+      evidence: "Official system states the supplied transaction data are based on contract date."
+    publication_rule:
+      status: VERIFIED
+      rule: "Normally disclosed on the day after reporting when there is no issue in the disclosure process."
+    availability_rule:
+      status: VERIFIED
+      rule: "Use the actual disclosure time as available_at; disclosure can change or be cancelled after publication."
+    revision_rule:
+      status: PARTIAL
+      rule: "Official system states reporting information can be changed or cancelled in real time."
+      historical_version_reconstruction: NOT_VERIFIED
+    unit: count
+    frequency: monthly_aggregation
+    raw_capture_verified: false
+    raw_sha256_recorded: false
+    provenance_test_passed: false
+    blocker: "Source semantics are verified, but immutable raw capture/version evidence is not yet frozen."
+
+  - source_id: src_reb_house_price
+    verification_status: PROVISIONAL
+    official_source_url: "https://www.reb.or.kr/r-one/portal/stat/easyStatPage/A_2024_00045.do"
+    dataset_definition_status: VERIFIED
+    observation_definition:
+      status: VERIFIED
+      basis: monthly housing price index observation defined by the survey
+    publication_rule:
+      status: VERIFIED
+      rule: "Monthly data are published on the 15th of the following month, or the next day when the date is a holiday."
+    availability_rule:
+      status: PARTIAL
+      rule: "For PIT use, available_at is the actual source release timestamp and must be captured per release."
+    revision_rule:
+      status: NOT_VERIFIED
+      rule: null
+    unit: index
+    frequency: monthly
+    raw_capture_verified: false
+    raw_sha256_recorded: false
+    provenance_test_passed: false
+    blocker: "Revision/version behavior and immutable raw capture are not yet verified."
+
+  - source_id: src_molit_unsold_inventory
+    verification_status: PROVISIONAL
+    official_source_url: "https://www.molit.go.kr/"
+    dataset_definition_status: VERIFIED
+    observation_definition:
+      status: VERIFIED
+      basis: "month-end reporting basis"
+    publication_rule:
+      status: VERIFIED
+      rule: "The statistical quality report records month-end reference and publication at the end of the following month."
+    availability_rule:
+      status: PARTIAL
+      rule: "Treat actual public release as available_at; exact release timestamp still requires capture evidence."
+    revision_rule:
+      status: NOT_VERIFIED
+      rule: null
+    unit: household
+    frequency: monthly
+    raw_capture_verified: false
+    raw_sha256_recorded: false
+    provenance_test_passed: false
+    blocker: "Revision/version behavior and immutable raw capture are not yet verified."
+    supporting_document: "https://mods.go.kr/boardDownload.es?bid=67&list_no=358992&seq=1"
+
+  - source_id: src_fsc_household_credit
+    verification_status: PROVISIONAL
+    official_source_url: "https://www.fsc.go.kr/no010101/87543"
+    dataset_definition_status: VERIFIED
+    observation_definition:
+      status: VERIFIED
+      basis: monthly nationwide household credit trend
+    publication_rule:
+      status: VERIFIED
+      rule: "The official release for July 2026 was published on 2026-08-14 and explicitly labels the monthly figure as provisional."
+    availability_rule:
+      status: VERIFIED
+      rule: "available_at is the publication timestamp of the official release."
+    revision_rule:
+      status: PARTIAL
+      rule: "The release is explicitly provisional; the historical revision/republication process still requires capture verification."
+    unit: KRW
+    frequency: monthly
+    raw_capture_verified: false
+    raw_sha256_recorded: false
+    provenance_test_passed: false
+    blocker: "Provisional-to-final version chain and immutable raw captures are not yet frozen."
+
+  - source_id: src_court_auction
+    verification_status: PROVISIONAL
+    official_source_url: "https://www.courtauction.go.kr/"
+    dataset_definition_status: VERIFIED
+    observation_definition:
+      status: PARTIAL
+      basis: case_event_date
+    publication_rule:
+      status: PARTIAL
+      rule: "Court auction information is updated through case/event information; a reproducible historical publication timestamp rule is not yet established."
+    availability_rule:
+      status: NOT_VERIFIED
+      rule: null
+    revision_rule:
+      status: NOT_VERIFIED
+      rule: null
+    unit: case
+    frequency: daily_event_updates
+    raw_capture_verified: false
+    raw_sha256_recorded: false
+    provenance_test_passed: false
+    blocker: "Historical event versioning and availability timestamps require a dedicated capture protocol."
+
+promotion_snapshot:
+  PRIMARY_VERIFIED: []
+  PROVISIONAL:
+    - src_molit_transaction_volume
+    - src_reb_house_price
+    - src_molit_unsold_inventory
+    - src_fsc_household_credit
+    - src_court_auction
+  REJECTED: []
+  rationale: >
+    Official-source semantics are sufficiently established for all five
+    registered sources, but none can be promoted to PRIMARY_VERIFIED until
+    immutable raw capture, raw SHA-256, revision/version handling, and the
+    provenance test are actually demonstrated.
+
+next_gate:
+  allowed:
+    - source-specific raw capture fixture
+    - release timestamp capture
+    - revision/version comparison
+    - provenance test
+  blocked:
+    - historical_pre_event_panel
+    - threshold_preregistration
+    - backtest
