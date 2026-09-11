@@ -11,16 +11,23 @@ observation_period:
 publication:
   official_release_page: "https://www.reb.or.kr/reb/na/ntt/selectNttInfo.do?mi=9565&nttSn=106925"
   release_title: "25.7월 전국주택가격동향"
-  publication_date: "2025-08-18"
+  scheduled_publication_date: "2025-08-15"
+  actual_publication_date: "2025-08-18"
+  actual_publication_time: null
+  publication_time_precision: date
   publication_date_basis: official_release_page_registration
   scheduled_rule: "Monthly data are normally published on the 15th of the following month; when the scheduled date is a holiday, the next publication day is used."
   observed_release_date: true
+  release_status: published
 
 raw_capture:
   artifact_type: official_attachment_pdf
   artifact_name: "!25.7월 전국주택가격동향조사 보고서.pdf"
   retrieval_url: "https://www.reb.or.kr/reb/na/ntt/selectNttInfo.do?mi=9565&nttSn=106925"
   storage_path: "fixtures/r01/reb_house_price/2025-07/official_attachment.pdf"
+  content_type: application/pdf
+  file_size_bytes: null
+  page_count: null
   raw_sha256: null
   raw_capture_verified: false
   capture_blocker: "The current connector can verify the official release page and attachment identity but cannot reliably retrieve the attachment binary bytes for an independently computed SHA-256."
@@ -28,19 +35,23 @@ raw_capture:
 availability:
   available_at: "2025-08-18"
   precision: date
-  basis: official_release_date
+  basis: actual_official_release_date
   timestamp_verified: false
   conservative_rule_required: true
+  pre_release_use: blocked
+  post_release_use: allowed
 
 revision:
   status: NOT_VERIFIED
   revision_number: null
-  previous_capture_id: null
-  next_revision_expected: true
+  vintage_id: null
+  previous_vintage_id: null
+  next_revision_expected: unknown
   historical_vintage_reconstruction: NOT_VERIFIED
 
 pit:
   rule: "available_at <= decision_timestamp"
+  precision: date
   pre_publication_blocked: true
   post_publication_allowed: true
   provenance_test_passed: false
