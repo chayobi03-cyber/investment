@@ -17,6 +17,8 @@ on:
       - "tests/r01/**"
       - "requirements.txt"
       - ".github/workflows/r01-provenance.yml"
+  schedule:
+    - cron: "17 1 * * *"
   workflow_dispatch:
 
 permissions:
@@ -40,28 +42,60 @@ jobs:
           python -m pip install -r requirements.txt
 
       - name: Run R01 gate tests
-        run: python -m pytest -q tests/r01
+        id: tests
+        shell: bash
+        run: |
+          mkdir -p artifacts/r01
+          set -o pipefail
+          python -m pytest -q tests/r01 --junitxml=artifacts/r01/r01_test_results.xml
 
       - name: Run PIT date-level matrix
+        id: pit
         shell: bash
         run: |
           set -euo pipefail
           manifest="docs/market/fixtures/r01/reb_house_price_2025-07_capture_manifest.yaml"
+          mkdir -p artifacts/r01/pit
 
-          python research/scripts/r01_pit_runner.py "$manifest" 2025-08-17 | tee /tmp/r01_pit_pre.yaml
-          test "$(grep '^decision:' /tmp/r01_pit_pre.yaml | awk '{print $2}')" = "BLOCK"
+          set +e
+          python research/scripts/r01_pit_runner.py "$manifest" 2025-08-17 > artifacts/r01/pit/pre_release.yaml
+          pre_status=$?
+          python research/scripts/r01_pit_runner.py "$manifest" 2025-08-18 > artifacts/r01/pit/release_day.yaml
+          same_status=$?
+          python research/scripts/r01_pit_runner.py "$manifest" 2025-08-19 > artifacts/r01/pit/post_release.yaml
+          post_status=$?
+          set -e
 
-          python research/scripts/r01_pit_runner.py "$manifest" 2025-08-18 | tee /tmp/r01_pit_same.yaml || test $? -eq 2
-          test "$(grep '^decision:' /tmp/r01_pit_same.yaml | awk '{print $2}')" = "HUMAN_REVIEW"
+          test "$pre_status" -eq 0
+          test "$same_status" -eq 2
+          test "$post_status" -eq 0
+          test "$(grep '^decision:' artifacts/r01/pit/pre_release.yaml | awk '{print $2}')" = "BLOCK"
+          test "$(grep '^decision:' artifacts/r01/pit/release_day.yaml | awk '{print $2}')" = "HUMAN_REVIEW"
+          test "$(grep '^decision:' artifacts/r01/pit/post_release.yaml | awk '{print $2}')" = "ALLOW"
 
-          python research/scripts/r01_pit_runner.py "$manifest" 2025-08-19 | tee /tmp/r01_pit_post.yaml
-          test "$(grep '^decision:' /tmp/r01_pit_post.yaml | awk '{print $2}')" = "ALLOW"
+          cat > artifacts/r01/pit_matrix.yaml <<EOF
+pit_matrix:
+  manifest: "$manifest"
+  cases:
+    - decision_timestamp: "2025-08-17"
+      expected: BLOCK
+      exit_code: $pre_status
+    - decision_timestamp: "2025-08-18"
+      expected: HUMAN_REVIEW
+      exit_code: $same_status
+    - decision_timestamp: "2025-08-19"
+      expected: ALLOW
+      exit_code: $post_status
+  status: PASS
+EOF
 
       - name: Generate R01 gate report
+        id: gate
+        if: always()
         shell: bash
         run: |
-          set +e
           mkdir -p artifacts/r01
+          set +e
           python research/scripts/r01_gate_report.py \
             docs/market/fixtures/r01/reb_house_price_2025-07_capture_manifest.yaml \
             --decision-timestamp 2025-08-19 \
@@ -69,27 +103,90 @@ jobs:
           status=$?
           set -e
 
-          # Exit code 2 means the fail-closed gate correctly blocked promotion.
-          # CI execution itself remains GREEN when the report was generated.
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+
           if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
+            echo "Gate report execution failed with exit code $status"
             exit "$status"
           fi
 
           sha256sum artifacts/r01/gate_report.yaml > artifacts/r01/gate_report.sha256
 
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          report_path = Path("artifacts/r01/gate_report.yaml")
+          report = yaml.safe_load(report_path.read_text(encoding="utf-8"))
+          gates = report.get("gates", {})
+          runtime = report.get("runtime", {})
+          out = [
+              "runtime_artifact_check:",
+              f"  status: {gates.get('raw_artifact_runtime_integrity', 'UNKNOWN')}",
+              f"  stored_artifact_checked: {str(runtime.get('stored_artifact_checked', False)).lower()}",
+              f"  observed_sha256: {runtime.get('observed_sha256')}",
+          ]
+          Path("artifacts/r01/runtime_artifact_check.yaml").write_text("\n".join(out) + "\n", encoding="utf-8")
+          PY
+
+      - name: Generate CI evidence
+        id: evidence
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p artifacts/r01
+
+          report_sha=""
+          if [ -f artifacts/r01/gate_report.yaml ]; then
+            report_sha=$(sha256sum artifacts/r01/gate_report.yaml | awk '{print $1}')
+          fi
+
+          gate_exit="${{ steps.gate.outputs.exit_code }}"
+          if [ -z "$gate_exit" ]; then gate_exit="NOT_EXECUTED"; fi
+
           cat > artifacts/r01/ci_evidence.yaml <<EOF
 ci_evidence:
   workflow_name: r01-provenance
   workflow_status: EXECUTED
-  commit_sha: ${GITHUB_SHA}
-  run_id: ${GITHUB_RUN_ID}
-  job_id: ${GITHUB_JOB}
-  gate_report_exit_code: ${status}
-  promotion_blocked: $([ "$status" -eq 2 ] && echo true || echo false)
+  execution_conclusion: "${{ job.status }}"
+  commit_sha: "${GITHUB_SHA}"
+  workflow_run_id: "${GITHUB_RUN_ID}"
+  run_attempt: "${GITHUB_RUN_ATTEMPT}"
+  job_id: "${GITHUB_JOB}"
+  executed_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  event_name: "${GITHUB_EVENT_NAME}"
+  ref: "${GITHUB_REF}"
+  gate_report_exit_code: "${gate_exit}"
+  gate_report_sha256: "${report_sha}"
+  promotion:
+    eligible: false
+    status: PROVISIONAL
 EOF
 
+          sha256sum artifacts/r01/ci_evidence.yaml > artifacts/r01/ci_evidence.sha256
+
+      - name: Write GitHub step summary
+        if: always()
+        run: |
+          {
+            echo "## R01 Provenance CI"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Run: \`${GITHUB_RUN_ID}\` / attempt \`${GITHUB_RUN_ATTEMPT}\`"
+            echo "- Event: \`${GITHUB_EVENT_NAME}\`"
+            echo "- Gate report exit: \`${{ steps.gate.outputs.exit_code || 'NOT_EXECUTED' }}\`"
+            echo "- Evidence artifact: \`r01-provenance-evidence-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}\`"
+            echo "- PRIMARY_VERIFIED is derived by Gate Report and is not inferred from CI success."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload R01 evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: r01-provenance-evidence
+          name: r01-provenance-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/r01/
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: Fail workflow on execution error
+        if: always() && steps.gate.outcome == 'failure'
+        run: exit 1
