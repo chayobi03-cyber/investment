@@ -1,4 +1,4 @@
-"""Generate a deterministic, fail-closed R01 provenance gate report."""
+"""Generate a deterministic, fail-closed R01 gate report."""
 
 from __future__ import annotations
 
@@ -89,8 +89,6 @@ def build_report(manifest: dict[str, Any], base_dir: Path, decision_timestamp: s
         if target.exists() and target.is_file():
             observed_hash = sha256_file(target)
             artifact_gate = "PASS" if observed_hash == raw.get("raw_sha256") else "FAIL"
-        else:
-            artifact_gate = "UNKNOWN"
 
     revision_gate = "PASS" if revision.get("status") in VERIFIED_REVISION_STATES else "FAIL"
     pit_gate = pit_decision(availability, decision_timestamp)
@@ -103,8 +101,8 @@ def build_report(manifest: dict[str, Any], base_dir: Path, decision_timestamp: s
         blockers.append("methodology_provenance_incomplete")
     if raw_capture_gate != "PASS":
         blockers.append("raw_capture_not_verified")
-    if artifact_gate == "FAIL":
-        blockers.append("raw_artifact_hash_mismatch")
+    if artifact_gate != "PASS":
+        blockers.append("raw_artifact_runtime_integrity_not_verified")
     if revision_gate != "PASS":
         blockers.append("revision_vintage_not_verified")
     if pit_gate != "PASS":
@@ -129,7 +127,7 @@ def build_report(manifest: dict[str, Any], base_dir: Path, decision_timestamp: s
         "runtime": {
             "decision_timestamp": decision_timestamp,
             "observed_sha256": observed_hash,
-            "stored_artifact_checked": artifact_gate != "UNKNOWN",
+            "stored_artifact_checked": artifact_gate == "PASS",
         },
         "promotion": {
             "eligible": not blockers,
