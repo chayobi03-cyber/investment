@@ -1,0 +1,54 @@
+capture_id: capture_reb_house_price_2025_07_release_01
+source_id: src_reb_house_price
+dataset_name: 전국주택가격동향조사
+status: PROVISIONAL
+
+observation_period:
+  start: "2025-07-01"
+  end: "2025-07-31"
+  basis: monthly_survey
+
+publication:
+  official_release_page: "https://www.reb.or.kr/reb/na/ntt/selectNttInfo.do?mi=9565&nttSn=106925"
+  release_title: "25.7월 전국주택가격동향"
+  publication_date: "2025-08-18"
+  publication_date_basis: official_release_page_registration
+  scheduled_rule: "Monthly data are normally published on the 15th of the following month; when the scheduled date is a holiday, the next publication day is used."
+  observed_release_date: true
+
+raw_capture:
+  artifact_type: official_attachment_pdf
+  artifact_name: "!25.7월 전국주택가격동향조사 보고서.pdf"
+  retrieval_url: "https://www.reb.or.kr/reb/na/ntt/selectNttInfo.do?mi=9565&nttSn=106925"
+  storage_path: "fixtures/r01/reb_house_price/2025-07/official_attachment.pdf"
+  raw_sha256: null
+  raw_capture_verified: false
+  capture_blocker: "The current connector can verify the official release page and attachment identity but cannot reliably retrieve the attachment binary bytes for an independently computed SHA-256."
+
+availability:
+  available_at: "2025-08-18"
+  precision: date
+  basis: official_release_date
+  timestamp_verified: false
+  conservative_rule_required: true
+
+revision:
+  status: NOT_VERIFIED
+  revision_number: null
+  previous_capture_id: null
+  next_revision_expected: true
+  historical_vintage_reconstruction: NOT_VERIFIED
+
+pit:
+  rule: "available_at <= decision_timestamp"
+  pre_publication_blocked: true
+  post_publication_allowed: true
+  provenance_test_passed: false
+
+promotion:
+  eligible_for_primary_verified: false
+  blocker: "raw binary capture + SHA-256 + revision/vintage evidence + executable provenance test are incomplete."
+
+source_evidence:
+  data_portal: "https://www.data.go.kr/data/15069821/fileData.do"
+  official_research_definition: "https://www.reb.or.kr/r-one/portal/stat/easyStatPage/A_2024_00045.do"
