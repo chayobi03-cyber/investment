@@ -44,7 +44,10 @@ Verified against the official KIS developer examples:
 - market selector `UN` for integrated domestic market
 - default universe is the project's existing ten-stock research universe
 - credentials are read only from Edge Function secrets
-- each run gets a UUID and each observation stores `observed_at` and `available_at`
+- each run gets a UUID and each observation stores PIT `observed_at` and `available_at`
+- `observed_at` is the collector capture timestamp for that KIS snapshot
+- KIS `bsop_date` / `stck_cntg_hour` are provider event metadata preserved inside `raw_payload`; they do not define the snapshot observation timestamp
+- `available_at` is assigned after the symbol requests complete and immediately before persistence, so downstream decisions cannot treat a not-yet-stored observation as available
 - partial provider failure is reported; missing observations are never imputed
 - retries are idempotent through the database identity key
 
