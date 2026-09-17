@@ -26,7 +26,7 @@ where jobname in (
 
 select cron.schedule(
   'investment-market-collector-v1-preopen',
-  '* 23 * * 1-5',
+  '30-59 23 * * 1-5',
   $$
     select net.http_post(
       url := current_setting('app.settings.market_collector_url', true),
