@@ -77,16 +77,6 @@ async function inquirePrice(token: string, appKey: string, appSecret: string, sy
   return (body.output ?? {}) as Record<string, unknown>;
 }
 
-function observationTimestamp(output: Record<string, unknown>, fallback: Date): string {
-  const date = String(output.bsop_date ?? "").trim();
-  const time = String(output.stck_cntg_hour ?? "").trim();
-  if (/^\d{8}$/.test(date) && /^\d{6}$/.test(time)) {
-    const parsed = new Date(`${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}T${time.slice(0, 2)}:${time.slice(2, 4)}:${time.slice(4, 6)}+09:00`);
-    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
-  }
-  return fallback.toISOString();
-}
-
 async function insertRows(rows: Record<string, unknown>[]): Promise<void> {
   const supabaseUrl = requireEnv("SUPABASE_URL");
   const serverKey = requireSupabaseServerKey();
@@ -115,7 +105,7 @@ Deno.serve(async (req: Request) => {
     const appSecret = requireEnv("KIS_APP_SECRET");
     const symbols = parseSymbols();
     const runId = crypto.randomUUID();
-    const availableAt = new Date();
+    const runStartedAt = new Date();
     const token = await issueAccessToken(appKey, appSecret);
 
     const rows: Record<string, unknown>[] = [];
@@ -124,7 +114,9 @@ Deno.serve(async (req: Request) => {
     for (const symbol of symbols) {
       try {
         const output = await inquirePrice(token, appKey, appSecret, symbol);
-        const observedAt = observationTimestamp(output, new Date());
+        // PIT rule: observed_at is the collector capture time, not the provider's last trade time.
+        // KIS bsop_date/stck_cntg_hour remain available inside raw_payload as provider event metadata.
+        const capturedAt = new Date().toISOString();
         rows.push({
           run_id: runId,
           source_id: "KIS_OPEN_API",
@@ -133,8 +125,8 @@ Deno.serve(async (req: Request) => {
           instrument_type: "KOREAN_EQUITY",
           symbol,
           market_session: String(output.market_cls_code ?? output.new_mkop_cls_code ?? "UNKNOWN"),
-          observed_at: observedAt,
-          available_at: new Date().toISOString(),
+          observed_at: capturedAt,
+          available_at: null,
           raw_value: num(output.stck_prpr),
           price: num(output.stck_prpr),
           change_pct: num(output.prdy_ctrt),
@@ -156,10 +148,22 @@ Deno.serve(async (req: Request) => {
       await new Promise((resolve) => setTimeout(resolve, 120));
     }
 
-    if (rows.length) await insertRows(rows);
+    if (rows.length) {
+      const availableAt = new Date().toISOString();
+      for (const row of rows) row.available_at = availableAt;
+      await insertRows(rows);
+    }
 
     const success = Object.keys(failures).length === 0;
-    return new Response(JSON.stringify({ ok: success, run_id: runId, rule_version: RULE_VERSION, requested: symbols.length, inserted: rows.length, failures, available_at: availableAt.toISOString() }), {
+    return new Response(JSON.stringify({
+      ok: success,
+      run_id: runId,
+      rule_version: RULE_VERSION,
+      requested: symbols.length,
+      inserted: rows.length,
+      failures,
+      started_at: runStartedAt.toISOString(),
+    }), {
       status: success ? 200 : 207,
       headers: { "content-type": "application/json" },
     });
