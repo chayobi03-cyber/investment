@@ -62,12 +62,13 @@ RLS is enabled and direct `anon`/`authenticated` table access is revoked. The co
 
 `supabase/cron/market_collector_v1.sql`
 
-The schedule is split into two jobs:
+The schedule is intentionally split around the Korea session boundary:
 
-- `00:00-05:59 UTC`, weekdays
-- `06:00-06:35 UTC`, weekdays
+- `23:30-23:59 UTC` = `08:30-08:59 KST`, weekdays, preserving the existing pre-open checkpoint;
+- `00:00-05:59 UTC` = `09:00-14:59 KST`, weekdays, continuous 1-minute acquisition;
+- `06:00-06:35 UTC` = `15:00-15:35 KST`, weekdays, closing window.
 
-This maps to the intended Korean daytime acquisition window. Database timezone remains UTC.
+Database timezone remains UTC. The pre-open block is a separate Cron job so the collection starts exactly at 08:30 KST rather than collecting the entire prior UTC hour.
 
 ## Secrets / deployment
 
