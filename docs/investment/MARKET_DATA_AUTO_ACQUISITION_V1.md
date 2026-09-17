@@ -47,7 +47,8 @@ Verified against the official KIS developer examples:
 - each run gets a UUID and each observation stores PIT `observed_at` and `available_at`
 - `observed_at` is the collector capture timestamp for that KIS snapshot
 - KIS `bsop_date` / `stck_cntg_hour` are provider event metadata preserved inside `raw_payload`; they do not define the snapshot observation timestamp
-- `available_at` is assigned after the symbol requests complete and immediately before persistence, so downstream decisions cannot treat a not-yet-stored observation as available
+- `available_at` is assigned by the database with `DEFAULT now()` at INSERT time, so the PIT availability gate reflects database persistence time rather than a client-side estimate
+- the collector reports both attempted rows and rows actually inserted; duplicate rows skipped by the database are reported separately
 - partial provider failure is reported; missing observations are never imputed
 - retries are idempotent through the database identity key
 
@@ -57,7 +58,7 @@ KIS officially documents REST and WebSocket access. The WebSocket domestic KRX t
 
 `supabase/schema/market_observations_v1.sql`
 
-The table stores source/feed identity, market session, timestamps, OHLCV/quote fields, revision status, rule version, and the original KIS payload.
+The table stores source/feed identity, market session, timestamps, OHLCV/quote fields, revision status, rule version, and the original KIS payload. `available_at` defaults to the database `now()` value at insert time and must satisfy `available_at >= observed_at`.
 
 RLS is enabled and direct `anon`/`authenticated` table access is revoked. The collector writes with the server-side Supabase secret key only.
 
