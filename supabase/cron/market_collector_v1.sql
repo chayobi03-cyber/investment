@@ -12,12 +12,34 @@
 --      SUPABASE_SERVICE_ROLE_KEY is supported for compatibility; prefer current
 --      SUPABASE_SECRET_KEYS if the deployment surface provides it.
 --
--- Database remains UTC. Korea regular-session acquisition window is represented
--- as UTC ranges: 00:00-05:59 and 06:00-06:35, Mon-Fri.
+-- Database remains UTC. Collection window starts at 08:30 KST (23:30 UTC)
+-- to preserve the existing pre-open checkpoint, then continues through
+-- Korea regular session close at 15:35 KST (06:35 UTC), Mon-Fri.
 
 select cron.unschedule(jobid)
 from cron.job
-where jobname = 'investment-market-collector-v1';
+where jobname in (
+  'investment-market-collector-v1',
+  'investment-market-collector-v1-close',
+  'investment-market-collector-v1-preopen'
+);
+
+select cron.schedule(
+  'investment-market-collector-v1-preopen',
+  '* 23 * * 1-5',
+  $$
+    select net.http_post(
+      url := current_setting('app.settings.market_collector_url', true),
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'supabase_publishable_key'),
+        'x-market-collector-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'market_collector_secret')
+      ),
+      body := jsonb_build_object('scheduled_at', now()),
+      timeout_milliseconds := 10000
+    ) as request_id;
+  $$
+);
 
 select cron.schedule(
   'investment-market-collector-v1',
