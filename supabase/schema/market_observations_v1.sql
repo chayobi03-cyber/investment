@@ -8,7 +8,7 @@ create table if not exists public.market_observations (
   symbol text not null,
   market_session text not null,
   observed_at timestamptz not null,
-  available_at timestamptz not null,
+  available_at timestamptz not null default now(),
   raw_value numeric,
   price numeric,
   change_pct numeric,
