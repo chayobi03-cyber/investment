@@ -105,16 +105,18 @@ async function inquirePrice(
   return (body.output ?? {}) as Record<string, unknown>;
 }
 
-async function insertRows(rows: Record<string, unknown>[]): Promise<void> {
+async function insertRows(rows: Record<string, unknown>[]): Promise<number> {
   const supabaseUrl = requireEnv("SUPABASE_URL");
   const serverKey = requireSupabaseServerKey();
-  const response = await fetch(`${supabaseUrl}/rest/v1/market_observations`, {
+  const url = new URL(`${supabaseUrl}/rest/v1/market_observations`);
+  url.searchParams.set("select", "id");
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       apikey: serverKey,
       Authorization: `Bearer ${serverKey}`,
-      Prefer: "return=minimal,resolution=ignore-duplicates",
+      Prefer: "return=representation,resolution=ignore-duplicates",
     },
     body: JSON.stringify(rows),
   });
@@ -123,6 +125,8 @@ async function insertRows(rows: Record<string, unknown>[]): Promise<void> {
       `Supabase insert failure: ${response.status} ${await response.text()}`,
     );
   }
+  const inserted = await response.json();
+  return Array.isArray(inserted) ? inserted.length : 0;
 }
 
 Deno.serve(async (req: Request) => {
@@ -163,7 +167,6 @@ Deno.serve(async (req: Request) => {
             output.market_cls_code ?? output.new_mkop_cls_code ?? "UNKNOWN",
           ),
           observed_at: capturedAt,
-          available_at: null,
           raw_value: num(output.stck_prpr),
           price: num(output.stck_prpr),
           change_pct: num(output.prdy_ctrt),
@@ -187,11 +190,7 @@ Deno.serve(async (req: Request) => {
       await new Promise((resolve) => setTimeout(resolve, 120));
     }
 
-    if (rows.length) {
-      const availableAt = new Date().toISOString();
-      for (const row of rows) row.available_at = availableAt;
-      await insertRows(rows);
-    }
+    const inserted = rows.length ? await insertRows(rows) : 0;
 
     const success = Object.keys(failures).length === 0;
     return new Response(
@@ -200,7 +199,9 @@ Deno.serve(async (req: Request) => {
         run_id: runId,
         rule_version: RULE_VERSION,
         requested: symbols.length,
-        inserted: rows.length,
+        attempted: rows.length,
+        inserted,
+        skipped_duplicates: rows.length - inserted,
         failures,
         started_at: runStartedAt.toISOString(),
       }),
