@@ -4,8 +4,16 @@ const KIS_BASE = "https://openapi.koreainvestment.com:9443";
 const RULE_VERSION = "market-auto-acquisition-v1";
 
 const DEFAULT_SYMBOLS = [
-  "005930", "000660", "006400", "105560", "005380",
-  "000810", "096770", "034020", "035420", "207940",
+  "005930",
+  "000660",
+  "006400",
+  "105560",
+  "005380",
+  "000810",
+  "096770",
+  "034020",
+  "035420",
+  "207940",
 ];
 
 function requireEnv(name: string): string {
@@ -41,22 +49,40 @@ function parseSymbols(): string[] {
   return symbols.length ? symbols : DEFAULT_SYMBOLS;
 }
 
-async function issueAccessToken(appKey: string, appSecret: string): Promise<string> {
+async function issueAccessToken(
+  appKey: string,
+  appSecret: string,
+): Promise<string> {
   const response = await fetch(`${KIS_BASE}/oauth2/tokenP`, {
     method: "POST",
     headers: { "content-type": "application/json; charset=utf-8" },
-    body: JSON.stringify({ grant_type: "client_credentials", appkey: appKey, appsecret: appSecret }),
+    body: JSON.stringify({
+      grant_type: "client_credentials",
+      appkey: appKey,
+      appsecret: appSecret,
+    }),
   });
   const body = await response.json();
   if (!response.ok || (body.rt_cd !== undefined && body.rt_cd !== "0")) {
-    throw new Error(`KIS token failure: ${response.status} ${JSON.stringify(body)}`);
+    throw new Error(
+      `KIS token failure: ${response.status} ${JSON.stringify(body)}`,
+    );
   }
-  if (!body.access_token) throw new Error("KIS token response missing access_token");
+  if (!body.access_token) {
+    throw new Error("KIS token response missing access_token");
+  }
   return body.access_token as string;
 }
 
-async function inquirePrice(token: string, appKey: string, appSecret: string, symbol: string) {
-  const url = new URL(`${KIS_BASE}/uapi/domestic-stock/v1/quotations/inquire-price`);
+async function inquirePrice(
+  token: string,
+  appKey: string,
+  appSecret: string,
+  symbol: string,
+) {
+  const url = new URL(
+    `${KIS_BASE}/uapi/domestic-stock/v1/quotations/inquire-price`,
+  );
   url.searchParams.set("FID_COND_MRKT_DIV_CODE", "UN");
   url.searchParams.set("FID_INPUT_ISCD", symbol);
   const response = await fetch(url, {
@@ -72,7 +98,9 @@ async function inquirePrice(token: string, appKey: string, appSecret: string, sy
   });
   const body = await response.json();
   if (!response.ok || body.rt_cd !== "0") {
-    throw new Error(`KIS price failure ${symbol}: ${response.status} ${JSON.stringify(body)}`);
+    throw new Error(
+      `KIS price failure ${symbol}: ${response.status} ${JSON.stringify(body)}`,
+    );
   }
   return (body.output ?? {}) as Record<string, unknown>;
 }
@@ -90,7 +118,11 @@ async function insertRows(rows: Record<string, unknown>[]): Promise<void> {
     },
     body: JSON.stringify(rows),
   });
-  if (!response.ok) throw new Error(`Supabase insert failure: ${response.status} ${await response.text()}`);
+  if (!response.ok) {
+    throw new Error(
+      `Supabase insert failure: ${response.status} ${await response.text()}`,
+    );
+  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -98,7 +130,10 @@ Deno.serve(async (req: Request) => {
     const expectedSecret = requireEnv("MARKET_COLLECTOR_SECRET");
     const suppliedSecret = req.headers.get("x-market-collector-secret");
     if (!suppliedSecret || suppliedSecret !== expectedSecret) {
-      return new Response(JSON.stringify({ ok: false, error: "unauthorized" }), { status: 401, headers: { "content-type": "application/json" } });
+      return new Response(
+        JSON.stringify({ ok: false, error: "unauthorized" }),
+        { status: 401, headers: { "content-type": "application/json" } },
+      );
     }
 
     const appKey = requireEnv("KIS_APP_KEY");
@@ -124,7 +159,9 @@ Deno.serve(async (req: Request) => {
           feed: "UN",
           instrument_type: "KOREAN_EQUITY",
           symbol,
-          market_session: String(output.market_cls_code ?? output.new_mkop_cls_code ?? "UNKNOWN"),
+          market_session: String(
+            output.market_cls_code ?? output.new_mkop_cls_code ?? "UNKNOWN",
+          ),
           observed_at: capturedAt,
           available_at: null,
           raw_value: num(output.stck_prpr),
@@ -143,7 +180,9 @@ Deno.serve(async (req: Request) => {
           raw_payload: output,
         });
       } catch (error) {
-        failures[symbol] = error instanceof Error ? error.message : String(error);
+        failures[symbol] = error instanceof Error
+          ? error.message
+          : String(error);
       }
       await new Promise((resolve) => setTimeout(resolve, 120));
     }
@@ -155,19 +194,28 @@ Deno.serve(async (req: Request) => {
     }
 
     const success = Object.keys(failures).length === 0;
-    return new Response(JSON.stringify({
-      ok: success,
-      run_id: runId,
-      rule_version: RULE_VERSION,
-      requested: symbols.length,
-      inserted: rows.length,
-      failures,
-      started_at: runStartedAt.toISOString(),
-    }), {
-      status: success ? 200 : 207,
-      headers: { "content-type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        ok: success,
+        run_id: runId,
+        rule_version: RULE_VERSION,
+        requested: symbols.length,
+        inserted: rows.length,
+        failures,
+        started_at: runStartedAt.toISOString(),
+      }),
+      {
+        status: success ? 200 : 207,
+        headers: { "content-type": "application/json" },
+      },
+    );
   } catch (error) {
-    return new Response(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }), { status: 500, headers: { "content-type": "application/json" } });
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+      { status: 500, headers: { "content-type": "application/json" } },
+    );
   }
 });
