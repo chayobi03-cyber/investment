@@ -86,9 +86,8 @@ def build_live_observation(name: str, group: str, result: dict, available_at: da
     if not result.get("ok"):
         return None
     observed_at = datetime.fromisoformat(result["timestamp"].replace("Z", "+00:00"))
-    prices = [result.get("prev_price"), result.get("price")]
-    prices = [x for x in prices if x is not None]
-    if not prices:
+    prices = [result.get("price")]
+    if not prices or prices[0] is None:
         return None
     asset_class = "equity" if group in {"korea_leaders", "us_leaders"} else "macro" if group == "macro" else "index"
     obs = build_observation(
@@ -109,6 +108,25 @@ def build_live_observation(name: str, group: str, result: dict, available_at: da
     obs["normalized_value"] = result.get("price")
     obs["normalization_status"] = "NOT_APPLIED_LIVE"
     obs["live_status"] = "LIVE_TRANSPORT_ONLY"
+    obs["observation_interval"] = "5m"
+    obs["intraday_change_pct"] = result.get("change_pct")
+    obs["quality"]["status"] = "AMBER"
+    obs["quality"]["missing_fields"] = [
+        "returns_pct.d1",
+        "returns_pct.d3",
+        "returns_pct.d5",
+        "returns_pct.d20",
+        "returns_pct.d60",
+        "returns_pct.d120",
+        "returns_pct.d252",
+        "location.distance_ma20_pct",
+        "location.distance_ma50_pct",
+        "location.distance_ma200_pct",
+        "location.drawdown_20d_high_pct",
+        "trend.ma20_slope_pct",
+        "trend.ma50_slope_pct",
+        "trend.ma200_slope_pct",
+    ]
     obs["freshness"] = freshness(
         observed_at,
         available_at,
