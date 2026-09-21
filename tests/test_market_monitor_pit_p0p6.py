@@ -34,6 +34,10 @@ BACKTEST = load(
     "p0_p6_backtest_test",
     ROOT / "scripts/market_monitor/p0_p6_backtest.py",
 )
+PIT_CONTRACT = load(
+    "pit_contract_test",
+    ROOT / "scripts/market_monitor/pit_contract.py",
+)
 
 
 def test_live_monitor_emits_observation_schema_v3():
@@ -64,11 +68,57 @@ def test_live_monitor_emits_observation_schema_v3():
     assert row["quality"]["status"] == "AMBER"
 
 
+def test_historical_builder_keeps_vendor_ohlc_raw():
+    frame = BUILDER.pd.DataFrame(
+        {
+            "date": [BUILDER.pd.Timestamp("2026-01-01", tz="UTC")],
+            "open": [100.0],
+            "high": [101.0],
+            "low": [99.0],
+            "close_raw": [100.0],
+            "close": [100.0],
+            "volume": [1000.0],
+        }
+    )
+    rows = BUILDER.series_feature_rows("SAMSUNG", frame)
+    assert rows[0]["price_vintage_policy"] == "VENDOR_CURRENT_RAW"
+    assert rows[0]["corporate_action_adjustment_applied"] is False
+    assert rows[0]["normalization_status"] == "RAW_OHLC_NO_CORPORATE_ACTION_ADJUSTMENT"
+
+
 def test_historical_split_boundaries_are_time_ordered():
     assert BUILDER.split_for_date("2018-12-31") == "development"
     assert BUILDER.split_for_date("2019-01-01") == "validation"
     assert BUILDER.split_for_date("2021-12-31") == "validation"
     assert BUILDER.split_for_date("2022-01-01") == "oos"
+
+
+def test_pit_contract_blocks_vendor_history_proxy():
+    result = PIT_CONTRACT.validate_pit_manifest(
+        {
+            "pit_status": "VENDOR_HISTORY_PROXY",
+            "pit_archival_revisions": False,
+            "price_vintage_policy": "VENDOR_CURRENT_RAW",
+        }
+    )
+    assert result["status"] == "NOT_GREEN"
+    assert result["strict_pit"] is False
+    assert "vendor history is not archival PIT" in result["blockers"]
+
+
+def test_pit_contract_accepts_complete_archival_manifest():
+    result = PIT_CONTRACT.validate_pit_manifest(
+        {
+            "pit_status": "STRICT_PIT_ARCHIVAL",
+            "pit_archival_revisions": True,
+            "price_vintage_policy": "AS_PUBLISHED",
+            "source_version": "krx-archive-v1",
+            "artifact_sha256": "abc",
+        }
+    )
+    assert result["status"] == "GREEN"
+    assert result["strict_pit"] is True
+    assert result["blockers"] == []
 
 
 def test_backtest_runs_p0_to_p5_and_blocks_p6():
@@ -113,6 +163,7 @@ def test_backtest_runs_p0_to_p5_and_blocks_p6():
                     "asset_count": 10,
                     "fundamentals_status": "DATA_NOT_READY",
                     "pit_archival_revisions": False,
+                    "price_vintage_policy": "VENDOR_CURRENT_RAW",
                 }
             ),
             encoding="utf-8",
@@ -124,6 +175,8 @@ def test_backtest_runs_p0_to_p5_and_blocks_p6():
         assert result["splits"]["oos"]["P5"]["status"] == "OK"
         assert result["splits"]["oos"]["P6"]["status"] == "DATA_NOT_READY"
         assert result["splits"]["oos"]["P0"]["5d_mean_return_pct"] is not None
+        assert "false_positive_rate" not in result["splits"]["oos"]["P0"]
+        assert result["splits"]["oos"]["P0"]["classification"]["status"] == "DATA_NOT_READY"
 
 
 def test_decision_pipeline_primitives_remain_compatible():
