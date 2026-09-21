@@ -41,5 +41,25 @@ Observation Schema → signed shock → freshness → relative strength/breadth 
 ## 8. Guardrail
 Until PIT history, forward outcomes, episode labels and required evidence are complete, the backtest status is DATA_NOT_READY. No live MarketScore/BuyStrength change follows from this research branch.
 
-## 9. Next action
-Wire the existing market-monitor collector to Observation Schema v3.0, build the historical PIT panel, freeze episode rules, then run P0→P6 across development/validation/OOS and walk-forward splits.
+## 9. Execution lessons from 2026-09-22
+- The existing Market Monitor can transport Observation Schema v3.0 without pretending that a 5-minute payload contains daily features.
+- Live 5-minute change must remain separate from d1/d5/d20 daily features; missing daily features stay NULL and quality remains AMBER.
+- The historical pipeline can execute end-to-end on vendor history, but `VENDOR_HISTORY_PROXY` is not equivalent to strict archival PIT.
+- Adjusted historical OHLC can embed future corporate-action/dividend information. It must not be silently labeled as strict PIT evidence.
+- P0→P5 can be measured with forward next-session-open outcomes while P6 remains fail-closed until PIT fundamentals are connected.
+- P1 produced the same episode set as P0 in this run, so the current P1 condition is not discriminating on this dataset.
+- P5 has only 20 OOS episodes and its validation result differs materially from OOS; both are reasons to treat the observed OOS lift as provisional.
+- A metric named `false_positive_rate` must have a separately defined classification target. A complement of positive 20D return is not automatically a classification false-positive rate.
+
+## 10. Current state
+The end-to-end research path is now executable:
+Market Monitor → Observation v3.0 → historical vendor-history proxy → episode clustering → P0→P5 outcomes → walk-forward diagnostics.
+
+P6 remains DATA_NOT_READY. Strict PIT remains NOT_GREEN. No live MarketScore/BuyStrength rule has been changed.
+
+## 11. Next action
+1. Replace the vendor-history proxy with strict PIT/as-published or action-aware historical vintages.
+2. Connect archival PIT fundamentals and complete P6.
+3. Add costs/slippage/execution constraints and formal falsification/sensitivity tests.
+4. Correct the `false_positive_rate` semantics before the next research release.
+5. Rerun P0→P6 and freeze the evidence artifact before any rule revision.
