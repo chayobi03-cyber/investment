@@ -1,6 +1,13 @@
 name: Historical PIT + P0-P6 Research
 
 on:
+  push:
+    branches:
+      - "feat/observation-shock-episode-p0p6-v1"
+    paths:
+      - "scripts/market_monitor/**"
+      - "tests/test_market_monitor_pit_p0p6.py"
+      - ".github/workflows/historical-p0-p6-research.yml"
   pull_request:
     paths:
       - "scripts/market_monitor/**"
