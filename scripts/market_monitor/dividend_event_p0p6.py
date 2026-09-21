@@ -57,7 +57,7 @@ def event_edge(
     }
 
 
-def eligible(row: dict[str, Any], *, asset_id: str = "SAMSUNG_ELECTRONICS") -> bool:
+def eligible(row: dict[str, Any], *, asset_id: str = "SAMSUNG") -> bool:
     return (
         str(row.get("asset_id")) == asset_id
         and WINDOW_START <= str(row.get("date")) <= WINDOW_END
