@@ -63,3 +63,9 @@ P6 remains DATA_NOT_READY. Strict PIT remains NOT_GREEN. No live MarketScore/Buy
 3. Add costs/slippage/execution constraints and formal falsification/sensitivity tests.
 4. Correct the `false_positive_rate` semantics before the next research release.
 5. Rerun P0→P6 and freeze the evidence artifact before any rule revision.
+
+## 12. PIT hardening after the first backtest
+- Raw vendor OHLC must be preserved without adjusted-price factors. This removes a known corporate-action leakage path but does not create archival revision history.
+- Strict PIT is now an explicit manifest contract: archival revisions, vintage policy, source version, and immutable artifact hash are mandatory.
+- `VENDOR_HISTORY_PROXY` remains a valid research transport state, but it can never satisfy the strict PIT gate.
+- `false_positive_rate` is a classification metric, not the complement of forward-return positive rate. Without explicit prediction and realized labels over a defined target universe, classification status is DATA_NOT_READY.
