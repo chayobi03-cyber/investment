@@ -1,0 +1,73 @@
+name: market-monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 15-minute polling. GitHub Actions supports scheduled workflows down to 5 minutes.
+    # Offset from the hour to reduce scheduler contention.
+    - cron: "7,22,37,52 * * * 1-5"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: market-monitor
+  cancel-in-progress: true
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Restore previous runtime state
+        run: |
+          mkdir -p runtime
+          if git fetch origin runtime/market-state:refs/remotes/origin/runtime/market-state; then
+            git show origin/runtime/market-state:runtime/market_state.json > runtime/market_state.json || true
+          fi
+
+      - name: Run market monitor
+        run: |
+          python scripts/market_monitor/poll.py | tee /tmp/event.json
+          cp runtime/market_state.json /tmp/market_state.json
+
+      - name: Validate JSON
+        run: python -m json.tool /tmp/market_state.json >/dev/null
+
+      - name: Update runtime branch
+        run: |
+          git fetch origin runtime/market-state:refs/remotes/origin/runtime/market-state || true
+          if git show-ref --verify --quiet refs/remotes/origin/runtime/market-state; then
+            git switch -C runtime/market-state origin/runtime/market-state
+          else
+            git switch -C runtime/market-state
+          fi
+          mkdir -p runtime
+          cp /tmp/market_state.json runtime/market_state.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add runtime/market_state.json
+          git commit -m "chore(market-monitor): update runtime state" || true
+          git push origin HEAD:runtime/market-state
+
+      - name: Upload runtime snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: market-monitor-state
+          path: /tmp/market_state.json
+          retention-days: 7
+
+      - name: Print compact event
+        run: |
+          python - <<'PY'
+          import json
+          d = json.load(open("/tmp/market_state.json", encoding="utf-8"))
+          e = d["event"]
+          print(f"ALERT={e['alert']} SEVERITY={e['severity']}")
+          print("DELTA=" + "; ".join(e["delta"]))
+          print("DATA_QUALITY=" + e["data_quality"])
+          print("SESSION=" + e["session"])
+          PY

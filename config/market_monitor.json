@@ -1,0 +1,50 @@
+{
+  "version": "2.0",
+  "symbols": {
+    "indices": {
+      "KOSPI": "^KS11",
+      "KOSDAQ": "^KQ11",
+      "SP500": "^GSPC",
+      "NASDAQ": "^IXIC",
+      "SOX": "^SOX",
+      "VIX": "^VIX"
+    },
+    "macro": {
+      "US10Y": "^TNX",
+      "US2Y": "2YY=F",
+      "USD_KRW": "KRW=X",
+      "USD_JPY": "JPY=X",
+      "DXY": "DX-Y.NYB",
+      "WTI": "CL=F",
+      "BRENT": "BZ=F",
+      "GOLD": "GC=F"
+    },
+    "korea_leaders": {
+      "SAMSUNG": "005930.KS",
+      "SK_HYNIX": "000660.KS",
+      "SK_SQUARE": "402340.KS",
+      "SAMSUNG_SDI": "006400.KS",
+      "KB_FIN": "105560.KS",
+      "HYUNDAI": "005380.KS",
+      "SAMSUNG_FIRE": "000810.KS",
+      "SK_INNO": "096770.KS",
+      "DOOSAN_ENERBILITY": "034020.KS",
+      "NAVER": "035420.KS",
+      "SAMSUNG_BIO": "207940.KS"
+    },
+    "us_leaders": {
+      "TSM": "TSM",
+      "AVGO": "AVGO"
+    }
+  },
+  "thresholds": {
+    "material_abs_pct_15m": {
+      "index": 1.0,
+      "macro": 0.5,
+      "leader": 2.0
+    },
+    "breadth_proxy_red": 0.30,
+    "breadth_proxy_green": 0.70,
+    "max_stale_minutes": 30
+  }
+}
