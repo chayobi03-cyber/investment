@@ -114,16 +114,12 @@ def fetch_one(name: str, symbol: str) -> tuple[str, pd.DataFrame | None, str | N
                 df[col] = pd.to_numeric(df[col], errors="coerce")
 
         raw_close = df["Close"]
-        if (
-            "Adj Close" in df.columns
-            and name not in {"VIX", "US10Y", "USD_KRW", "USD_JPY", "DXY", "WTI", "BRENT", "GOLD"}
-        ):
-            factor = (df["Adj Close"] / raw_close).replace([float("inf"), float("-inf")], pd.NA)
-            factor = factor.fillna(1.0)
-            close = df["Adj Close"].fillna(raw_close)
-        else:
-            factor = pd.Series(1.0, index=df.index)
-            close = raw_close
+
+        # Preserve vendor-published OHLC rather than applying adjusted close
+        # factors. Adjusted OHLC can embed future dividend/corporate-action
+        # information and therefore contaminates strict PIT research.
+        factor = pd.Series(1.0, index=df.index)
+        close = raw_close
 
         out = pd.DataFrame(
             {
@@ -171,7 +167,9 @@ def series_feature_rows(name: str, df: pd.DataFrame) -> list[dict[str, Any]]:
                 "pit_status": PIT_STATUS,
                 "raw_value": float(df.iloc[i]["close_raw"]),
                 "normalized_value": float(df.iloc[i]["close"]),
-                "normalization_status": "ADJUSTED_OHLC_WHEN_AVAILABLE",
+                "normalization_status": "RAW_OHLC_NO_CORPORATE_ACTION_ADJUSTMENT",
+                "price_vintage_policy": "VENDOR_CURRENT_RAW",
+                "corporate_action_adjustment_applied": False,
                 "date": dt.date().isoformat(),
             }
         )
@@ -274,9 +272,6 @@ def make_event(
         day.get(name) is not None for name in ("WTI", "US10Y", "USD_KRW", "VIX")
     )
 
-    # Evidence-first: synchronized macro stress is the only evidence we can
-    # construct from the vendor history itself. No headline/company evidence
-    # is invented; such cases stay UNKNOWN in P5.
     attribution_confidence = "INFERRED" if worsening >= 1 and (d20 is not None and d20 < 0) else "UNKNOWN"
     attribution_pass = attribution_confidence != "UNKNOWN"
 
@@ -447,6 +442,7 @@ def build(out_dir: Path, workers: int = 5) -> dict[str, Any]:
         "pit_status": PIT_STATUS,
         "source": SOURCE,
         "source_id": SOURCE_ID,
+        "source_version": "yfinance-vendor-current",
         "start_date": START_DATE,
         "built_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "series_requested": len(SYMBOLS),
@@ -459,9 +455,13 @@ def build(out_dir: Path, workers: int = 5) -> dict[str, Any]:
         "event_rows": len(events),
         "fundamentals_status": "DATA_NOT_READY",
         "pit_archival_revisions": False,
+        "price_vintage_policy": "VENDOR_CURRENT_RAW",
+        "corporate_action_adjustment_applied": False,
+        "strict_pit_eligible": False,
         "note": (
-            "Historical vendor prices are usable for price/market path experiments, "
-            "but this is not an archival point-in-time revision database. "
+            "Vendor historical OHLC is kept raw to avoid adjusted-price leakage, "
+            "but vendor revision history is not archived. This remains a "
+            "VENDOR_HISTORY_PROXY and is not strict archival PIT. "
             "P6 remains blocked until PIT fundamentals are connected."
         ),
     }
