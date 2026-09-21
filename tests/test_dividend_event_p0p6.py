@@ -27,7 +27,7 @@ def test_event_edge_uses_net_dividend():
 def test_event_window_excludes_ex_date_as_entry():
     mod = load("dividend_event2", MONITOR / "dividend_event_p0p6.py")
     rows = [
-        {"asset_id": "SAMSUNG_ELECTRONICS", "date": "2026-09-28", "close": 275000},
+        {"asset_id": "SAMSUNG", "date": "2026-09-28", "close": 275000},
         {"asset_id": "SAMSUNG_ELECTRONICS", "date": "2026-09-29", "close": 270000},
     ]
     out = mod.build_event_rows(rows, gross_dividend=4604)
