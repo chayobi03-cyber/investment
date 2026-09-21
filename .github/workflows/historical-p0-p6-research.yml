@@ -7,6 +7,7 @@ on:
     paths:
       - "scripts/market_monitor/**"
       - "tests/test_market_monitor_pit_p0p6.py"
+      - "tests/test_dividend_event_p0p6.py"
       - ".github/workflows/historical-p0-p6-research.yml"
   pull_request:
     paths:
@@ -54,6 +55,17 @@ jobs:
         run: |
           python scripts/market_monitor/p0_p6_backtest.py             artifacts/historical_pit_v3/p0p6_events.jsonl             --manifest artifacts/historical_pit_v3/manifest.json             --output artifacts/historical_pit_v3/p0p6_backtest.json
           cat artifacts/historical_pit_v3/p0p6_backtest.json
+
+      - name: Run Samsung dividend-event overlay
+        env:
+          PYTHONPATH: .
+        run: |
+          python scripts/market_monitor/dividend_event_p0p6.py \
+            artifacts/historical_pit_v3/p0p6_events.jsonl \
+            --gross-dividend 4604 \
+            --tax-rate 0.154 \
+            --output artifacts/historical_pit_v3/samsung_dividend_event_overlay.json
+          cat artifacts/historical_pit_v3/samsung_dividend_event_overlay.json
 
       - name: Upload PIT and backtest artifacts
         uses: actions/upload-artifact@v4
