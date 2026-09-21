@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Episode-clustered P0~P6 backtest harness.
 
-P0-P5 are executable when the historical PIT-like price/market panel and
-forward outcomes are present. P6 stays DATA_NOT_READY until archival PIT
-fundamentals are connected; no fundamental values are fabricated.
+P0-P5 are executable when the historical price/market panel and forward
+outcomes are present. P6 stays DATA_NOT_READY until archival PIT fundamentals
+are connected; no fundamental values are fabricated.
+
+This module never derives a classification false-positive rate from a return
+positive-rate complement. A classification target needs an explicit predicted
+label and an explicit realized label across a defined target universe.
 """
 from __future__ import annotations
 
@@ -12,6 +16,8 @@ import json
 from pathlib import Path
 from statistics import median
 from typing import Any
+
+from scripts.market_monitor.pit_contract import validate_pit_manifest
 
 HORIZONS = (5, 20, 60)
 REQUIRED = {
@@ -105,7 +111,6 @@ def _forward_metrics(rows: list[dict[str, Any]], horizon: int) -> dict[str, Any]
     returns: list[float] = []
     maes: list[float] = []
     rebound_sessions: list[int] = []
-    opportunity_labels: list[bool] = []
 
     for row in rows:
         entry = row.get("entry_open")
@@ -129,10 +134,7 @@ def _forward_metrics(rows: list[dict[str, Any]], horizon: int) -> dict[str, Any]
         if hit is not None:
             rebound_sessions.append(hit)
 
-        if row.get("entry_opportunity_label") is not None:
-            opportunity_labels.append(bool(row["entry_opportunity_label"]))
-
-    result = {
+    return {
         "n_evaluable": len(returns),
         "mean_return_pct": sum(returns) / len(returns) if returns else None,
         "median_return_pct": median(returns) if returns else None,
@@ -142,10 +144,41 @@ def _forward_metrics(rows: list[dict[str, Any]], horizon: int) -> dict[str, Any]
         "post_entry_drawdown_pct": min(maes) if maes else None,
         "time_to_rebound_median_sessions": median(rebound_sessions) if rebound_sessions else None,
     }
-    if opportunity_labels:
-        result["false_positive_rate"] = 1.0 - (sum(opportunity_labels) / len(opportunity_labels))
-        result["opportunity_base_n"] = len(opportunity_labels)
-    return result
+
+
+def classification_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    pairs = [
+        (row.get("signal_predicted_positive"), row.get("actual_positive_label"))
+        for row in rows
+    ]
+    pairs = [(bool(pred), bool(actual)) for pred, actual in pairs if pred is not None and actual is not None]
+    if not pairs:
+        return {
+            "status": "DATA_NOT_READY",
+            "reason": (
+                "explicit signal_predicted_positive and actual_positive_label "
+                "are required across a defined target universe"
+            ),
+        }
+
+    tp = sum(pred and actual for pred, actual in pairs)
+    fp = sum(pred and not actual for pred, actual in pairs)
+    tn = sum(not pred and not actual for pred, actual in pairs)
+    fn = sum(not pred and actual for pred, actual in pairs)
+    predicted_positive = tp + fp
+    actual_positive = tp + fn
+
+    return {
+        "status": "OK",
+        "n": len(pairs),
+        "true_positive": tp,
+        "false_positive": fp,
+        "true_negative": tn,
+        "false_negative": fn,
+        "false_positive_rate": fp / (fp + tn) if (fp + tn) else None,
+        "false_negative_rate": fn / actual_positive if actual_positive else None,
+        "positive_predictive_value": tp / predicted_positive if predicted_positive else None,
+    }
 
 
 def metrics(
@@ -167,6 +200,7 @@ def metrics(
         for key, value in horizon_metrics.items():
             out[f"{horizon}d_{key}"] = value
 
+    out["classification"] = classification_metrics(rows)
     return out
 
 
@@ -213,18 +247,20 @@ def run(path: Path, manifest_path: Path | None = None) -> dict[str, Any]:
     if manifest_path and manifest_path.exists():
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
+    pit_gate = validate_pit_manifest(manifest)
     if manifest.get("pit_status") != "VENDOR_HISTORY_PROXY":
         return {
             "status": "DATA_NOT_READY",
             "reason": "unexpected or missing PIT provenance status",
+            "pit_gate": pit_gate,
         }
 
     if int(manifest.get("pit_rows", 0)) <= 0:
-        return {"status": "DATA_NOT_READY", "reason": "no PIT observation rows"}
+        return {"status": "DATA_NOT_READY", "reason": "no PIT observation rows", "pit_gate": pit_gate}
 
     universe_asset_days = int(manifest.get("pit_asset_rows", 0) or 0)
     if universe_asset_days <= 0:
-        return {"status": "DATA_NOT_READY", "reason": "no asset-level PIT rows"}
+        return {"status": "DATA_NOT_READY", "reason": "no asset-level PIT rows", "pit_gate": pit_gate}
 
     result: dict[str, Any] = {}
     for split in ("development", "validation", "oos"):
@@ -274,15 +310,19 @@ def run(path: Path, manifest_path: Path | None = None) -> dict[str, Any]:
     return {
         "status": "PARTIAL_OK",
         "pit_status": manifest.get("pit_status"),
+        "pit_gate": pit_gate,
         "pit_archival_revisions": bool(manifest.get("pit_archival_revisions")),
+        "price_vintage_policy": manifest.get("price_vintage_policy"),
         "fundamentals_status": manifest.get("fundamentals_status", "DATA_NOT_READY"),
         "splits": result,
         "walk_forward_frozen_thresholds": walk_forward,
         "research_note": (
             "P0-P5 are actual episode-clustered results on the historical vendor "
-            "price/market panel. P6 is explicitly blocked because archival PIT "
-            "fundamental revision data is unavailable. This is research evidence, "
-            "not a promotion-grade trading validation."
+            "price/market panel. Classification false-positive metrics remain "
+            "DATA_NOT_READY until explicit prediction and outcome labels exist "
+            "across the target universe. P6 is explicitly blocked because archival "
+            "PIT fundamental revision data is unavailable. This is research "
+            "evidence, not promotion-grade trading validation."
         ),
     }
 
