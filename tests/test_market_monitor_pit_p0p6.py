@@ -183,3 +183,59 @@ def test_decision_pipeline_primitives_remain_compatible():
     shock = DECISION.signed_shock(102.0, 100.0, stress_polarity=1)
     assert shock["raw_pct"] > 0
     assert shock["stress_signed_pct"] > 0
+
+def test_dart_fundamental_pit_respects_filing_time():
+    dart = load(
+        "pit_fundamentals_test",
+        ROOT / "scripts/market_monitor/pit_fundamentals.py",
+    )
+    rows = [
+        {
+            "corp_code": "00126380",
+            "corp_name": "Example",
+            "stock_code": "000000",
+            "rcept_no": "20260331000001",
+            "rcept_dt": "20260331",
+            "bsns_year": "2025",
+            "reprt_code": "11011",
+            "fs_div": "CFS",
+            "sj_div": "BS",
+            "account_id": "ifrs-full_Assets",
+            "account_nm": "자산총계",
+            "thstrm_amount": "1000000",
+        },
+        {
+            "corp_code": "00126380",
+            "corp_name": "Example",
+            "stock_code": "000000",
+            "rcept_no": "20260630000001",
+            "rcept_dt": "20260630",
+            "bsns_year": "2026",
+            "reprt_code": "11011",
+            "fs_div": "CFS",
+            "sj_div": "BS",
+            "account_id": "ifrs-full_Assets",
+            "account_nm": "자산총계",
+            "thstrm_amount": "1200000",
+        },
+    ]
+    decision_at = datetime(2026, 5, 1, tzinfo=timezone.utc)
+    result = dart.available_facts(rows, decision_at=decision_at)
+    assert result["status"] == "OK"
+    assert result["eligible_count"] == 1
+    assert result["facts"][0]["rcept_no"] == "20260331000001"
+    assert result["facts"][0]["pit_status"] == "DART_AS_PUBLISHED_CAPTURE"
+    assert result["excluded_count"] == 1
+
+
+def test_dart_fundamental_pit_blocks_latest_value_without_filing_provenance():
+    dart = load(
+        "pit_fundamentals_missing_test",
+        ROOT / "scripts/market_monitor/pit_fundamentals.py",
+    )
+    result = dart.available_facts(
+        [{"account_id": "ifrs-full_Assets", "account_nm": "자산총계"}],
+        decision_at=datetime(2026, 5, 1, tzinfo=timezone.utc),
+    )
+    assert result["status"] == "DATA_NOT_READY"
+    assert result["eligible_count"] == 0
