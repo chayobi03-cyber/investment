@@ -229,6 +229,20 @@ def make_event(
 
     breadth = daily_breadth(day)
     macro_moves, worsening = macro_context(day)
+    macro_signed_shocks = {
+        name: {
+            "raw_pct": value,
+            "stress_signed_pct": value,
+            "direction": (
+                "STRESS_INCREASING"
+                if value is not None and value > 0
+                else "STRESS_DECREASING"
+                if value is not None and value < 0
+                else "UNKNOWN"
+            ),
+        }
+        for name, value in macro_moves.items()
+    }
 
     dd20 = row["location"]["drawdown_20d_high_pct"]
     dd60 = row["location"]["drawdown_60d_high_pct"]
@@ -284,6 +298,7 @@ def make_event(
         "rs20": rs20,
         "breadth_proxy": breadth,
         "macro_moves_d1": macro_moves,
+        "macro_signed_shocks_d1": macro_signed_shocks,
         "attribution_confidence": attribution_confidence,
         "attribution_status": "MARKET_TRANSMISSION_ONLY",
         "pit_status": PIT_STATUS,
@@ -420,6 +435,13 @@ def build(out_dir: Path, workers: int = 5) -> dict[str, Any]:
         for row in events:
             fh.write(json.dumps(row, ensure_ascii=False) + "\n")
 
+    pit_asset_rows = sum(len(rows_by_name.get(asset, [])) for asset in LEADERS)
+    pit_asset_days_by_year: dict[str, int] = {}
+    for asset in LEADERS:
+        for row in rows_by_name.get(asset, []):
+            year = row["date"][:4]
+            pit_asset_days_by_year[year] = pit_asset_days_by_year.get(year, 0) + 1
+
     manifest = {
         "schema_version": "3.0",
         "pit_status": PIT_STATUS,
@@ -431,6 +453,8 @@ def build(out_dir: Path, workers: int = 5) -> dict[str, Any]:
         "series_downloaded": len(downloaded),
         "series_failed": failures,
         "pit_rows": sum(len(value) for value in rows_by_name.values()),
+        "pit_asset_rows": pit_asset_rows,
+        "pit_asset_days_by_year": pit_asset_days_by_year,
         "asset_count": len(LEADERS),
         "event_rows": len(events),
         "fundamentals_status": "DATA_NOT_READY",
