@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 from pathlib import Path
 
@@ -53,5 +54,9 @@ def test_unknown_market_values_stay_empty(tmp_path: Path) -> None:
         "market": {"usdkrw": None, "regime": "UNKNOWN"},
     }
     record_live_review(payload, root=tmp_path)
-    text = (tmp_path / "market_snapshots.csv").read_text(encoding="utf-8")
-    assert '""' in text
+    path = tmp_path / "market_snapshots.csv"
+    with path.open(encoding="utf-8", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    assert rows
+    assert rows[0]["usdkrw"] == ""
+    assert rows[0]["regime"] == "UNKNOWN"
