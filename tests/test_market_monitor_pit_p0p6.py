@@ -105,6 +105,8 @@ def test_backtest_runs_p0_to_p5_and_blocks_p6():
                 {
                     "pit_status": "VENDOR_HISTORY_PROXY",
                     "pit_rows": 1000,
+                    "pit_asset_rows": 1000,
+                    "pit_asset_days_by_year": {"2022": 1000},
                     "asset_count": 10,
                     "fundamentals_status": "DATA_NOT_READY",
                     "pit_archival_revisions": False,
