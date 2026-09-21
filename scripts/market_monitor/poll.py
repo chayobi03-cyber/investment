@@ -18,6 +18,11 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
+try:
+    from scripts.market_monitor.decision_pipeline import build_observation, freshness, signed_shock
+except ModuleNotFoundError:
+    from decision_pipeline import build_observation, freshness, signed_shock
+
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG_PATH = ROOT / "config" / "market_monitor.json"
 LOCAL_STATE = ROOT / "runtime" / "market_state.json"
@@ -75,6 +80,47 @@ def safe_fetch(symbol: str) -> dict:
         return {"ok": True, **fetch_chart(symbol)}
     except Exception as exc:
         return {"ok": False, "symbol": symbol, "error": f"{type(exc).__name__}: {exc}"}
+
+
+def build_live_observation(name: str, group: str, result: dict, available_at: datetime) -> dict | None:
+    if not result.get("ok"):
+        return None
+    observed_at = datetime.fromisoformat(result["timestamp"].replace("Z", "+00:00"))
+    prices = [result.get("prev_price"), result.get("price")]
+    prices = [x for x in prices if x is not None]
+    if not prices:
+        return None
+    asset_class = "equity" if group in {"korea_leaders", "us_leaders"} else "macro" if group == "macro" else "index"
+    obs = build_observation(
+        series_id=name,
+        symbol=result["symbol"],
+        observed_at=observed_at,
+        available_at=available_at,
+        source="yahoo_finance_chart",
+        prices=prices,
+        revision_status="vendor_current_live",
+        asset_class=asset_class,
+        session=session_bucket(),
+    )
+    polarity = 1 if name in {"VIX", "US10Y", "USD_KRW", "USD_JPY", "DXY", "WTI", "BRENT"} else None
+    obs["source_id"] = "yahoo_finance_chart"
+    obs["rule_version"] = "observation-v3.0-live-adapter"
+    obs["raw_value"] = result.get("price")
+    obs["normalized_value"] = result.get("price")
+    obs["normalization_status"] = "NOT_APPLIED_LIVE"
+    obs["live_status"] = "LIVE_TRANSPORT_ONLY"
+    obs["freshness"] = freshness(
+        observed_at,
+        available_at,
+        available_at,
+        max_observation_age_seconds=1800,
+        max_availability_lag_seconds=60,
+    )
+    if polarity is not None and len(prices) >= 2:
+        obs["signed_shock"] = signed_shock(prices[-1], prices[-2], stress_polarity=polarity)
+    else:
+        obs["signed_shock"] = {"raw_pct": result.get("change_pct"), "stress_signed_pct": None, "direction": "UNSPECIFIED"}
+    return obs
 
 
 def flatten_symbols(cfg: dict) -> dict:
@@ -240,6 +286,15 @@ def main() -> int:
 
     raw = {"collected_at": now_iso(), "groups": groups, "all": all_raw}
     current = build_state(cfg, raw)
+    available_at = datetime.now(UTC)
+    observations_v3 = {}
+    for key, result in all_raw.items():
+        group, name = key.split(".", 1)
+        observation = build_live_observation(name, group, result, available_at)
+        if observation is not None:
+            observations_v3[key] = observation
+    current["observation_schema_version"] = "3.0"
+    current["observations_v3"] = observations_v3
 
     previous = None
     if LOCAL_STATE.exists():
