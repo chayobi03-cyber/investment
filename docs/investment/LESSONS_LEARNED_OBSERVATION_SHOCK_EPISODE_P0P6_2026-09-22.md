@@ -69,3 +69,9 @@ P6 remains DATA_NOT_READY. Strict PIT remains NOT_GREEN. No live MarketScore/Buy
 - Strict PIT is now an explicit manifest contract: archival revisions, vintage policy, source version, and immutable artifact hash are mandatory.
 - `VENDOR_HISTORY_PROXY` remains a valid research transport state, but it can never satisfy the strict PIT gate.
 - `false_positive_rate` is a classification metric, not the complement of forward-return positive rate. Without explicit prediction and realized labels over a defined target universe, classification status is DATA_NOT_READY.
+
+## 13. Next PIT acquisition layer
+- OpenDART disclosure search must use `last_reprt_at=N` so correction filings are not silently excluded.
+- Filing-level identity is `rcept_no`; the capture layer stores `rcept_dt`, raw artifact bytes, and SHA-256.
+- P6 must consume the filing-time capture/lineage rather than a later "latest financials" endpoint result.
+- Missing OpenDART credentials or missing filing artifacts are DATA_NOT_READY, never an imputed fundamental state.
