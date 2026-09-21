@@ -51,7 +51,7 @@ def metrics(rows:list[dict[str,Any]],universe_rows:Iterable[dict[str,Any]]):
     base=sum(bool(r.get("price_signal")) for r in universe_rows)
     out["trigger_frequency"]=len(rows)/base if base else None
     for h in HORIZONS:
-        rets=[]; maes=[]; rebound=[]
+        rets=[]; maes=[]; rebound=[]; labels=[]; opportunity=[]
         for r in rows:
             series=r.get("asset_rows")
             if not isinstance(series,list): continue
@@ -59,16 +59,21 @@ def metrics(rows:list[dict[str,Any]],universe_rows:Iterable[dict[str,Any]]):
             except StopIteration: continue
             future=[x.get("close") for x in series[idx+1:idx+h+1] if x.get("close") is not None]
             if len(future)<h: continue
-            entry=float(r["close"]); rets.append((float(future[-1])/entry-1)*100)
-            maes.append(min((float(x)/entry-1)*100 for x in future))
+            entry=float(r["close"]); final=(float(future[-1])/entry-1)*100
+            rets.append(final); maes.append(min((float(x)/entry-1)*100 for x in future))
             hit=next((j for j,x in enumerate(future,1) if float(x)>=entry),None)
             if hit is not None: rebound.append(hit)
+            if "entry_label" in r: labels.append(bool(r["entry_label"]))
+            if "opportunity_label" in r: opportunity.append(bool(r["opportunity_label"]))
         out[f"{h}d_mean_return"]=sum(rets)/len(rets) if rets else None
         out[f"{h}d_median_return"]=median(rets) if rets else None
         out[f"{h}d_positive_rate"]=sum(x>0 for x in rets)/len(rets) if rets else None
         out[f"{h}d_worst_return"]=min(rets) if rets else None
         out[f"{h}d_max_adverse_excursion"]=min(maes) if maes else None
+        out[f"{h}d_post_entry_drawdown"]=min(maes) if maes else None
         out[f"{h}d_time_to_rebound_median"]=median(rebound) if rebound else None
+        if labels: out[f"{h}d_false_positive_rate"]=1-(sum(labels)/len(labels))
+        if opportunity: out[f"{h}d_miss_rate"]=sum(1 for x in opportunity if not x)/len(opportunity)
     return out
 
 def run(path:Path):
@@ -78,9 +83,18 @@ def run(path:Path):
     if not needed.issubset(rows[0]): return {"status":"DATA_NOT_READY","reason":f"missing gate fields: {sorted(needed-rows[0].keys())}"}
     if not all(isinstance(r.get("asset_rows"),list) for r in rows):
         return {"status":"DATA_NOT_READY","reason":"asset_rows history required for forward outcomes"}
-    return {"status":"OK","splits":{
-        s:{f"P{p}":metrics(dedupe_episode_entries(rows,s)[p],[r for r in rows if r.get("split")==s]) for p in range(7)}
-        for s in ("development","validation","oos")}}
+    result={}
+    for split in ("development","validation","oos"):
+        universe=[r for r in rows if r.get("split")==split]
+        by=dedupe_episode_entries(rows,split)
+        levels={f"P{p}":metrics(by[p],universe) for p in range(7)}
+        prev=None
+        for p in range(7):
+            cur=levels[f"P{p}"].get("20d_mean_return")
+            levels[f"P{p}"]["incremental_lift_20d_vs_previous"]=(cur-prev) if cur is not None and prev is not None else None
+            prev=cur if cur is not None else prev
+        result[split]=levels
+    return {"status":"OK","splits":result}
 
 if __name__=="__main__":
     ap=argparse.ArgumentParser(); ap.add_argument("input",type=Path); ap.add_argument("--output",type=Path)
