@@ -160,3 +160,30 @@ Data Feed -> Event Detector -> State Store -> Alert Gate -> Chat Notification
 
 이 문서는 백그라운드 시장감시 Agent의 운영 계약(Operating Contract)으로 취급한다.
 모델/자동화 규칙의 중요한 변경은 이 문서와 함께 Git에 기록한다.
+
+
+## V2 Implementation (2026-09-21)
+
+V2 worker가 추가되었다.
+
+- Collector: `scripts/market_monitor/poll.py`
+- Config: `config/market_monitor.json`
+- Scheduler: `.github/workflows/market-monitor.yml`
+- Test: `tests/test_market_monitor.py`
+- Poll cadence: Korea/US cash-session windows의 15분 간격
+- State persistence: `runtime/market-state` 전용 branch
+- Snapshot: GitHub Actions artifact `market-monitor-state`
+
+### V2 data boundary
+
+실시간 가격/시장 데이터와 공식 일별 금리 데이터는 별개의 observation timestamp를 가져야 한다.
+현재 가격 adapter는 외부 keyless chart endpoint를 사용하므로 운영상 공급자 장애/차단을 DATA GAP으로 처리하고, source-of-record로 승격하지 않는다.
+
+미국 국채 2Y/10Y의 공식 일별 값은 U.S. Treasury Daily Treasury Rates를 우선 기준으로 삼는다. 이 데이터는 intraday quote와 섞지 않는다.
+
+### Known gaps
+
+- Korea true breadth는 현재 watchlist breadth proxy이며 KRX 전체 상승종목 breadth가 아니다.
+- GEO event feed는 아직 price-confirmed event detector로 구현되지 않았다.
+- R1-R6 regime engine과 BuyStrength 계산은 기존 엔진을 그대로 사용하며 V2 worker가 임의로 대체하지 않는다.
+- GitHub Actions의 scheduled execution은 지연될 수 있으므로 정확한 15분 체결시각을 보장하는 feed가 아니다.
