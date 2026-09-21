@@ -219,12 +219,9 @@ def run(path: Path, manifest_path: Path | None = None) -> dict[str, Any]:
     if int(manifest.get("pit_rows", 0)) <= 0:
         return {"status": "DATA_NOT_READY", "reason": "no PIT observation rows"}
 
-    asset_count = int(manifest.get("asset_count", 0) or 0)
-    universe_asset_days = (
-        int(manifest["pit_rows"] / asset_count)
-        if asset_count > 0
-        else None
-    )
+    universe_asset_days = int(manifest.get("pit_asset_rows", 0) or 0)
+    if universe_asset_days <= 0:
+        return {"status": "DATA_NOT_READY", "reason": "no asset-level PIT rows"}
 
     result: dict[str, Any] = {}
     for split in ("development", "validation", "oos"):
@@ -258,17 +255,17 @@ def run(path: Path, manifest_path: Path | None = None) -> dict[str, Any]:
 
     # Walk-forward is a stability diagnostic over frozen thresholds; it does not
     # fit parameters from test folds.
-    by_year: dict[str, int] = {}
-    for row in rows:
-        year = str(row["date"])[:4]
-        by_year[year] = by_year.get(year, 0) + 1
+    by_year = {
+        str(year): int(count)
+        for year, count in (manifest.get("pit_asset_days_by_year") or {}).items()
+    }
 
     walk_forward: dict[str, Any] = {}
     for level in range(6):
         eligible = [row for row in rows if signal_level(row) >= level]
         walk_forward[f"P{level}"] = _walk_forward(
             eligible,
-            {year: max(1, count) for year, count in by_year.items()},
+            by_year,
         )
 
     return {
