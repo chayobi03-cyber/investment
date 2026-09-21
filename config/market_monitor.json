@@ -11,7 +11,7 @@
     },
     "macro": {
       "US10Y": "^TNX",
-      "US2Y": "2YY=F",
+      "US2Y_TNOTE_FUT": "ZT=F",
       "USD_KRW": "KRW=X",
       "USD_JPY": "JPY=X",
       "DXY": "DX-Y.NYB",
