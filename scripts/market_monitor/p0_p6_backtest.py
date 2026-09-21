@@ -195,7 +195,10 @@ def _walk_forward(rows: list[dict[str, Any]], universe_asset_days_by_year: dict[
 
 
 def run(path: Path, manifest_path: Path | None = None) -> dict[str, Any]:
-    rows = load_jsonl(path)
+    try:
+        rows = load_jsonl(path)
+    except ValueError as exc:
+        return {"status": "DATA_NOT_READY", "reason": str(exc)}
     if not rows:
         return {"status": "DATA_NOT_READY", "reason": "empty PIT event dataset"}
 
