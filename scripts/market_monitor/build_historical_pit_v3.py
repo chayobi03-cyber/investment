@@ -2,7 +2,7 @@
 """Build a reproducible daily PIT-like research panel from historical vendor data.
 
 This is a vendor-history proxy, not an archival revision-history reconstruction.
-\`available_at == observed_at\` is only a market-data timing convention;
+available_at == observed_at is only a market-data timing convention;
 fundamentals are not synthesized here and remain unavailable for P6.
 """
 from __future__ import annotations
