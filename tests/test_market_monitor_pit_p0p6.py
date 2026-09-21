@@ -239,3 +239,74 @@ def test_dart_fundamental_pit_blocks_latest_value_without_filing_provenance():
     )
     assert result["status"] == "DATA_NOT_READY"
     assert result["eligible_count"] == 0
+
+def test_opendart_capture_requires_filing_number_and_preserves_hash():
+    dart_capture = load(
+        "opendart_capture_test",
+        ROOT / "scripts/market_monitor/capture_opendart_pit.py",
+    )
+    calls = []
+
+    def fake_json_get(url, params):
+        calls.append(("json", url, params.copy()))
+        return {
+            "status": "000",
+            "message": "정상",
+            "total_page": "1",
+            "list": [
+                {
+                    "rcept_no": "20260922000001",
+                    "corp_code": "00126380",
+                    "corp_name": "Example",
+                    "stock_code": "000000",
+                    "report_nm": "반기보고서",
+                    "rcept_dt": "20260922",
+                }
+            ],
+        }
+
+    dart_capture._json_get = fake_json_get
+    dart_capture._binary_get = lambda url, params: b"fake-xbrl"
+    with tempfile.TemporaryDirectory() as td:
+        manifest = dart_capture.capture_disclosures(
+            crtfc_key="x" * 40,
+            corp_code="00126380",
+            start_date="20260901",
+            end_date="20260922",
+            output_dir=Path(td),
+            download_xbrl=True,
+        )
+        assert manifest["filing_count"] == 1
+        filing = manifest["filings"][0]
+        assert filing["rcept_no"] == "20260922000001"
+        assert filing["artifact_sha256"] == dart_capture._sha256(b"fake-xbrl")
+        assert filing["availability_status"] == "FILING_RECEIVED"
+        assert calls[0][2]["last_reprt_at"] == "N"
+
+
+def test_opendart_capture_cli_fails_closed_without_key(monkeypatch, capsys, tmp_path):
+    dart_capture = load(
+        "opendart_capture_cli_test",
+        ROOT / "scripts/market_monitor/capture_opendart_pit.py",
+    )
+    monkeypatch.delenv("OPENDART_API_KEY", raising=False)
+    monkeypatch.setattr(
+        dart_capture,
+        "os",
+        dart_capture.os,
+    )
+    argv = [
+        "capture_opendart_pit.py",
+        "--corp-code",
+        "00126380",
+        "--start-date",
+        "20260901",
+        "--end-date",
+        "20260922",
+        "--output",
+        str(tmp_path),
+    ]
+    monkeypatch.setattr(sys, "argv", argv)
+    assert dart_capture.main() == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "DATA_NOT_READY"
