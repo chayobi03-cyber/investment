@@ -3,9 +3,14 @@ name: market-monitor
 on:
   workflow_dispatch:
   schedule:
-    # 15-minute polling. GitHub Actions supports scheduled workflows down to 5 minutes.
-    # Offset from the hour to reduce scheduler contention.
-    - cron: "7,22,37,52 * * * 1-5"
+    # 15-minute polling during active Korea/US cash-session windows.
+    # Timezone-aware cron avoids stale-data alerts outside monitored sessions.
+    - cron: "7,22,37,52 9-15 * * 1-5"
+      timezone: "Asia/Seoul"
+    - cron: "7,22,37,52 22-23 * * 1-5"
+      timezone: "Asia/Seoul"
+    - cron: "7,22,37,52 0-5 * * 2-6"
+      timezone: "Asia/Seoul"
 
 permissions:
   contents: write
