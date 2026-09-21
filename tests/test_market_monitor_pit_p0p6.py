@@ -58,7 +58,10 @@ def test_live_monitor_emits_observation_schema_v3():
     assert row["available_at"].startswith("2026-09-22T00:05")
     assert row["source_id"] == "yahoo_finance_chart"
     assert row["rule_version"] == "observation-v3.0-live-adapter"
-    assert row["returns_pct"]["d1"] is not None
+    assert row["returns_pct"]["d1"] is None
+    assert row["intraday_change_pct"] is not None
+    assert row["observation_interval"] == "5m"
+    assert row["quality"]["status"] == "AMBER"
 
 
 def test_historical_split_boundaries_are_time_ordered():
