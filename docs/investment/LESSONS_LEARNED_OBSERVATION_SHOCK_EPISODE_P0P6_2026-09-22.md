@@ -75,3 +75,15 @@ P6 remains DATA_NOT_READY. Strict PIT remains NOT_GREEN. No live MarketScore/Buy
 - Filing-level identity is `rcept_no`; the capture layer stores `rcept_dt`, raw artifact bytes, and SHA-256.
 - P6 must consume the filing-time capture/lineage rather than a later "latest financials" endpoint result.
 - Missing OpenDART credentials or missing filing artifacts are DATA_NOT_READY, never an imputed fundamental state.
+
+
+## 14. Opening-gap / flow / intraday validation — 2026-09-23
+- The proposed `Opening Gap → Foreign Net Flow → Intraday Hold` rule cannot be validated from the current P0~P6 historical artifact because foreign-flow and intraday-bar fields are absent.
+- The current artifact contains daily OHLC only. `entry_open` permits an opening-gap calculation, while `entry_day_close >= entry_day_open` is only a coarse daily proxy and must not be labeled intraday hold.
+- Descriptive gap stratification showed unstable results as the gap cutoff increased; small validation/OOS samples make post-hoc cutoff selection especially unsafe.
+- A defining rule component that is absent from the historical evidence layer is a hard DATA_NOT_READY condition, not a reason to substitute a proxy silently.
+- Future validation must compare price-only → +opening gap → +foreign flow → +intraday hold with frozen definitions across development, validation, OOS and walk-forward, using 5D/20D/60D returns plus MAE/drawdown and explicit FP/FN labels.
+- No live MarketScore/BuyStrength change follows from this study.
+
+## 15. Governance rule added
+**A research rule is not eligible for promotion unless every defining component has PIT-safe historical evidence and the incremental component contribution survives OOS/walk-forward falsification.**
