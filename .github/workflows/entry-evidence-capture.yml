@@ -1,0 +1,40 @@
+name: Entry Evidence Capture
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Trading date YYYYMMDD"
+        required: true
+        type: string
+      symbols:
+        description: "Comma-separated symbols"
+        required: false
+        default: "005930,000660,006400,105560,005380,000810,096770,034020,035420,207940"
+        type: string
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m pip install -r requirements.txt
+      - run: python -m pytest -q tests/test_entry_evidence_capture.py
+      - name: Capture
+        env:
+          KIS_APP_KEY: ${{ secrets.KIS_APP_KEY }}
+          KIS_APP_SECRET: ${{ secrets.KIS_APP_SECRET }}
+        run: |
+          python scripts/market_monitor/capture_entry_evidence_kis.py \
+            --date "${{ inputs.date }}" \
+            --symbols "${{ inputs.symbols }}" \
+            --output artifacts/entry_evidence
+      - uses: actions/upload-artifact@v4
+        with:
+          name: entry-evidence-${{ inputs.date }}-${{ github.run_id }}
+          path: artifacts/entry_evidence
+          if-no-files-found: error
+          retention-days: 90
