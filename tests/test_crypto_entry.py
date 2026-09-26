@@ -19,7 +19,7 @@ def make_frame(n=260):
     close.iloc[186:191] *= 0.96
     high = close * 1.01
     low = close * 0.99
-    open_ = close.shift(1).fillna(close.iloc[0])
+    open_ = close * 0.995
     return pd.DataFrame(
         {
             "timestamp": dates,
