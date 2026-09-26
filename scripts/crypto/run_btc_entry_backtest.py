@@ -19,10 +19,36 @@ def median_or_none(series: pd.Series) -> float | None:
     return None if s.empty else float(s.median())
 
 
+def valid_count(series: pd.Series) -> int:
+    return int(pd.to_numeric(series, errors="coerce").notna().sum())
+
+
+def stats(frame: pd.DataFrame) -> dict:
+    result = {"events": int(len(frame))}
+    for h in (5, 20, 60):
+        ret = frame[f"forward_return_{h}d"]
+        mae = frame[f"mae_{h}d"]
+        mfe = frame[f"mfe_{h}d"]
+        result[f"outcome_n_{h}d"] = valid_count(ret)
+        result[f"median_forward_return_{h}d"] = median_or_none(ret)
+        result[f"positive_rate_{h}d"] = (
+            float((pd.to_numeric(ret, errors="coerce").dropna() > 0).mean())
+            if valid_count(ret)
+            else None
+        )
+        result[f"median_mae_{h}d"] = median_or_none(mae)
+        result[f"median_mfe_{h}d"] = median_or_none(mfe)
+    return result
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("input", type=Path)
-    ap.add_argument("--output", type=Path, default=Path("artifacts/crypto/btc_entry_backtest.json"))
+    ap.add_argument(
+        "--output",
+        type=Path,
+        default=Path("artifacts/crypto/btc_entry_backtest.json"),
+    )
     args = ap.parse_args()
 
     raw = pd.read_csv(args.input, parse_dates=["timestamp", "available_at"])
@@ -52,19 +78,8 @@ def main() -> int:
     sig = add_forward_outcomes(sig)
 
     candidate_mask = sig["entry_state"].isin(["B2", "B3", "B4"])
-    primary_mask = sig["primary_event"] & candidate_mask
-    primary = sig[primary_mask]
+    primary = sig[sig["primary_event"] & candidate_mask]
     candidates = sig[candidate_mask]
-
-    def stats(frame: pd.DataFrame) -> dict:
-        return {
-            "events": int(len(frame)),
-            "median_forward_return_5d": median_or_none(frame["forward_return_5d"]),
-            "median_forward_return_20d": median_or_none(frame["forward_return_20d"]),
-            "median_forward_return_60d": median_or_none(frame["forward_return_60d"]),
-            "median_mae_20d": median_or_none(frame["mae_20d"]),
-            "median_mfe_20d": median_or_none(frame["mfe_20d"]),
-        }
 
     state_stats = {
         state: stats(primary[primary["entry_state"] == state])
@@ -109,10 +124,29 @@ def main() -> int:
             "development_rows": int(len(dev)),
             "oos_rows": int(len(oos)),
             "oos_primary_events": int(len(oos_primary)),
-            "oos_median_forward_return_20d": median_or_none(
-                oos_primary["forward_return_20d"]
-            ),
-            "oos_median_mae_20d": median_or_none(oos_primary["mae_20d"]),
+            "oos_by_horizon": {
+                f"{h}d": {
+                    "outcome_n": valid_count(oos_primary[f"forward_return_{h}d"]),
+                    "median_forward_return": median_or_none(
+                        oos_primary[f"forward_return_{h}d"]
+                    ),
+                    "positive_rate": (
+                        float(
+                            (
+                                pd.to_numeric(
+                                    oos_primary[f"forward_return_{h}d"],
+                                    errors="coerce",
+                                ).dropna()
+                                > 0
+                            ).mean()
+                        )
+                        if valid_count(oos_primary[f"forward_return_{h}d"])
+                        else None
+                    ),
+                    "median_mae": median_or_none(oos_primary[f"mae_{h}d"]),
+                }
+                for h in (5, 20, 60)
+            },
         },
         "p6": {
             "status": "DATA_NOT_READY",
@@ -121,7 +155,10 @@ def main() -> int:
     }
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, indent=2, default=str), encoding="utf-8")
+    args.output.write_text(
+        json.dumps(result, indent=2, default=str),
+        encoding="utf-8",
+    )
     print(json.dumps(result, indent=2, default=str))
     return 0
 
