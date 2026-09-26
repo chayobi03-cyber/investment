@@ -187,6 +187,15 @@
     "automatic_orders": false,
     "leverage": false,
     "margin": false,
-    "live_status": "DISABLED_UNTIL_P6_PROMOTION"
+    "live_status": "DISABLED_UNTIL_P6_PROMOTION",
+    "buy_allowed": false
+  },
+  "permission_layer": {
+    "version": "0.1",
+    "required": true,
+    "mode": "PIT_OVERLAY",
+    "promotes_to_buy": false,
+    "threshold_mutation_allowed": false,
+    "missing_data_behavior": "DATA_NOT_READY"
   }
 }
