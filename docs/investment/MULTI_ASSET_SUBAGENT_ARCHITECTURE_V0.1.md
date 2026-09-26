@@ -20,8 +20,11 @@ The system does not use one universal entry signal. Market state and permission 
                                   |
        +--------------------------+--------------------------+
        |                          |                          |
- Data/PIT Agent             Regime Agent              Evidence Agent
+ Data/PIT Agent             Regime Agent          Evidence Agent
        |                          |                          |
+       +--------------------------+--------------------------+
+                                  |
+                       Hallucination Guard Agent
        +--------------------------+--------------------------+
                                   |
                  +----------------+----------------+
@@ -47,12 +50,14 @@ The system does not use one universal entry signal. Market state and permission 
 4. Permission is an overlay. It can block a signal but cannot rewrite it.
 5. Risk is independent from signal conviction. It can reduce exposure to zero.
 6. Evidence records Claim -> Data -> Timestamp -> Source -> PIT availability -> Calculation -> Result.
-7. Decision is a gatekeeper, not an autonomous optimizer or forecaster.
-8. Missing required evidence = DATA_NOT_READY. No silent imputation.
-9. `available_at > decision_timestamp` is always ineligible.
-10. Current deployment invariant: `BUY_ALLOWED=false` for all asset families.
-11. Threshold changes require a new rule version and fresh chronological/OOS/walk-forward validation.
-12. No shared mutable state between sub-agents.
+7. Hallucination Guard independently verifies claim type, provenance, PIT eligibility, calculations, inference support and conflicts.
+8. Decision is a gatekeeper, not an autonomous optimizer or forecaster.
+9. Missing required evidence = DATA_NOT_READY. No silent imputation.
+10. `available_at > decision_timestamp` is always ineligible.
+11. Any non-VERIFIED claim blocks the related decision artifact.
+12. Current deployment invariant: `BUY_ALLOWED=false` for all asset families.
+13. Threshold changes require a new rule version and fresh chronological/OOS/walk-forward validation.
+14. No shared mutable state between sub-agents.
 
 ## Common data axes
 
@@ -130,7 +135,7 @@ This is independent of any exposure multiplier or research score.
 
 ## Research sequence
 
-Data/PIT -> Regime -> Asset Signal -> Permission -> Risk -> Evidence -> Decision -> P0-P6/OOS/WF
+Data/PIT -> Regime -> Asset Signal -> Permission -> Risk -> Evidence -> Hallucination Guard -> Decision -> P0-P6/OOS/WF
 
 No threshold tuning before the frozen-rule research cycle is complete.
 
@@ -142,3 +147,19 @@ No threshold tuning before the frozen-rule research cycle is complete.
 4. Create a common multi-asset P0-P6 evaluation contract.
 5. Add portfolio-level correlation/concentration and stress aggregation.
 6. Only after asset-level P6 promotion, permit an execution adapter.
+
+
+## Hallucination prevention layer
+
+The Hallucination Guard is a separate control-plane agent. It never ranks assets or changes thresholds.
+
+It blocks:
+- unsupported facts;
+- lookahead through source or available timestamps;
+- unverifiable calculations;
+- unlabeled or unsupported inference;
+- unresolved evidence conflicts;
+- missing scope.
+
+The Evidence Agent provides traceability; the Hallucination Guard validates the claim.
+Both are required before Decision promotion.
