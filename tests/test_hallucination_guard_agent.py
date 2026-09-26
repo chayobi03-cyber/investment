@@ -106,3 +106,31 @@ def test_verified_fact_and_calculation_pass():
     )
     assert result.status == "PASS"
     assert result.verified_claims == 2
+
+
+def test_unverified_inference_cannot_support_another_inference():
+    result = HallucinationGuardAgent().verify(
+        [
+            {
+                "claim_id": "I1",
+                "claim_type": "INFERENCE",
+                "statement": "Unsupported first inference",
+                "scope": "decision",
+                "supporting_claim_ids": ["MISSING"],
+                "reasoning": "No verified support",
+                "explicitly_labeled_inference": True,
+            },
+            {
+                "claim_id": "I2",
+                "claim_type": "INFERENCE",
+                "statement": "Second inference",
+                "scope": "decision",
+                "supporting_claim_ids": ["I1"],
+                "reasoning": "Depends on I1",
+                "explicitly_labeled_inference": True,
+            },
+        ],
+        decision_timestamp=NOW,
+    )
+    assert result.status == "BLOCKED"
+    assert any("INFERENCE_SUPPORT_NOT_VERIFIED" in b for b in result.blocker_codes)
