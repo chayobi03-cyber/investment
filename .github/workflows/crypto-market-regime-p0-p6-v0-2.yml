@@ -79,6 +79,7 @@ jobs:
       - name: Upload research artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: crypto-market-regime-p0-p6-v0-2-\${{ github.run_id }}
+          name: crypto-market-regime-p0-p6-v0-2-${{ github.run_id }}
           path: artifacts/crypto
+          if-no-files-found: error
           retention-days: 30
