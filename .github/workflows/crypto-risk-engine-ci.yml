@@ -1,0 +1,49 @@
+name: crypto-risk-engine-ci
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/investment_pipeline/crypto_risk.py"
+      - "tests/test_crypto_risk_engine.py"
+      - "config/crypto_risk_engine_v0.1.json"
+      - "docs/investment/CRYPTO_RISK_ENGINE_V0.1.md"
+      - ".github/workflows/crypto-risk-engine-ci.yml"
+  pull_request:
+    paths:
+      - "src/investment_pipeline/crypto_risk.py"
+      - "tests/test_crypto_risk_engine.py"
+      - "config/crypto_risk_engine_v0.1.json"
+      - "docs/investment/CRYPTO_RISK_ENGINE_V0.1.md"
+      - ".github/workflows/crypto-risk-engine-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Validate config
+        run: python -m json.tool config/crypto_risk_engine_v0.1.json >/dev/null
+
+      - name: Run crypto risk tests
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q tests/test_crypto_risk_engine.py
