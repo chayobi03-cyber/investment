@@ -52,7 +52,8 @@ jobs:
             tests/test_crypto_risk_engine.py \
             tests/test_crypto_permission_overlay.py \
             tests/test_crypto_decomposition.py \
-            tests/test_signal_decomposition_agent.py
+            tests/test_signal_decomposition_agent.py \
+            tests/test_crypto_threshold_freeze.py
 
       - name: Fetch BTC PIT daily history
         run: |
