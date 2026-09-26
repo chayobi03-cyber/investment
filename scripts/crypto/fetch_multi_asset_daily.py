@@ -20,12 +20,12 @@ def fetch_asset(asset: str, days: int) -> pd.DataFrame:
         raise ValueError("days_must_be_at_least_200")
 
     end = pd.Timestamp.now(tz="UTC").floor("D")
-    start = end - pd.Timedelta(days=days + 2)
+    start = end - pd.Timedelta(days=int(days) + 2)
     cursor = end
     rows: list[list[float]] = []
 
     while cursor > start:
-        batch_start = max(start, cursor - pd.Timedelta(days=MAX_CANDLES))
+        batch_start = max(start, cursor - pd.Timedelta(days=int(MAX_CANDLES)))
         response = requests.get(
             BASE_URL.format(product=PRODUCTS[asset]),
             params={"granularity": 86400, "start": batch_start.isoformat(), "end": cursor.isoformat()},
