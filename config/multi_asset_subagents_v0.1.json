@@ -70,6 +70,7 @@
       "role": "gate only; never optimize thresholds or forecast returns",
       "outputs": [
         "decision_status",
+        "promotion_status",
         "buy_allowed",
         "execution_allowed",
         "blocker_codes"
@@ -136,6 +137,17 @@
       "role": "code-generation agent is outside the investment decision plane",
       "enabled": false,
       "reason": "development must not be able to mutate thresholds or bypass control gates during a decision"
+    },
+    "decision_gate": {
+      "role": "final deterministic aggregation of control-plane states",
+      "outputs": [
+        "decision_status",
+        "promotion_status",
+        "buy_allowed",
+        "execution_allowed",
+        "blocker_codes"
+      ],
+      "hard_gate": true
     }
   }
 }
