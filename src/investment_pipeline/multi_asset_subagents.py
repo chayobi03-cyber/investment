@@ -7,6 +7,7 @@ from typing import Any, Mapping, Protocol
 
 from src.investment_pipeline.claim_contract import validate_claim_structure
 from src.investment_pipeline.conflict_detection_agent import ConflictDetectionAgent
+from src.investment_pipeline.decision_gate import DecisionGateAgent
 from src.investment_pipeline.hallucination_guard_agent import HallucinationGuardAgent
 from src.investment_pipeline.source_quality_agent import SourceQualityAgent
 from src.investment_pipeline.source_retrieval_agent import SourceRetrievalAgent, SourceRecord
@@ -68,6 +69,8 @@ class DecisionContract:
     source_quality_status: Status
     conflict_status: Status
     hallucination_status: Status
+    decision_status: str
+    promotion_status: str
     buy_allowed: bool
     execution_allowed: bool
     blocker_codes: tuple[str, ...] = field(default_factory=tuple)
@@ -377,6 +380,21 @@ class DecisionAgent:
         if hallucination.status != Status.PASS:
             blockers.append("HALLUCINATION_GUARD_BLOCK")
 
+        gate = self.decision_gate.run(
+            {
+                "signal": signal.status.value,
+                "permission": permission.status.value,
+                "regime": regime.status.value,
+                "risk": risk.status.value,
+                "evidence": evidence.status.value,
+                "source_retrieval": source_retrieval.status.value,
+                "source_quality": source_quality.status.value,
+                "conflict": conflict.status.value,
+                "hallucination": hallucination.status.value,
+            },
+            blocker_codes=tuple(blockers),
+        )
+
         # Hard kill switch. Never derived from score or exposure.
         return DecisionContract(
             asset=asset,
@@ -400,9 +418,11 @@ class DecisionAgent:
             source_quality_status=source_quality.status,
             conflict_status=conflict.status,
             hallucination_status=hallucination.status,
-            buy_allowed=BUY_ALLOWED,
-            execution_allowed=EXECUTION_ALLOWED,
-            blocker_codes=tuple(sorted(set(blockers))),
+            decision_status=gate.decision_status.value,
+            promotion_status=gate.promotion_status,
+            buy_allowed=gate.buy_allowed,
+            execution_allowed=gate.execution_allowed,
+            blocker_codes=gate.blocker_codes,
         )
 
 
@@ -419,6 +439,7 @@ class MultiAssetOrchestrator:
         self.source_quality = SourceQualityAgent()
         self.conflict_detection = ConflictDetectionAgent()
         self.hallucination_guard = HallucinationGuardAgent()
+        self.decision_gate = DecisionGateAgent()
         self.signals: dict[AssetClass, SignalAgent] = {
             AssetClass.EQUITY: EquitySignalAgent(),
             AssetClass.GOLD: GoldSignalAgent(),
