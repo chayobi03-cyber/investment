@@ -22,6 +22,8 @@ REGIMES: tuple[tuple[str, float, float], ...] = (
     ("R6", 0.0, 25.0),
 )
 
+BUY_ALLOWED = False
+
 EXPOSURE_MULTIPLIER: dict[str, float] = {
     "B0": 0.0,
     "B1": 0.0,
@@ -45,6 +47,7 @@ class CryptoDecision:
     exposure_multiplier: float
     reason_codes: tuple[str, ...]
     permission_status: str
+    buy_allowed: bool
 
 
 @dataclass(frozen=True)
@@ -183,6 +186,7 @@ def evaluate(obs: CryptoObservation) -> CryptoDecision:
             exposure_multiplier=0.0,
             reason_codes=("DATA_NOT_READY",),
             permission_status="BLOCKED",
+            buy_allowed=BUY_ALLOWED,
         )
 
     try:
@@ -197,6 +201,7 @@ def evaluate(obs: CryptoObservation) -> CryptoDecision:
             exposure_multiplier=0.0,
             reason_codes=(str(exc),),
             permission_status="BLOCKED",
+            buy_allowed=BUY_ALLOWED,
         )
 
     raw_regime = regime_from_score(market_score)
@@ -218,4 +223,5 @@ def evaluate(obs: CryptoObservation) -> CryptoDecision:
         exposure_multiplier=EXPOSURE_MULTIPLIER[buy_state],
         reason_codes=state_reasons,
         permission_status=permission,
+        buy_allowed=BUY_ALLOWED,
     )
