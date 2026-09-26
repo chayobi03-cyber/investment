@@ -8,59 +8,56 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-BASE_URL = "https://api.binance.com/api/v3/klines"
+COINBASE_URL = "https://api.exchange.coinbase.com/products/BTC-USD/candles"
+COINBASE_MAX_CANDLES = 300
 
 
 def fetch(days: int) -> pd.DataFrame:
     if days < 200:
         raise ValueError("days_must_be_at_least_200")
 
-    rows: list[list] = []
-    end_time = int(time.time() * 1000)
+    end = pd.Timestamp.now(tz="UTC").floor("D")
+    start = end - pd.Timedelta(days=days + 2)
+    rows: list[list[float]] = []
 
-    while len(rows) < days:
+    cursor = end
+    while cursor > start:
+        batch_start = max(start, cursor - pd.Timedelta(days=COINBASE_MAX_CANDLES))
         params = {
-            "symbol": "BTCUSDT",
-            "interval": "1d",
-            "limit": 1000,
-            "endTime": end_time,
+            "granularity": 86400,
+            "start": batch_start.isoformat(),
+            "end": cursor.isoformat(),
         }
-        resp = requests.get(BASE_URL, params=params, timeout=30)
+        resp = requests.get(
+            COINBASE_URL,
+            params=params,
+            headers={"User-Agent": "investment-research/crypto-p0-p6-v0.2"},
+            timeout=30,
+        )
         resp.raise_for_status()
         batch = resp.json()
         if not batch:
             break
-        rows = batch + rows
-        earliest = int(batch[0][0])
-        if len(batch) < 1000:
-            break
-        end_time = earliest - 1
-        time.sleep(0.05)
+        rows.extend(batch)
+        cursor = batch_start - pd.Timedelta(seconds=1)
+        time.sleep(0.10)
 
-    rows = rows[-days:]
-    df = pd.DataFrame(
-        rows,
-        columns=[
-            "timestamp_ms", "open", "high", "low", "close", "volume",
-            "close_time_ms", "quote_volume", "trades",
-            "taker_buy_base", "taker_buy_quote", "ignore",
-        ],
-    )
-    df["timestamp"] = pd.to_datetime(df["timestamp_ms"], unit="ms", utc=True)
-    df["available_at"] = pd.to_datetime(df["close_time_ms"], unit="ms", utc=True)
+    df = pd.DataFrame(rows, columns=["timestamp_s", "low", "high", "open", "close", "volume"])
+    df["timestamp"] = pd.to_datetime(df["timestamp_s"], unit="s", utc=True)
+    # Research decision is made at the completed daily candle close.
+    df["available_at"] = df["timestamp"] + pd.Timedelta(days=1)
     for col in ["open", "high", "low", "close", "volume"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
     result = (
-        df[
-            ["timestamp", "available_at", "open", "high", "low", "close", "volume"]
-        ]
+        df[["timestamp", "available_at", "open", "high", "low", "close", "volume"]]
         .sort_values("timestamp")
         .drop_duplicates("timestamp")
     )
 
     now = pd.Timestamp.now(tz="UTC")
-    return result[result["available_at"] <= now].reset_index(drop=True)
+    result = result[result["available_at"] <= now].tail(days).reset_index(drop=True)
+    return result
 
 
 def main() -> int:
@@ -70,10 +67,12 @@ def main() -> int:
     args = ap.parse_args()
 
     df = fetch(args.days)
+    if len(df) < 200:
+        raise SystemExit(f"P0_FAIL: only {len(df)} completed daily candles available")
     args.out.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(args.out, index=False)
     print(
-        f"rows={len(df)} start={df['timestamp'].min()} "
+        f"source=coinbase rows={len(df)} start={df['timestamp'].min()} "
         f"end={df['timestamp'].max()}"
     )
     return 0
