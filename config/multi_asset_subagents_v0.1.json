@@ -121,6 +121,21 @@
         "conflict_groups",
         "blocker_codes"
       ]
+    },
+    "signal_decomposition": {
+      "role": "decompose frozen asset signals by regime, B2/B3/B4, breakout/pullback and zone without modifying thresholds",
+      "outputs": [
+        "decomposition_regime",
+        "signal_type",
+        "entry_state",
+        "zone",
+        "decomposition_key"
+      ]
+    },
+    "developer_agent": {
+      "role": "code-generation agent is outside the investment decision plane",
+      "enabled": false,
+      "reason": "development must not be able to mutate thresholds or bypass control gates during a decision"
     }
   }
 }
