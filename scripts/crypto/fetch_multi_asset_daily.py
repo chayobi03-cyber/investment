@@ -52,13 +52,15 @@ def fetch_asset(asset: str, days: int) -> pd.DataFrame:
     for col in ["open", "high", "low", "close", "volume"]:
         frame[col] = pd.to_numeric(frame[col], errors="coerce")
 
+    now = pd.Timestamp.now(tz="UTC")
     return (
         frame[
             ["asset","series_id","timestamp","available_at","open","high","low","close","volume"]
         ]
         .sort_values("timestamp")
         .drop_duplicates(["asset","series_id","timestamp"])
-        .tail(days)
+        .loc[lambda x: x["available_at"] <= now]
+        .tail(int(days))
         .reset_index(drop=True)
     )
 
