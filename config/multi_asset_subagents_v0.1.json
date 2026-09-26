@@ -1,0 +1,50 @@
+{
+  "version": "multi-asset-subagents-v0.1",
+  "status": "RESEARCH_ONLY",
+  "assets": ["EQUITY", "GOLD", "CRYPTO"],
+  "global_controls": {
+    "buy_allowed": false,
+    "execution_allowed": false,
+    "threshold_mutation_allowed": false,
+    "missing_data_behavior": "DATA_NOT_READY",
+    "lookahead_forbidden": true
+  },
+  "agents": {
+    "data_pit": {
+      "role": "validate availability, freshness, provenance, coverage and leakage",
+      "outputs": ["status", "eligible_rows", "staleness_flags", "provenance_flags", "blocker_codes"]
+    },
+    "regime": {
+      "role": "compute common market state from PIT observations",
+      "outputs": ["market_score", "market_gate", "raw_regime", "confirmed_regime"]
+    },
+    "permission": {
+      "role": "overlay macro, liquidity, derivatives, regulation and geopolitical state",
+      "outputs": ["permission_status", "blocker_codes", "buy_allowed"]
+    },
+    "risk": {
+      "role": "evaluate MDD, MAE, stress loss, volatility, correlation and position constraints",
+      "outputs": ["risk_gate", "risk_score", "stress_flags", "position_cap"]
+    },
+    "evidence": {
+      "role": "trace every decision field to source data and calculations",
+      "outputs": ["evidence_status", "claim_ids", "provenance_hashes"]
+    },
+    "decision": {
+      "role": "gate only; never optimize thresholds or forecast returns",
+      "outputs": ["decision_status", "buy_allowed", "execution_allowed", "blocker_codes"]
+    },
+    "equity_signal": {
+      "role": "asset-specific signal adapter",
+      "threshold_source": "existing stock score / buystrength contracts"
+    },
+    "gold_signal": {
+      "role": "asset-specific signal adapter",
+      "threshold_source": "gold entry rule version to be preregistered"
+    },
+    "crypto_signal": {
+      "role": "asset-specific signal adapter",
+      "threshold_source": "config/crypto_market_regime_entry_v0.2.json"
+    }
+  }
+}
