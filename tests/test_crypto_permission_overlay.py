@@ -78,6 +78,20 @@ class CryptoPermissionOverlayTests(unittest.TestCase):
         with self.assertRaises(PermissionDataNotReady):
             validate_permission_history(bad)
 
+    def test_future_available_at_is_checked_only_against_explicit_as_of(self):
+        bad = make_history()
+        bad.loc[0, "available_at"] = pd.Timestamp("2026-09-27T01:00:00Z")
+        # Historical validators must not depend on the machine's current wall clock.
+        result = validate_permission_history(
+            bad, as_of=pd.Timestamp("2026-09-27T00:00:00Z")
+        )
+        self.assertEqual(result.status, "PASS")
+
+        with self.assertRaises(PermissionDataNotReady):
+            validate_permission_history(
+                bad, as_of=pd.Timestamp("2026-09-26T00:00:00Z")
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
