@@ -168,3 +168,98 @@ def test_verified_evidence_passes_hallucination_guard_but_buy_remains_locked():
     assert result.hallucination_status.value == "PASS"
     assert result.buy_allowed is False
     assert result.execution_allowed is False
+
+
+def test_source_quality_failure_is_a_decision_block():
+    now = datetime(2026, 9, 26, tzinfo=timezone.utc)
+    obs = [PITObservation("DXY", now, now, "TEST", 100.0, "hash")]
+    weak_source = SourceRecord(
+        source_id="TEST",
+        title="Unknown source",
+        source_url="https://example.test/source",
+        source_type="UNKNOWN",
+        available_at=now,
+        retrieved_at=now,
+        content_hash="hash",
+    )
+
+    result = MultiAssetOrchestrator().run(
+        asset=AssetClass.EQUITY,
+        decision_timestamp=now,
+        observations=obs,
+        required_series={"DXY"},
+        axis_scores={"trend": 80, "breadth": 75},
+        regime_weights={"trend": 0.5, "breadth": 0.5},
+        signal_features={"signal_state": "B3"},
+        evidence_claims=[{
+            "claim_id": "C1",
+            "claim_type": "FACT",
+            "statement": "DXY observation exists",
+            "scope": "decision date",
+            "source_id": "TEST",
+            "source_timestamp": now,
+            "available_at": now,
+        }],
+        source_records=[weak_source],
+        risk_inputs={
+            "max_drawdown": -0.1,
+            "mae": -0.05,
+            "stress_loss": -0.15,
+        },
+        permission_inputs={},
+    )
+
+    assert result.source_quality_status == Status.BLOCKED
+    assert "SOURCE_QUALITY_BLOCK" in result.blocker_codes
+    assert result.buy_allowed is False
+
+
+def test_conflict_detection_failure_is_a_decision_block():
+    now = datetime(2026, 9, 26, tzinfo=timezone.utc)
+    obs = [PITObservation("DXY", now, now, "TEST", 100.0, "hash")]
+    source = test_source_record()
+
+    result = MultiAssetOrchestrator().run(
+        asset=AssetClass.GOLD,
+        decision_timestamp=now,
+        observations=obs,
+        required_series={"DXY"},
+        axis_scores={"trend": 80, "breadth": 75},
+        regime_weights={"trend": 0.5, "breadth": 0.5},
+        signal_features={"signal_state": "B3"},
+        evidence_claims=[
+            {
+                "claim_id": "A",
+                "claim_type": "FACT",
+                "statement": "Claim A",
+                "scope": "gold decision",
+                "source_id": "TEST",
+                "source_timestamp": now,
+                "available_at": now,
+                "conflict_group": "GROUP1",
+                "stance": "FOR",
+            },
+            {
+                "claim_id": "B",
+                "claim_type": "FACT",
+                "statement": "Claim B",
+                "scope": "gold decision",
+                "source_id": "TEST",
+                "source_timestamp": now,
+                "available_at": now,
+                "conflict_group": "GROUP1",
+                "stance": "AGAINST",
+            },
+        ],
+        source_records=[source],
+        risk_inputs={
+            "max_drawdown": -0.1,
+            "mae": -0.05,
+            "stress_loss": -0.15,
+        },
+        permission_inputs={},
+    )
+
+    assert result.conflict_status == Status.BLOCKED
+    assert "CONFLICT_DETECTION_BLOCK" in result.blocker_codes
+    assert result.buy_allowed is False
