@@ -26,23 +26,26 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
-      - name: Build live entry snapshot
+      - name: Build v0.2 fail-closed live snapshot
         env:
           PYTHONPATH: .
         run: |
-          python scripts/crypto/live_entry_snapshot.py             --output artifacts/crypto/live_entry.json
+          python scripts/crypto/live_entry_snapshot.py \
+            --output artifacts/crypto/live_entry.json
 
       - name: Publish compact state
         run: |
           python - <<'PY'
           import json
           d = json.load(open("artifacts/crypto/live_entry.json", encoding="utf-8"))
-          print("CRYPTO_ENTRY_STATE=" + d["daily_state"])
+          print("CRYPTO_ENTRY_STATE=" + d["daily_core_state"])
           print("DAILY_ZONE=" + d["daily_zone"])
           print("LIVE_ZONE=" + d["live_zone"])
           print("LIVE_PRICE=" + str(d["live_price"]))
-          print("FIRST_TRIGGER=" + str(d["triggers"]["Z1_enter"]))
+          print("BUY_ALLOWED=" + str(d["buy_allowed"]))
           print("ACTION=" + d["action"])
+          print("THRESHOLD_EVIDENCE=" + d["promotion_gate"]["threshold_evidence"])
+          print("FULL_PERMISSION=" + d["promotion_gate"]["full_buy_permission"])
           PY
 
       - name: Upload snapshot
