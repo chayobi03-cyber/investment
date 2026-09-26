@@ -13,6 +13,10 @@ from src.investment_pipeline.crypto_entry import (
     cluster_episodes,
     generate_signals,
 )
+from src.investment_pipeline.crypto_permission import (
+    BUY_ALLOWED,
+    attach_permission_overlay,
+)
 
 OUTCOME_HORIZONS = (5, 20, 60, 90, 180, 365)
 CANDIDATE_STATES = {"B2", "B3", "B4"}
@@ -98,11 +102,27 @@ def prepare_primary(raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     return primary, signals
 
 
-def decompose(raw: pd.DataFrame, oos_fraction: float = 0.20) -> dict:
+def decompose(
+    raw: pd.DataFrame,
+    oos_fraction: float = 0.20,
+    permission_history: pd.DataFrame | None = None,
+) -> dict:
     primary, signals = prepare_primary(raw)
+    signals, permission_result = attach_permission_overlay(
+        signals,
+        permission_history,
+    )
+    primary = signals[
+        signals["primary_event"] & signals["entry_state"].isin(CANDIDATE_STATES)
+    ].copy()
 
     split = int(len(signals) * (1.0 - oos_fraction))
     oos = primary[primary.index >= split].copy()
+    oos_permission_eligible = oos[
+        (oos["permission_status"] == "PASS")
+        & oos["confirmed_regime"].isin({"R1", "R2", "R3", "R4", "R5"})
+        & (oos["permission_market_gate"] != "RED")
+    ].copy()
 
     market_regime_col = next(
         (
@@ -141,6 +161,9 @@ def decompose(raw: pd.DataFrame, oos_fraction: float = 0.20) -> dict:
             "by_signal_type": grouped_summary(primary, ["signal_type"]),
             "by_zone": grouped_summary(primary, ["zone"]),
             "by_entry_state": grouped_summary(primary, ["entry_state"]),
+            "by_signal_type_and_entry_state": grouped_summary(
+                primary, ["signal_type", "entry_state"]
+            ),
             "by_year": grouped_summary(primary, ["year"]),
         },
         "fixed_oos": {
@@ -150,6 +173,19 @@ def decompose(raw: pd.DataFrame, oos_fraction: float = 0.20) -> dict:
             "by_signal_type": grouped_summary(oos, ["signal_type"]),
             "by_zone": grouped_summary(oos, ["zone"]),
             "by_entry_state": grouped_summary(oos, ["entry_state"]),
+            "by_signal_type_and_entry_state": grouped_summary(
+                oos, ["signal_type", "entry_state"]
+            ),
+            "permission_eligible_primary_events": int(len(oos_permission_eligible)),
+        },
+        "permission_overlay": {
+            "status": permission_result.status,
+            "history_rows": permission_result.rows,
+            "matched_rows": permission_result.matched_rows,
+            "eligible_primary_events": int(permission_result.eligible_rows),
+            "regime_coverage": permission_result.regime_coverage,
+            "blocker_codes": list(permission_result.blocker_codes),
+            "buy_allowed": BUY_ALLOWED,
         },
         "market_regime": (
             {
@@ -157,6 +193,18 @@ def decompose(raw: pd.DataFrame, oos_fraction: float = 0.20) -> dict:
                 "column": market_regime_col,
                 "by_regime": grouped_summary(primary, [market_regime_col]),
                 "oos_by_regime": grouped_summary(oos, [market_regime_col]),
+                "by_regime_and_signal_type": grouped_summary(
+                    primary, [market_regime_col, "signal_type"]
+                ),
+                "oos_by_regime_and_signal_type": grouped_summary(
+                    oos, [market_regime_col, "signal_type"]
+                ),
+                "by_regime_and_entry_state": grouped_summary(
+                    primary, [market_regime_col, "entry_state"]
+                ),
+                "oos_by_regime_and_entry_state": grouped_summary(
+                    oos, [market_regime_col, "entry_state"]
+                ),
             }
             if market_regime_col
             else {
@@ -186,13 +234,25 @@ def main() -> int:
         type=Path,
         default=Path("artifacts/crypto/crypto_decomposition_v0.2.json"),
     )
+    ap.add_argument(
+        "--permission-history",
+        type=Path,
+        default=None,
+        help="Optional PIT permission history CSV used only for regime decomposition.",
+    )
     args = ap.parse_args()
 
     raw = pd.read_csv(
         args.input,
         parse_dates=["timestamp", "available_at"],
     )
-    result = decompose(raw)
+    permission_history = None
+    if args.permission_history is not None:
+        permission_history = pd.read_csv(
+            args.permission_history,
+            parse_dates=["decision_timestamp", "available_at"],
+        )
+    result = decompose(raw, permission_history=permission_history)
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
