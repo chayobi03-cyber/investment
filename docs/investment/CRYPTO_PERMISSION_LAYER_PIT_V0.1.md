@@ -142,3 +142,36 @@ No threshold tuning is permitted before this sequence is complete.
 This version establishes the schema/config/validation layer and the BTC/ETH/SOL spot acquisition adapter.
 
 It does not claim complete historical derivatives coverage, complete historical regulatory labels, validated market scores, or P6 promotion.
+
+
+## Implementation boundary
+
+The P0-P6 runner now consumes an optional permission-history CSV through
+`--permission-history`.
+
+Join rule:
+- signal timestamp is the decision clock;
+- permission `available_at` is the PIT join clock;
+- only the latest permission observation with `available_at <= signal timestamp` may be attached;
+- missing permission history remains `DATA_NOT_READY`;
+- the frozen price engine's B2/B3/B4 state is never rewritten by the overlay.
+
+The decomposition artifact reports:
+- breakout vs pullback;
+- B2 vs B3 vs B4;
+- zone;
+- regime R1-R6 when permission history is actually available;
+- OOS and walk-forward splits for the same frozen rule.
+
+`BUY_ALLOWED=false` is a hard invariant in config, risk engine, permission overlay,
+tests, and the P0-P6 artifact. Therefore permission PASS is an analytical eligibility
+state only and cannot create a live order path.
+
+Current state after this integration:
+- threshold mutation: forbidden;
+- price-signal decomposition: available;
+- PIT permission join: implemented;
+- historical permission regime coverage: DATA_NOT_READY until the required macro,
+  derivatives, regulation/market-structure and geopolitical history is populated;
+- P6 promotion / automatic orders: blocked.
+
