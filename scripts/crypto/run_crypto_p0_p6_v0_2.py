@@ -13,6 +13,10 @@ from src.investment_pipeline.crypto_entry import (
     cluster_episodes,
     generate_signals,
 )
+from src.investment_pipeline.crypto_permission import (
+    BUY_ALLOWED,
+    attach_permission_overlay,
+)
 
 
 HORIZONS = (5, 20, 60)
@@ -142,6 +146,12 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("input", type=Path)
     ap.add_argument("--output", type=Path, default=Path("artifacts/crypto/crypto_p0_p6_v0.2.json"))
+    ap.add_argument(
+        "--permission-history",
+        type=Path,
+        default=None,
+        help="Optional PIT permission history CSV. Missing history remains DATA_NOT_READY.",
+    )
     args = ap.parse_args()
 
     raw = pd.read_csv(args.input, parse_dates=["timestamp", "available_at"]).sort_values("timestamp").reset_index(drop=True)
@@ -153,7 +163,26 @@ def main() -> int:
     signals = cluster_episodes(signals, cooldown_bars=V02_COOLDOWN_BARS)
     signals = add_forward_outcomes(signals)
 
+    permission_history = None
+    if args.permission_history is not None:
+        permission_history = pd.read_csv(
+            args.permission_history,
+            parse_dates=["decision_timestamp", "available_at"],
+        )
+    signals, permission_result = attach_permission_overlay(
+        signals,
+        permission_history,
+    )
+
+    # Permission is an overlay only: frozen v0.2 price thresholds and B2/B3/B4
+    # classifications are not modified by permission data.
     primary = signals[signals["primary_event"] & candidate].copy()
+    permission_primary = primary[primary["permission_match"]].copy()
+    permission_eligible = permission_primary[
+        (permission_primary["permission_status"] == "PASS")
+        & permission_primary["confirmed_regime"].isin({"R1", "R2", "R3", "R4", "R5"})
+        & (permission_primary["permission_market_gate"] != "RED")
+    ].copy()
 
     # Simple chronological baseline: every >=5% pullback from prior 60D high,
     # clustered with the same cooldown and executed next-session open.
@@ -186,12 +215,27 @@ def main() -> int:
             "state_counts": {str(k): int(v) for k, v in signals["entry_state"].value_counts().items()},
             "primary_events": int(len(primary)),
             "candidate_days": int(candidate.sum()),
+            "permission_overlay": {
+                "status": permission_result.status,
+                "history_rows": permission_result.rows,
+                "matched_rows": permission_result.matched_rows,
+                "eligible_primary_events": int(len(permission_eligible)),
+                "regime_coverage": permission_result.regime_coverage,
+                "blocker_codes": list(permission_result.blocker_codes),
+                "buy_allowed": BUY_ALLOWED,
+            },
         },
         "p2": {
             "status": "PASS",
             "primary_events": int(len(primary)),
             "cooldown_bars": V02_COOLDOWN_BARS,
             "episode_ids": int(signals["episode_id"].dropna().nunique()),
+            "regime_decomposition": {
+                "status": permission_result.status,
+                "by_regime": event_stats(
+                    primary[primary["confirmed_regime"].isin({"R1", "R2", "R3", "R4", "R5", "R6"})]
+                ) if permission_result.status == "PASS" else None,
+            },
         },
         "p3": {
             "status": "PASS",
@@ -216,8 +260,19 @@ def main() -> int:
             "oos_simple_pullback_baseline_metrics": event_stats(oos_baseline),
             "walk_forward": wf,
             "threshold_retuned": False,
+            "buy_allowed": BUY_ALLOWED,
+            "permission_status": permission_result.status,
         },
         "threshold_validation": threshold_validation(oos_primary, oos_baseline),
+        "permission": {
+            "status": permission_result.status,
+            "buy_allowed": BUY_ALLOWED,
+            "matched_rows": permission_result.matched_rows,
+            "eligible_primary_events": int(len(permission_eligible)),
+            "regime_coverage": permission_result.regime_coverage,
+            "blocker_codes": list(permission_result.blocker_codes),
+            "execution_gate": "DISABLED",
+        },
         "p6": {
             "status": "BLOCKED",
             "promotion_status": "BLOCK",
