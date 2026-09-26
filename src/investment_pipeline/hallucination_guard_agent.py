@@ -6,6 +6,8 @@ from enum import StrEnum
 from math import isclose
 from typing import Any, Mapping
 
+from src.investment_pipeline.claim_contract import validate_claim_structure
+
 
 class ClaimType(StrEnum):
     FACT = "FACT"
@@ -96,10 +98,7 @@ class HallucinationGuardAgent:
 
         for claim in claims:
             claim_id = str(claim.get("claim_id", ""))
-            reasons: list[str] = []
-
-            if not all(claim.get(key) for key in self.REQUIRED_BASE):
-                reasons.append("CLAIM_FIELDS_MISSING")
+            reasons: list[str] = list(validate_claim_structure(claim))
 
             if not claim_id:
                 reasons.append("CLAIM_ID_MISSING")
