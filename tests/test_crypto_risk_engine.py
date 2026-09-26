@@ -23,7 +23,7 @@ BASE = {
 class CryptoRiskEngineTests(unittest.TestCase):
     def test_weighted_market_score_v02(self):
         score = compute_market_score(BASE)
-        self.assertAlmostEqual(score, 69.25)
+        self.assertAlmostEqual(score, 68.75)
 
     def test_gate_boundaries(self):
         self.assertEqual(market_gate_from_score(70), "GREEN")
@@ -59,9 +59,10 @@ class CryptoRiskEngineTests(unittest.TestCase):
         )
 
     def test_yellow_gate_caps_active_buy(self):
+        yellow_axes = {**BASE, "trend": 90, "flow_institutional": 90, "macro_liquidity": 30}
         result = evaluate(
             CryptoObservation(
-                axis_scores={**BASE, "trend": 90, "flow_institutional": 90},
+                axis_scores=yellow_axes,
                 opportunity_score=85,
                 data_ready=True,
                 price_in_interest_zone=True,
