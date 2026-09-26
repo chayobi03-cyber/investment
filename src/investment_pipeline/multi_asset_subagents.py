@@ -485,7 +485,6 @@ class MultiAssetOrchestrator:
             **permission_inputs,
         )
         risk = self.risk.run(**risk_inputs)
-        evidence = self.evidence.run(evidence_claims)
 
         retrieval_result = self.source_retrieval.run(
             evidence_claims,
@@ -508,7 +507,7 @@ class MultiAssetOrchestrator:
             [
                 {
                     "source_id": source.source_id,
-                    "source_class": source.source_type,
+                    "source_class": source.source_class,
                 }
                 for source in source_records
             ],
@@ -529,6 +528,8 @@ class MultiAssetOrchestrator:
             {"conflict_groups": list(conflict_result.conflict_groups)},
             conflict_result.blocker_codes,
         )
+
+        evidence = self.evidence.run(evidence_claims)
 
         guard_result = self.hallucination_guard.verify(
             evidence_claims,
@@ -556,7 +557,6 @@ class MultiAssetOrchestrator:
             },
             guard_result.blocker_codes,
         )
-
         return self.decision.run(
             asset=asset,
             signal=signal,
