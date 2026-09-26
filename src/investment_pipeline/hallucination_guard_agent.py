@@ -58,7 +58,6 @@ class HallucinationGuardAgent:
     """
 
     name = "hallucination_guard"
-    REQUIRED_BASE = ("claim_id", "claim_type", "statement", "scope")
 
     def verify(
         self,
