@@ -135,7 +135,7 @@ This is independent of any exposure multiplier or research score.
 
 ## Research sequence
 
-Data/PIT -> Regime -> Asset Signal -> Permission -> Risk -> Evidence -> Hallucination Guard -> Decision -> P0-P6/OOS/WF
+Data/PIT -> Regime -> Asset Signal -> Permission -> Risk -> Source Retrieval -> Source Quality -> Conflict Detection -> Evidence -> Hallucination Guard -> Decision -> P0-P6/OOS/WF
 
 No threshold tuning before the frozen-rule research cycle is complete.
 
@@ -163,3 +163,16 @@ It blocks:
 
 The Evidence Agent provides traceability; the Hallucination Guard validates the claim.
 Both are required before Decision promotion.
+
+
+## Evidence control plane
+
+Evidence-related agents are intentionally independent:
+
+- Source Retrieval: confirms the cited artifact exists and is PIT-eligible.
+- Source Quality: classifies source strength and enforces a declared minimum class without inventing a numerical truth score.
+- Conflict Detection: identifies explicitly structured contradictory claims but never selects a winner.
+- Evidence: verifies required evidence fields are present.
+- Hallucination Guard: validates the claim/evidence graph and blocks unsupported or lookahead claims.
+
+The chain is fail-closed. Passing one evidence agent does not waive another evidence gate.
