@@ -8,6 +8,7 @@ on:
       - "src/investment_pipeline/crypto_entry.py"
       - "src/investment_pipeline/crypto_risk.py"
       - "src/investment_pipeline/crypto_permission.py"
+      - "src/investment_pipeline/signal_decomposition_agent.py"
       - "scripts/crypto/run_crypto_p0_p6_v0_2.py"
       - "scripts/crypto/run_crypto_decomposition_v0_2.py"
       - "scripts/crypto/fetch_btc_daily.py"
@@ -50,7 +51,7 @@ jobs:
             tests/test_crypto_entry.py \
             tests/test_crypto_risk_engine.py \
             tests/test_crypto_permission_overlay.py \
-            tests/test_crypto_decomposition.py
+            tests/test_crypto_decomposition.py             tests/test_signal_decomposition_agent.py
 
       - name: Fetch BTC PIT daily history
         run: |
