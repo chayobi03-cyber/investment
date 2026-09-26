@@ -68,9 +68,6 @@ jobs:
             tests/test_hallucination_guard_agent.py \
             tests/test_source_retrieval_agent.py \
             tests/test_source_quality_agent.py \
-            tests/test_conflict_detection_agent.py \
-            tests/test_source_retrieval_agent.py \
-            tests/test_source_quality_agent.py \
             tests/test_conflict_detection_agent.py
 
       - name: Import smoke test
