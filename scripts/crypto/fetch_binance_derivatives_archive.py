@@ -56,7 +56,7 @@ def daily_url(symbol: str, d: date) -> str:
     stamp = d.isoformat()
     return f"{BASE}/daily/metrics/{symbol}/{symbol}-metrics-{stamp}.zip"
 
-def collect_symbol(symbol: str, start: date, end: date) -> list[dict]:
+def collect_symbol(symbol: str, start: date, end: date) -> tuple[list[dict], list[str]]:
     days = []
     cursor = start
     while cursor <= end:
@@ -64,6 +64,7 @@ def collect_symbol(symbol: str, start: date, end: date) -> list[dict]:
         cursor += timedelta(days=1)
 
     rows: list[dict] = []
+    missing_days: list[str] = []
     with ThreadPoolExecutor(max_workers=8) as ex:
         futures = {ex.submit(fetch_zip, daily_url(symbol, d)): d for d in days}
         for fut in as_completed(futures):
@@ -72,6 +73,7 @@ def collect_symbol(symbol: str, start: date, end: date) -> list[dict]:
                 payload, content_hash = fut.result()
             except requests.HTTPError as exc:
                 if getattr(exc.response, "status_code", None) == 404:
+                    missing_days.append(d.isoformat())
                     continue
                 raise
             frame = unzip_first_csv(payload)
@@ -104,7 +106,7 @@ def collect_symbol(symbol: str, start: date, end: date) -> list[dict]:
             ]
             available = [c for c in keep if c in frame.columns]
             rows.extend(frame[available].to_dict("records"))
-    return rows
+    return rows, missing_days
 
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -116,8 +118,11 @@ def main() -> int:
     start = date.fromisoformat(args.start)
     end = date.fromisoformat(args.end)
     all_rows: list[dict] = []
+    missing_by_symbol: dict[str, list[str]] = {}
     for symbol in SYMBOLS:
-        all_rows.extend(collect_symbol(symbol, start, end))
+        rows, missing_days = collect_symbol(symbol, start, end)
+        all_rows.extend(rows)
+        missing_by_symbol[symbol] = sorted(missing_days)
 
     out = pd.DataFrame(all_rows)
     if not out.empty:
@@ -127,8 +132,20 @@ def main() -> int:
         out["availability_method"] = "CONSERVATIVE_NEXT_UTC_DAY"
     args.out.parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(args.out, index=False)
+    import json
+    manifest = {
+        "status": "COLLECTED_PROVISIONAL_PIT" if not any(missing_by_symbol.values()) else "COLLECTED_WITH_GAPS",
+        "missing_days": missing_by_symbol,
+        "source": "BINANCE_VISION_DERIVATIVES_ARCHIVE",
+        "known_quality_warnings": [
+            "Binance Public Data reports historical metrics gaps and timestamp-label changes; do not silently treat gaps as zero or forward-fill.",
+        ],
+    }
+    args.out.with_suffix(".manifest.json").write_text(
+        json.dumps(manifest, indent=2), encoding="utf-8"
+    )
     print(
-        f"status=COLLECTED_PROVISIONAL_PIT rows={len(out)} "
+        f"status={manifest['status']} rows={len(out)} "
         f"assets={sorted(out['asset'].unique().tolist()) if not out.empty else []}"
     )
     return 0
