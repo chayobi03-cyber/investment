@@ -17,7 +17,7 @@ def test_global_execution_lock_is_hard_false():
 
 
 
-def test_source_record():
+def _source_record():
     now = datetime(2026, 9, 26, tzinfo=timezone.utc)
     return SourceRecord(
         source_id="TEST",
@@ -88,7 +88,7 @@ def test_signal_is_separate_from_permission():
             "source_timestamp": now,
             "available_at": now,
         }],
-        source_records=[test_source_record()],
+        source_records=[_source_record()],
         risk_inputs={
             "max_drawdown": -0.1,
             "mae": -0.05,
@@ -217,7 +217,7 @@ def test_source_quality_failure_is_a_decision_block():
 def test_conflict_detection_failure_is_a_decision_block():
     now = datetime(2026, 9, 26, tzinfo=timezone.utc)
     obs = [PITObservation("DXY", now, now, "TEST", 100.0, "hash")]
-    source = test_source_record()
+    source = _source_record()
 
     result = MultiAssetOrchestrator().run(
         asset=AssetClass.GOLD,
