@@ -76,6 +76,7 @@ class CryptoRiskEngineTests(unittest.TestCase):
         )
         self.assertEqual(result.buy_state, "B2")
         self.assertEqual(result.market_gate, "YELLOW")
+        self.assertFalse(result.buy_allowed)
 
     def test_b3_requires_green_market_gate_and_persistence(self):
         axes = {k: 90 for k in BASE}
@@ -95,6 +96,7 @@ class CryptoRiskEngineTests(unittest.TestCase):
         self.assertEqual(result.buy_state, "B3")
         self.assertEqual(result.market_gate, "GREEN")
         self.assertEqual(result.exposure_multiplier, 0.60)
+        self.assertFalse(result.buy_allowed)
 
     def test_b4_requires_two_confirmations_and_extreme_dislocation(self):
         axes = {k: 90 for k in BASE}
@@ -115,6 +117,7 @@ class CryptoRiskEngineTests(unittest.TestCase):
         )
         self.assertEqual(result.buy_state, "B4")
         self.assertEqual(result.exposure_multiplier, 1.0)
+        self.assertFalse(result.buy_allowed)
 
     def test_hard_macro_or_derivatives_block(self):
         axes = {k: 90 for k in BASE}
@@ -134,6 +137,7 @@ class CryptoRiskEngineTests(unittest.TestCase):
         )
         self.assertEqual(result.buy_state, "B0")
         self.assertIn("DERIVATIVES_HARD_BLOCK", result.reason_codes)
+        self.assertFalse(result.buy_allowed)
 
 
 if __name__ == "__main__":
