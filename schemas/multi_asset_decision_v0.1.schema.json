@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/chayobi03-cyber/investment/blob/main/schemas/multi_asset_decision_v0.1.schema.json",
+  "title": "Multi-Asset Decision Contract V0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "asset",
+    "signal_state",
+    "permission_status",
+    "market_gate",
+    "risk_gate",
+    "evidence_status",
+    "source_retrieval_status",
+    "source_quality_status",
+    "conflict_status",
+    "hallucination_status",
+    "buy_allowed",
+    "execution_allowed",
+    "blocker_codes"
+  ],
+  "properties": {
+    "asset": {"enum":["EQUITY","GOLD","CRYPTO"]},
+    "signal_state": {"type":"string","minLength":1},
+    "permission_status": {"enum":["PASS","BLOCKED","DATA_NOT_READY"]},
+    "market_gate": {"enum":["GREEN","YELLOW","RED","DATA_NOT_READY"]},
+    "risk_gate": {"enum":["GREEN","YELLOW","RED","DATA_NOT_READY"]},
+    "evidence_status": {"enum":["PASS","BLOCKED","DATA_NOT_READY"]},
+    "source_retrieval_status": {"enum":["PASS","BLOCKED","DATA_NOT_READY"]},
+    "source_quality_status": {"enum":["PASS","BLOCKED","DATA_NOT_READY"]},
+    "conflict_status": {"enum":["PASS","BLOCKED","DATA_NOT_READY"]},
+    "hallucination_status": {"enum":["PASS","BLOCKED","DATA_NOT_READY"]},
+    "buy_allowed": {"const":false},
+    "execution_allowed": {"const":false},
+    "blocker_codes": {
+      "type":"array",
+      "items":{"type":"string"}
+    }
+  }
+}
