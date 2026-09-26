@@ -1,3 +1,4 @@
+from dataclasses import FrozenInstanceError
 from datetime import datetime, timezone
 
 import pytest
@@ -20,7 +21,7 @@ def test_snapshot_is_immutable_and_timezone_aware():
         rule_version="crypto-market-regime-entry-v0.2",
     )
 
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         snapshot.signal_state = "B4"  # type: ignore[misc]
 
 
