@@ -302,6 +302,8 @@ def main() -> int:
             "provenance_pass": False,
             "lookahead_pass": True,
             "threshold_retuned": False,
+            "buy_allowed": BUY_ALLOWED,
+            "permission_status": permission_result.status,
         },
     }
 
