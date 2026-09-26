@@ -1,0 +1,556 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/chayobi03-cyber/investment/blob/main/schemas/crypto_p0_p6_v0.2.schema.json",
+  "title": "Crypto P0-P6 Decision Record V0.2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "record_id",
+    "asset",
+    "decision_timestamp",
+    "observed_at",
+    "available_at",
+    "source_ids",
+    "rule_version",
+    "data_quality",
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5",
+    "p6"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "crypto-p0-p6-v0.2"
+    },
+    "record_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "asset": {
+      "type": "string",
+      "minLength": 1
+    },
+    "decision_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "available_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_ids": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "rule_version": {
+      "const": "crypto-market-regime-entry-v0.2"
+    },
+    "data_quality": {
+      "$ref": "#/$defs/data_quality"
+    },
+    "p0": {
+      "$ref": "#/$defs/p0"
+    },
+    "p1": {
+      "$ref": "#/$defs/p1"
+    },
+    "p2": {
+      "$ref": "#/$defs/p2"
+    },
+    "p3": {
+      "$ref": "#/$defs/p3"
+    },
+    "p4": {
+      "$ref": "#/$defs/p4"
+    },
+    "p5": {
+      "$ref": "#/$defs/p5"
+    },
+    "p6": {
+      "$ref": "#/$defs/p6"
+    }
+  },
+  "$defs": {
+    "stage_status": {
+      "type": "string",
+      "enum": [
+        "PASS",
+        "BLOCKED",
+        "DATA_NOT_READY"
+      ]
+    },
+    "data_quality": {
+      "type": "object",
+      "required": [
+        "status",
+        "pit_validated",
+        "future_data_violation",
+        "freshness_ok",
+        "provenance_complete"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/stage_status"
+        },
+        "pit_validated": {
+          "type": "boolean"
+        },
+        "future_data_violation": {
+          "type": "boolean"
+        },
+        "freshness_ok": {
+          "type": "boolean"
+        },
+        "provenance_complete": {
+          "type": "boolean"
+        },
+        "history_bars": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "freshness_map": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        },
+        "provenance_map": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "p0": {
+      "type": "object",
+      "required": [
+        "status",
+        "duplicate_count",
+        "missing_required_count",
+        "availability_ok",
+        "lookahead_ok"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/stage_status"
+        },
+        "duplicate_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_required_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "availability_ok": {
+          "type": "boolean"
+        },
+        "lookahead_ok": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "p1": {
+      "type": "object",
+      "required": [
+        "market_score",
+        "market_gate",
+        "raw_regime",
+        "confirmed_regime",
+        "trend_status",
+        "zone",
+        "stabilization_status",
+        "breakout_status",
+        "buy_state"
+      ],
+      "properties": {
+        "market_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "market_gate": {
+          "type": "string",
+          "enum": [
+            "GREEN",
+            "YELLOW",
+            "RED",
+            "DATA_NOT_READY"
+          ]
+        },
+        "raw_regime": {
+          "type": "string",
+          "enum": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6",
+            "DATA_NOT_READY"
+          ]
+        },
+        "confirmed_regime": {
+          "type": "string",
+          "enum": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6",
+            "DATA_NOT_READY"
+          ]
+        },
+        "trend_status": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "FAIL",
+            "DATA_NOT_READY"
+          ]
+        },
+        "drawdown_60d": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "zone": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "stabilization_status": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "FAIL",
+            "DATA_NOT_READY"
+          ]
+        },
+        "breakout_status": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "FAIL",
+            "DATA_NOT_READY"
+          ]
+        },
+        "macro_block": {
+          "type": "boolean"
+        },
+        "derivatives_block": {
+          "type": "boolean"
+        },
+        "breadth_status": {
+          "type": "string",
+          "enum": [
+            "GREEN",
+            "YELLOW",
+            "RED",
+            "DATA_NOT_READY"
+          ]
+        },
+        "opportunity_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "buy_state": {
+          "type": "string",
+          "enum": [
+            "B0",
+            "B1",
+            "B2",
+            "B3",
+            "B4",
+            "DATA_NOT_READY"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "p2": {
+      "type": "object",
+      "required": [
+        "episode_id",
+        "primary_event"
+      ],
+      "properties": {
+        "episode_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "episode_started_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "episode_day_index": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "primary_event": {
+          "type": "boolean"
+        },
+        "rearm_status": {
+          "type": "boolean"
+        },
+        "independent_confirmation_clusters": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "p3": {
+      "type": "object",
+      "required": [
+        "status",
+        "signal_timestamp",
+        "entry_timestamp"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/stage_status"
+        },
+        "signal_timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "entry_timestamp": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "entry_price": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "execution_cost_bps": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "forward_returns": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "outcome_missing_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "p4": {
+      "type": "object",
+      "required": [
+        "status",
+        "survival_constraint_violation"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/stage_status"
+        },
+        "mae": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "mfe": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "forward_mdd": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "worst_forward_return": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "downside_tail_loss": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "recovery_days": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "survival_constraint_violation": {
+          "type": "boolean"
+        },
+        "stress_loss": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "p5": {
+      "type": "object",
+      "required": [
+        "status",
+        "split_id",
+        "threshold_retuned",
+        "execution_cost_included"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/stage_status"
+        },
+        "split_id": {
+          "type": "string"
+        },
+        "train_start": {
+          "type": "string"
+        },
+        "train_end": {
+          "type": "string"
+        },
+        "test_start": {
+          "type": "string"
+        },
+        "test_end": {
+          "type": "string"
+        },
+        "rule_version": {
+          "type": "string"
+        },
+        "rule_hash": {
+          "type": "string"
+        },
+        "threshold_retuned": {
+          "const": false
+        },
+        "execution_cost_included": {
+          "type": "boolean"
+        },
+        "baseline_metrics": {
+          "type": "object"
+        },
+        "oos_metrics": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": true
+    },
+    "p6": {
+      "type": "object",
+      "required": [
+        "status",
+        "promotion_status",
+        "oos_pass",
+        "walk_forward_pass",
+        "sensitivity_pass",
+        "provenance_pass",
+        "lookahead_pass"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/stage_status"
+        },
+        "promotion_status": {
+          "type": "string",
+          "enum": [
+            "PROMOTE",
+            "BLOCK",
+            "DATA_NOT_READY"
+          ]
+        },
+        "oos_pass": {
+          "type": "boolean"
+        },
+        "walk_forward_pass": {
+          "type": "boolean"
+        },
+        "sensitivity_pass": {
+          "type": "boolean"
+        },
+        "provenance_pass": {
+          "type": "boolean"
+        },
+        "lookahead_pass": {
+          "type": "boolean"
+        },
+        "fp_reviewed": {
+          "type": "boolean"
+        },
+        "fn_reviewed": {
+          "type": "boolean"
+        },
+        "stress_anchors_reviewed": {
+          "type": "boolean"
+        },
+        "sample_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blockers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}
