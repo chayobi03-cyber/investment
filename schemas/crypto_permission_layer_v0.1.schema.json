@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/chayobi03-cyber/investment/blob/main/schemas/crypto_permission_layer_v0.1.schema.json",
+  "title": "Crypto Permission Layer PIT V0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "decision_timestamp", "observations", "permission"],
+  "properties": {
+    "schema_version": {"const": "crypto-permission-layer-v0.1"},
+    "decision_timestamp": {"type": "string", "format": "date-time"},
+    "observations": {"type": "array", "items": {"$ref": "#/$defs/observation"}},
+    "permission": {"$ref": "#/$defs/permission"}
+  },
+  "$defs": {
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset","series_id","observation_timestamp","available_at",
+        "source_id","unit","value","ingested_at"
+      ],
+      "properties": {
+        "asset": {"type": "string", "minLength": 1},
+        "series_id": {"type": "string", "minLength": 1},
+        "observation_timestamp": {"type": "string", "format": "date-time"},
+        "available_at": {"type": "string", "format": "date-time"},
+        "source_id": {"type": "string", "minLength": 1},
+        "source_record_id": {"type": ["string","null"]},
+        "unit": {"type": "string", "minLength": 1},
+        "value": {"type": ["number","null"]},
+        "ingested_at": {"type": "string", "format": "date-time"},
+        "provenance_hash": {"type": ["string","null"]}
+      }
+    },
+    "permission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status","market_score","market_gate","raw_regime","confirmed_regime",
+        "macro_block","derivatives_block","cross_asset_confirmation","blocker_codes"
+      ],
+      "properties": {
+        "status": {"enum": ["PASS","BLOCKED","DATA_NOT_READY"]},
+        "market_score": {"type": ["number","null"], "minimum": 0, "maximum": 100},
+        "market_gate": {"enum": ["GREEN","YELLOW","RED","DATA_NOT_READY"]},
+        "raw_regime": {"enum": ["R1","R2","R3","R4","R5","R6","DATA_NOT_READY"]},
+        "confirmed_regime": {"enum": ["R1","R2","R3","R4","R5","R6","DATA_NOT_READY"]},
+        "macro_block": {"type": "boolean"},
+        "derivatives_block": {"type": "boolean"},
+        "cross_asset_confirmation": {"enum": ["PASS","FAIL","DATA_NOT_READY"]},
+        "evidence_completeness": {"type": "number", "minimum": 0, "maximum": 1},
+        "blocker_codes": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}
