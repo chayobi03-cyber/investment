@@ -1,0 +1,53 @@
+name: crypto-entry-live-monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Build live entry snapshot
+        env:
+          PYTHONPATH: .
+        run: |
+          python scripts/crypto/live_entry_snapshot.py             --output artifacts/crypto/live_entry.json
+
+      - name: Publish compact state
+        run: |
+          python - <<'PY'
+          import json
+          d = json.load(open("artifacts/crypto/live_entry.json", encoding="utf-8"))
+          print("CRYPTO_ENTRY_STATE=" + d["daily_state"])
+          print("DAILY_ZONE=" + d["daily_zone"])
+          print("LIVE_ZONE=" + d["live_zone"])
+          print("LIVE_PRICE=" + str(d["live_price"]))
+          print("FIRST_TRIGGER=" + str(d["triggers"]["Z1_enter"]))
+          print("ACTION=" + d["action"])
+          PY
+
+      - name: Upload snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: crypto-entry-live-${{ github.run_id }}
+          path: artifacts/crypto/live_entry.json
+          retention-days: 7
