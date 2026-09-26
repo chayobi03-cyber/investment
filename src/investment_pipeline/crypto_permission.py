@@ -37,7 +37,11 @@ def _utc(series: pd.Series) -> pd.Series:
     return pd.to_datetime(series, utc=True, errors="coerce")
 
 
-def validate_permission_history(frame: pd.DataFrame) -> PermissionOverlayResult:
+def validate_permission_history(
+    frame: pd.DataFrame,
+    *,
+    as_of: pd.Timestamp | None = None,
+) -> PermissionOverlayResult:
     missing = sorted(REQUIRED_COLUMNS - set(frame.columns))
     if missing:
         raise PermissionDataNotReady("missing_columns:" + ",".join(missing))
@@ -54,8 +58,14 @@ def validate_permission_history(frame: pd.DataFrame) -> PermissionOverlayResult:
     if (df["available_at"] < df["decision_timestamp"]).any():
         raise PermissionDataNotReady("available_before_decision")
 
-    if (df["available_at"] > pd.Timestamp.now(tz="UTC")).any():
-        raise PermissionDataNotReady("future_available_at")
+    if as_of is not None:
+        as_of = pd.Timestamp(as_of)
+        if as_of.tzinfo is None:
+            as_of = as_of.tz_localize("UTC")
+        else:
+            as_of = as_of.tz_convert("UTC")
+        if (df["available_at"] > as_of).any():
+            raise PermissionDataNotReady("future_available_at")
 
     if not df["permission_status"].isin(VALID_STATUS).all():
         raise PermissionDataNotReady("invalid_permission_status")

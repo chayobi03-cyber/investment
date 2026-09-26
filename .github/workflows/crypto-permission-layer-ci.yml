@@ -6,12 +6,16 @@ on:
     branches: ["main"]
     paths:
       - "config/crypto_permission_layer_v0.1.json"
+      - "config/permission_evidence_registry_v0.1.json"
+      - "schemas/permission_evidence_registry_v0.1.schema.json"
       - "schemas/crypto_permission_layer_v0.1.schema.json"
       - "scripts/crypto/fetch_multi_asset_daily.py"
       - "scripts/crypto/validate_permission_layer_pit.py"
+      - "scripts/crypto/validate_permission_evidence_registry.py"
       - "src/investment_pipeline/crypto_permission.py"
       - "tests/test_crypto_permission_layer.py"
       - "tests/test_crypto_permission_overlay.py"
+      - "tests/test_permission_evidence_registry.py"
       - ".github/workflows/crypto-permission-layer-ci.yml"
   schedule:
     - cron: "15 2 * * *"
@@ -41,7 +45,15 @@ jobs:
         env:
           PYTHONPATH: .
         run: |
-          python -m pytest -q             tests/test_crypto_permission_layer.py             tests/test_crypto_permission_overlay.py
+          python -m pytest -q \
+            tests/test_crypto_permission_layer.py \
+            tests/test_crypto_permission_overlay.py \
+            tests/test_permission_evidence_registry.py
+
+      - name: Validate permission evidence registry
+        run: |
+          python scripts/crypto/validate_permission_evidence_registry.py \
+            config/permission_evidence_registry_v0.1.json
 
       - name: Validate contract JSON
         run: |

@@ -1,0 +1,272 @@
+{
+  "schema_version": "permission-evidence-registry-v0.1",
+  "status": "SCHEMA_DEFINED_NOT_VALIDATED",
+  "decision_clock": "UTC_daily_close",
+  "global_controls": {
+    "lookahead_forbidden": true,
+    "provenance_hash_required": true,
+    "explicit_available_at_required": true,
+    "silent_provider_splice_forbidden": true
+  },
+  "families": [
+    {
+      "family_id": "cross_asset_spot",
+      "required": true,
+      "availability_policy": "EXCHANGE_OBSERVATION_TIMESTAMP",
+      "datasets": [
+        {
+          "dataset_id": "crypto_spot_1d",
+          "asset_scope": [
+            "BTC",
+            "ETH",
+            "SOL"
+          ],
+          "series": [
+            {
+              "series_id": "BTC_USD_OHLCV",
+              "unit": "USD_OHLCV",
+              "available_at_required": true
+            },
+            {
+              "series_id": "ETH_USD_OHLCV",
+              "unit": "USD_OHLCV",
+              "available_at_required": true
+            },
+            {
+              "series_id": "SOL_USD_OHLCV",
+              "unit": "USD_OHLCV",
+              "available_at_required": true
+            }
+          ],
+          "primary_sources": [
+            {
+              "source_id": "COINBASE_EXCHANGE",
+              "source_class": "PRIMARY_EXCHANGE",
+              "role": "PRIMARY"
+            },
+            {
+              "source_id": "BINANCE_SPOT_PUBLIC",
+              "source_class": "PRIMARY_EXCHANGE",
+              "role": "FALLBACK"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "macro_liquidity",
+      "required": true,
+      "availability_policy": "SOURCE_RELEASE_TIMESTAMP",
+      "datasets": [
+        {
+          "dataset_id": "macro_core",
+          "asset_scope": [
+            "CRYPTO",
+            "EQUITY",
+            "GOLD"
+          ],
+          "series": [
+            {
+              "series_id": "US10Y_10d_bp_change",
+              "unit": "bp_change",
+              "available_at_required": true
+            },
+            {
+              "series_id": "US_REAL_YIELD_10d_bp_change",
+              "unit": "bp_change",
+              "available_at_required": true
+            },
+            {
+              "series_id": "WTI_5d_pct_change",
+              "unit": "pct_change",
+              "available_at_required": true
+            },
+            {
+              "series_id": "DXY_20d_pct_change",
+              "unit": "pct_change",
+              "available_at_required": true
+            },
+            {
+              "series_id": "USD_KRW_20d_pct_change",
+              "unit": "pct_change",
+              "available_at_required": true
+            }
+          ],
+          "primary_sources": [
+            {
+              "source_id": "FRED:DGS10",
+              "source_class": "PRIMARY_OFFICIAL",
+              "role": "PRIMARY"
+            },
+            {
+              "source_id": "FRED:DFII10",
+              "source_class": "PRIMARY_OFFICIAL",
+              "role": "PRIMARY"
+            },
+            {
+              "source_id": "FRED:DCOILWTICO",
+              "source_class": "PRIMARY_OFFICIAL",
+              "role": "PRIMARY"
+            },
+            {
+              "source_id": "OFFICIAL_DXY_OR_LICENSED_MIRROR",
+              "source_class": "LICENSED_MARKET_DATA",
+              "role": "PRIMARY"
+            },
+            {
+              "source_id": "OFFICIAL_FX_SOURCE",
+              "source_class": "PRIMARY_OFFICIAL",
+              "role": "PRIMARY"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "derivatives",
+      "required": true,
+      "availability_policy": "EXPLICIT_AVAILABLE_AT",
+      "datasets": [
+        {
+          "dataset_id": "perpetual_derivatives",
+          "asset_scope": [
+            "BTC",
+            "ETH",
+            "SOL"
+          ],
+          "series": [
+            {
+              "series_id": "funding_rate_8h",
+              "unit": "rate",
+              "available_at_required": true
+            },
+            {
+              "series_id": "open_interest_24h_pct_change",
+              "unit": "pct_change",
+              "available_at_required": true
+            },
+            {
+              "series_id": "basis_1d",
+              "unit": "pct",
+              "available_at_required": true
+            },
+            {
+              "series_id": "top_trader_ls_position_ratio",
+              "unit": "ratio",
+              "available_at_required": true
+            },
+            {
+              "series_id": "taker_buy_sell_ratio",
+              "unit": "ratio",
+              "available_at_required": true
+            },
+            {
+              "series_id": "liquidation_usd_1d",
+              "unit": "USD",
+              "available_at_required": true
+            },
+            {
+              "series_id": "mark_price",
+              "unit": "USD",
+              "available_at_required": true
+            },
+            {
+              "series_id": "index_price",
+              "unit": "USD",
+              "available_at_required": true
+            }
+          ],
+          "primary_sources": [
+            {
+              "source_id": "BINANCE_USDM",
+              "source_class": "PRIMARY_EXCHANGE",
+              "role": "PRIMARY"
+            },
+            {
+              "source_id": "COINMETRICS_MARKET",
+              "source_class": "LICENSED_MARKET_DATA",
+              "role": "ARCHIVE",
+              "credential_required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "regulation_market_structure",
+      "required": true,
+      "availability_policy": "EXPLICIT_AVAILABLE_AT",
+      "datasets": [
+        {
+          "dataset_id": "regulatory_events",
+          "asset_scope": [
+            "CRYPTO"
+          ],
+          "series": [
+            {
+              "series_id": "regulatory_event",
+              "unit": "event",
+              "available_at_required": true
+            }
+          ],
+          "primary_sources": [
+            {
+              "source_id": "SEC",
+              "source_class": "PRIMARY_OFFICIAL",
+              "role": "PRIMARY"
+            },
+            {
+              "source_id": "CFTC",
+              "source_class": "PRIMARY_OFFICIAL",
+              "role": "PRIMARY"
+            },
+            {
+              "source_id": "FSC_KOREA",
+              "source_class": "PRIMARY_OFFICIAL",
+              "role": "PRIMARY"
+            },
+            {
+              "source_id": "FCA",
+              "source_class": "PRIMARY_OFFICIAL",
+              "role": "PRIMARY"
+            },
+            {
+              "source_id": "EU_PRIMARY_REGULATOR",
+              "source_class": "PRIMARY_OFFICIAL",
+              "role": "PRIMARY"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "geopolitical_transmission",
+      "required": true,
+      "availability_policy": "EXPLICIT_AVAILABLE_AT",
+      "datasets": [
+        {
+          "dataset_id": "geopolitical_events",
+          "asset_scope": [
+            "CRYPTO",
+            "EQUITY",
+            "GOLD"
+          ],
+          "series": [
+            {
+              "series_id": "geopolitical_event",
+              "unit": "event",
+              "available_at_required": true
+            }
+          ],
+          "primary_sources": [
+            {
+              "source_id": "GOVERNMENT_PRIMARY_SOURCE",
+              "source_class": "PRIMARY_OFFICIAL",
+              "role": "PRIMARY"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
