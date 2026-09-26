@@ -6,6 +6,7 @@ on:
     branches: ["main"]
     paths:
       - "src/investment_pipeline/multi_asset_subagents.py"
+      - "src/investment_pipeline/asset_signal_contract.py"
       - "src/investment_pipeline/hallucination_guard_agent.py"
       - "src/investment_pipeline/source_retrieval_agent.py"
       - "src/investment_pipeline/source_quality_agent.py"
