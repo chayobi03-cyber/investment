@@ -129,6 +129,7 @@ def decompose(
             col
             for col in ("confirmed_regime", "raw_regime", "market_regime")
             if col in signals.columns
+            and signals[col].isin({"R1", "R2", "R3", "R4", "R5", "R6"}).any()
         ),
         None,
     )
