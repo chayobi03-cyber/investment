@@ -38,6 +38,7 @@ class CryptoRiskEngineTests(unittest.TestCase):
         )
         self.assertEqual(result.buy_state, "B0")
         self.assertEqual(result.permission_status, "BLOCKED")
+        self.assertFalse(result.buy_allowed)
         self.assertTrue(result.reason_codes[0].startswith("missing_axes"))
 
     def test_regime_boundaries(self):
