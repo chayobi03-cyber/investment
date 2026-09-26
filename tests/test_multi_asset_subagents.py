@@ -66,9 +66,12 @@ def test_signal_is_separate_from_permission():
         signal_features={"signal_state": "B3"},
         evidence_claims=[{
             "claim_id": "C1",
+            "claim_type": "FACT",
+            "statement": "DXY observation exists",
+            "scope": "2026-09-26",
             "source_id": "TEST",
-            "timestamp": now.isoformat(),
-            "calculation": "fixture",
+            "source_timestamp": now,
+            "available_at": now,
         }],
         risk_inputs={
             "max_drawdown": -0.1,
@@ -82,3 +85,68 @@ def test_signal_is_separate_from_permission():
     assert result.execution_allowed is False
     assert result.permission_status == Status.BLOCKED
     assert "MACRO_BLOCK" in result.blocker_codes
+
+
+def test_hallucination_guard_blocks_unsupported_claim():
+    now = datetime(2026, 9, 26, tzinfo=timezone.utc)
+    obs = [PITObservation("DXY", now, now, "TEST", 100.0, "hash")]
+
+    result = MultiAssetOrchestrator().run(
+        asset=AssetClass.EQUITY,
+        decision_timestamp=now,
+        observations=obs,
+        required_series={"DXY"},
+        axis_scores={"trend": 80, "breadth": 75},
+        regime_weights={"trend": 0.5, "breadth": 0.5},
+        signal_features={"signal_state": "B3"},
+        evidence_claims=[{
+            "claim_id": "BAD1",
+            "claim_type": "FACT",
+            "statement": "Unsupported fact",
+            "scope": "2026-09-26",
+        }],
+        risk_inputs={
+            "max_drawdown": -0.1,
+            "mae": -0.05,
+            "stress_loss": -0.15,
+        },
+        permission_inputs={},
+    )
+
+    assert result.buy_allowed is False
+    assert result.execution_allowed is False
+    assert "HALLUCINATION_GUARD_BLOCK" in result.blocker_codes
+
+
+def test_verified_evidence_passes_hallucination_guard_but_buy_remains_locked():
+    now = datetime(2026, 9, 26, tzinfo=timezone.utc)
+    obs = [PITObservation("DXY", now, now, "TEST", 100.0, "hash")]
+
+    result = MultiAssetOrchestrator().run(
+        asset=AssetClass.GOLD,
+        decision_timestamp=now,
+        observations=obs,
+        required_series={"DXY"},
+        axis_scores={"trend": 80, "breadth": 75},
+        regime_weights={"trend": 0.5, "breadth": 0.5},
+        signal_features={"signal_state": "B3"},
+        evidence_claims=[{
+            "claim_id": "FACT1",
+            "claim_type": "FACT",
+            "statement": "DXY observation exists",
+            "scope": "decision date",
+            "source_id": "TEST",
+            "source_timestamp": now,
+            "available_at": now,
+        }],
+        risk_inputs={
+            "max_drawdown": -0.1,
+            "mae": -0.05,
+            "stress_loss": -0.15,
+        },
+        permission_inputs={},
+    )
+
+    assert result.hallucination_status.value == "PASS"
+    assert result.buy_allowed is False
+    assert result.execution_allowed is False
