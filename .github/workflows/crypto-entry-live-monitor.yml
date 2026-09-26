@@ -2,6 +2,13 @@ name: crypto-entry-live-monitor
 
 on:
   workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/crypto/live_entry_snapshot.py"
+      - ".github/workflows/crypto-entry-live-monitor.yml"
+      - "src/investment_pipeline/crypto_entry.py"
+      - "requirements.txt"
   schedule:
     - cron: "*/15 * * * *"
 
