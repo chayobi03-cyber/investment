@@ -7,6 +7,11 @@ import pandas as pd
 
 EntryState = Literal["B0", "B1", "B2", "B3", "B4"]
 
+V02_COOLDOWN_BARS = 5
+V02_BREAKOUT_BUFFER = 0.005
+V02_BREAKOUT_VOLUME_RATIO = 1.20
+V02_STABILIZATION_GREEN_MIN = 2
+
 
 @dataclass(frozen=True)
 class EntrySignal:
@@ -28,7 +33,6 @@ def validate_ohlcv(frame: pd.DataFrame) -> None:
         raise ValueError("duplicate_timestamps")
     if not frame["timestamp"].is_monotonic_increasing:
         raise ValueError("timestamps_not_ascending")
-
     ohlc = frame[["open", "high", "low", "close"]]
     if (ohlc <= 0).any().any():
         raise ValueError("non_positive_ohlc")
@@ -41,8 +45,9 @@ def validate_ohlcv(frame: pd.DataFrame) -> None:
 def add_entry_features(frame: pd.DataFrame) -> pd.DataFrame:
     df = frame.copy()
     validate_ohlcv(df)
-    for col in ("open", "high", "low", "close"):
-        df[col] = pd.to_numeric(df[col], errors="coerce")
+    for col in ("open", "high", "low", "close", "volume"):
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
     if df[["open", "high", "low", "close"]].isna().any().any():
         raise ValueError("non_numeric_ohlc")
 
@@ -52,7 +57,14 @@ def add_entry_features(frame: pd.DataFrame) -> pd.DataFrame:
     df["ret3"] = df["close"].pct_change(3)
     df["ret5"] = df["close"].pct_change(5)
 
-    # Shifted reference prevents today's high from defining today's zone.
+    if "volume" in df.columns:
+        df["volume_ma20"] = df["volume"].rolling(20, min_periods=20).mean()
+        df["volume_ratio20"] = df["volume"] / df["volume_ma20"]
+    else:
+        df["volume_ma20"] = pd.NA
+        df["volume_ratio20"] = pd.NA
+
+    # Reference windows exclude the current decision bar.
     df["prior_high60"] = df["high"].rolling(60, min_periods=60).max().shift(1)
     df["prior_high20"] = df["high"].rolling(20, min_periods=20).max().shift(1)
     df["prior_low20"] = df["low"].rolling(20, min_periods=20).min().shift(1)
@@ -63,14 +75,21 @@ def add_entry_features(frame: pd.DataFrame) -> pd.DataFrame:
         & (df["ma20"] > df["ma50"])
         & (df["ma50"] > df["ma200"])
     )
+    green_close = df["close"] > df["open"]
+    df["green_closes_last3"] = green_close.astype(int).rolling(3, min_periods=3).sum()
     df["stabilization"] = (
         (df["ret3"] > 0)
         & (df["close"] >= df["ma20"])
         & df["trend_ok"]
+        & (df["green_closes_last3"] >= V02_STABILIZATION_GREEN_MIN)
     )
+
+    volume_ok = df["volume_ratio20"] >= V02_BREAKOUT_VOLUME_RATIO
     df["breakout"] = (
-        (df["close"] > df["prior_high60"])
-        & (df["ret5"] > 0)
+        (df["close"] >= df["prior_high60"] * (1.0 + V02_BREAKOUT_BUFFER))
+        & (df["close"] > df["prior_high60"])
+        & (df["ret3"] > 0)
+        & volume_ok
         & df["trend_ok"]
     )
 
@@ -84,8 +103,7 @@ def add_entry_features(frame: pd.DataFrame) -> pd.DataFrame:
 
 def signal_from_row(row: pd.Series) -> EntrySignal:
     required = [
-        "close", "ma20", "ma50", "ma200",
-        "ret3", "ret5", "prior_high60", "drawdown60",
+        "close", "ma20", "ma50", "ma200", "ret3", "prior_high60", "drawdown60"
     ]
     if any(pd.isna(row[k]) for k in required):
         return EntrySignal("B0", "UNKNOWN", ("DATA_NOT_READY",), None, None)
@@ -107,57 +125,25 @@ def signal_from_row(row: pd.Series) -> EntrySignal:
 
     if breakout:
         if stabilization:
-            return EntrySignal(
-                "B3", "BREAKOUT",
-                ("BREAKOUT_CONFIRMED", "TREND_VALID"),
-                None, None,
-            )
-        return EntrySignal(
-            "B2", "BREAKOUT",
-            ("BREAKOUT_WATCH", "TREND_VALID"),
-            None, None,
-        )
+            return EntrySignal("B3", "BREAKOUT", ("BREAKOUT_CONFIRMED", "TREND_VALID"), None, None)
+        return EntrySignal("B2", "BREAKOUT", ("BREAKOUT_WATCH", "TREND_VALID"), None, None)
 
     if zone == "Z0":
         if float(row["drawdown60"]) >= -0.02:
-            return EntrySignal(
-                "B1", "Z0",
-                ("NO_CHASE", "PULLBACK_NOT_REACHED"),
-                *zone_bounds["Z1"],
-            )
+            return EntrySignal("B1", "Z0", ("NO_CHASE", "PULLBACK_NOT_REACHED"), *zone_bounds["Z1"])
         return EntrySignal("B0", "Z0", ("PULLBACK_NOT_REACHED",), *zone_bounds["Z1"])
 
     if zone in {"Z1", "Z2"}:
         if stabilization:
-            return EntrySignal(
-                "B3", zone,
-                ("PULLBACK_STABILIZED", "TREND_VALID"),
-                *zone_bounds[zone],
-            )
-        return EntrySignal(
-            "B2", zone,
-            ("PULLBACK_REACHED", "WAIT_STABILIZATION"),
-            *zone_bounds[zone],
-        )
+            return EntrySignal("B3", zone, ("PULLBACK_STABILIZED", "TREND_VALID"), *zone_bounds[zone])
+        return EntrySignal("B2", zone, ("PULLBACK_REACHED", "WAIT_STABILIZATION"), *zone_bounds[zone])
 
     if zone == "Z3":
         if stabilization and float(row["close"]) >= float(row["ma50"]):
-            return EntrySignal(
-                "B4", zone,
-                ("DEEP_DISLOCATION", "STABILIZED", "MA50_RECLAIM"),
-                *zone_bounds[zone],
-            )
+            return EntrySignal("B4", zone, ("DEEP_DISLOCATION", "STABILIZED", "MA50_RECLAIM"), *zone_bounds[zone])
         if stabilization:
-            return EntrySignal(
-                "B3", zone,
-                ("DEEP_DISLOCATION", "STABILIZED"),
-                *zone_bounds[zone],
-            )
-        return EntrySignal(
-            "B2", zone,
-            ("DEEP_DISLOCATION", "WAIT_STABILIZATION"),
-            *zone_bounds[zone],
-        )
+            return EntrySignal("B3", zone, ("DEEP_DISLOCATION", "STABILIZED"), *zone_bounds[zone])
+        return EntrySignal("B2", zone, ("DEEP_DISLOCATION", "WAIT_STABILIZATION"), *zone_bounds[zone])
 
     return EntrySignal("B0", zone, ("UNRESOLVED",), None, None)
 
@@ -173,25 +159,42 @@ def generate_signals(frame: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def cluster_episodes(signals: pd.DataFrame, cooldown_bars: int = 5) -> pd.DataFrame:
+def cluster_episodes(signals: pd.DataFrame, cooldown_bars: int = V02_COOLDOWN_BARS) -> pd.DataFrame:
     if cooldown_bars < 1:
         raise ValueError("cooldown_bars_must_be_positive")
     out = signals.copy()
     primary = []
+    episode_ids = []
+    current_episode = None
     last_primary_pos: int | None = None
+    in_episode = False
 
     for pos, (_, row) in enumerate(out.iterrows()):
+        zone = str(row.get("zone", ""))
         candidate = str(row["entry_state"]) in {"B2", "B3", "B4"}
+
         if not candidate:
             primary.append(False)
+            episode_ids.append(current_episode)
+            if zone in {"Z0", "UNKNOWN"}:
+                in_episode = False
             continue
-        if last_primary_pos is None or pos - last_primary_pos > cooldown_bars:
+
+        if (
+            (not in_episode)
+            and (last_primary_pos is None or pos - last_primary_pos > cooldown_bars)
+        ):
+            current_episode = f"E{pos:06d}"
             primary.append(True)
             last_primary_pos = pos
+            in_episode = True
         else:
             primary.append(False)
 
+        episode_ids.append(current_episode)
+
     out["primary_event"] = primary
+    out["episode_id"] = episode_ids
     return out
 
 
@@ -207,16 +210,14 @@ def _future_window(series: pd.Series, horizon: int, reducer: str) -> pd.Series:
 
 def add_forward_outcomes(
     signals: pd.DataFrame,
-    horizons: tuple[int, ...] = (1, 5, 20, 60),
+    horizons: tuple[int, ...] = (1, 5, 20, 60, 90, 180, 365),
 ) -> pd.DataFrame:
     out = signals.copy()
     entry = out["open"].shift(-1)
-
     for h in horizons:
         future_close = out["close"].shift(-h - 1)
         future_low = _future_window(out["low"], h, "min")
         future_high = _future_window(out["high"], h, "max")
-
         out[f"entry_price_{h}d"] = entry
         out[f"forward_return_{h}d"] = future_close / entry - 1.0
         out[f"mae_{h}d"] = future_low / entry - 1.0
