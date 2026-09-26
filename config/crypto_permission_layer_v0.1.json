@@ -69,22 +69,29 @@
     ],
     "providers": [
       {
-        "source_id": "BINANCE_USDM",
-        "role": "current_and_recent",
+        "source_id": "BINANCE_VISION_DERIVATIVES_ARCHIVE",
+        "role": "long_history_archive",
         "priority": 1
       },
       {
+        "source_id": "BINANCE_USDM",
+        "role": "current_and_recent",
+        "priority": 2
+      },
+      {
         "source_id": "COINMETRICS_MARKET",
-        "role": "long_history_archive",
-        "priority": 2,
+        "role": "long_history_archive_external",
+        "priority": 3,
         "credential_required": true
       }
     ],
     "archive_policy": {
-      "canonical_source": "COINMETRICS_MARKET",
-      "binance_gap_fill_allowed": true,
+      "canonical_source": "BINANCE_VISION_DERIVATIVES_ARCHIVE",
+      "external_archive_allowed": true,
+      "binance_api_gap_fill_allowed": true,
       "silent_provider_splice": false,
-      "minimum_overlap_days": 30
+      "minimum_overlap_days": 30,
+      "checksum_required": true
     }
   },
   "regulation_market_structure": {

@@ -178,9 +178,14 @@
           ],
           "primary_sources": [
             {
-              "source_id": "BINANCE_USDM",
+              "source_id": "BINANCE_VISION_DERIVATIVES_ARCHIVE",
               "source_class": "PRIMARY_EXCHANGE",
               "role": "PRIMARY"
+            },
+            {
+              "source_id": "BINANCE_USDM",
+              "source_class": "PRIMARY_EXCHANGE",
+              "role": "FALLBACK"
             },
             {
               "source_id": "COINMETRICS_MARKET",

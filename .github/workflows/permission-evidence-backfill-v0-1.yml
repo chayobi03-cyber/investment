@@ -1,0 +1,67 @@
+name: permission-evidence-backfill-v0-1
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: "Historical start date (YYYY-MM-DD)"
+        required: true
+        default: "2024-01-01"
+      end_date:
+        description: "Historical end date (YYYY-MM-DD)"
+        required: true
+        default: "2024-03-31"
+
+permissions:
+  contents: read
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Validate evidence registry
+        run: |
+          python scripts/crypto/validate_permission_evidence_registry.py \
+            config/permission_evidence_registry_v0.1.json
+
+      - name: Collect FRED macro evidence
+        run: |
+          rm -rf artifacts/permission
+          python scripts/crypto/fetch_fred_permission_macro.py \
+            --start "${{ inputs.start_date }}" \
+            --end "${{ inputs.end_date }}" \
+            --out artifacts/permission/fred_macro_pit.csv
+
+      - name: Collect Binance metrics evidence
+        run: |
+          python scripts/crypto/fetch_binance_derivatives_archive.py \
+            --start "${{ inputs.start_date }}" \
+            --end "${{ inputs.end_date }}" \
+            --out artifacts/permission/binance_metrics_pit.csv
+
+      - name: Validate evidence bundle
+        run: |
+          python scripts/crypto/validate_permission_evidence_bundle.py \
+            artifacts/permission/fred_macro_pit.csv \
+            artifacts/permission/binance_metrics_pit.csv
+
+      - name: Archive research artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: permission-evidence-v0-1-${{ github.run_id }}
+          path: artifacts/permission
+          retention-days: 14
