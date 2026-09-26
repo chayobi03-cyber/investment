@@ -24,11 +24,17 @@ class PermissionLayerTests(unittest.TestCase):
         self.assertEqual(result["status"], "PASS")
         self.assertEqual(result["rows"], 2)
 
-    def test_future_availability_is_rejected(self):
+    def test_future_availability_is_rejected_against_explicit_cutoff(self):
         frame = make_frame()
-        frame.loc[0,"available_at"] = pd.Timestamp.now(tz="UTC") + pd.Timedelta(days=1)
+        frame.loc[0, "available_at"] = "2026-09-27T00:00:00Z"
         with self.assertRaises(SystemExit):
-            validate(frame)
+            validate(frame, as_of=pd.Timestamp("2026-09-26T00:00:00Z"))
+
+    def test_future_availability_is_not_rejected_by_wall_clock(self):
+        frame = make_frame()
+        frame.loc[0, "available_at"] = "2099-01-01T00:00:00Z"
+        result = validate(frame)
+        self.assertEqual(result["status"], "PASS")
 
     def test_availability_before_observation_is_rejected(self):
         frame = make_frame()
