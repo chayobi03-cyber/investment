@@ -8,11 +8,26 @@ from src.investment_pipeline.multi_asset_subagents import (
     PITObservation,
     Status,
 )
+from src.investment_pipeline.source_retrieval_agent import SourceRecord
 
 
 def test_global_execution_lock_is_hard_false():
     assert BUY_ALLOWED is False
     assert EXECUTION_ALLOWED is False
+
+
+
+def test_source_record():
+    now = datetime(2026, 9, 26, tzinfo=timezone.utc)
+    return SourceRecord(
+        source_id="TEST",
+        title="Test source",
+        source_url="https://example.test/source",
+        source_type="REPUTABLE_SECONDARY",
+        available_at=now,
+        retrieved_at=now,
+        content_hash="hash",
+    )
 
 
 def test_pit_lookahead_fails_closed():
@@ -73,6 +88,7 @@ def test_signal_is_separate_from_permission():
             "source_timestamp": now,
             "available_at": now,
         }],
+        source_records=[test_source_record()],
         risk_inputs={
             "max_drawdown": -0.1,
             "mae": -0.05,
@@ -105,6 +121,7 @@ def test_hallucination_guard_blocks_unsupported_claim():
             "statement": "Unsupported fact",
             "scope": "2026-09-26",
         }],
+        source_records=[],
         risk_inputs={
             "max_drawdown": -0.1,
             "mae": -0.05,
@@ -139,6 +156,7 @@ def test_verified_evidence_passes_hallucination_guard_but_buy_remains_locked():
             "source_timestamp": now,
             "available_at": now,
         }],
+        source_records=[test_source_record()],
         risk_inputs={
             "max_drawdown": -0.1,
             "mae": -0.05,
