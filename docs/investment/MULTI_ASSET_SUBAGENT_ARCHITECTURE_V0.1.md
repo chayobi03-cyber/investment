@@ -139,6 +139,31 @@ Data/PIT -> Regime -> Asset Signal -> Permission -> Risk -> Source Retrieval -> 
 
 No threshold tuning before the frozen-rule research cycle is complete.
 
+
+## Development / Engineering Agent Boundary
+
+A development or code-writing agent is intentionally **outside** the investment decision control plane in V0.1.
+
+### Why it is excluded
+
+1. Runtime decision agents must remain deterministic, evidence-bound and fail-closed. Code generation is a different trust boundary.
+2. CI, tests and GitHub provide a better deterministic control surface for build, test, artifact and release validation than a runtime agent.
+3. A self-modifying development agent could create an implicit path from natural-language intent to threshold/code changes, which conflicts with the frozen-rule and change-controlled research process.
+4. The investment runtime must never treat a development agent's output as evidence, signal, permission or decision authority.
+
+### Where development automation belongs
+
+Development automation may be handled externally through the engineering workflow (for example, GitHub/CI or the separate AgentFactory project). Any generated code must enter the investment repository through a normal change boundary:
+
+`proposal -> patch/PR -> tests/CI -> review/change record -> merge`
+
+No direct main-branch mutation is allowed as a prerequisite for investment decision promotion.
+
+### Reconsideration trigger
+
+A dedicated Engineering Agent should be introduced only when there is repeated, measurable engineering workload that cannot be handled economically by existing CI/repository tooling. If introduced later, it must remain outside the decision graph and be constrained to producing auditable patches/PRs; it must not mutate thresholds, permission rules or decision artifacts autonomously.
+
+
 ## Next implementation stages
 
 1. Connect existing Stock Score / BuyStrength to Equity Signal Agent.
