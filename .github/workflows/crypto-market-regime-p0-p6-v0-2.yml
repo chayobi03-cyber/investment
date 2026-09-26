@@ -7,11 +7,13 @@ on:
     paths:
       - "src/investment_pipeline/crypto_entry.py"
       - "src/investment_pipeline/crypto_risk.py"
+      - "src/investment_pipeline/crypto_permission.py"
       - "scripts/crypto/run_crypto_p0_p6_v0_2.py"
       - "scripts/crypto/run_crypto_decomposition_v0_2.py"
       - "scripts/crypto/fetch_btc_daily.py"
       - "tests/test_crypto_entry.py"
       - "tests/test_crypto_risk_engine.py"
+      - "tests/test_crypto_permission_overlay.py"
       - "tests/test_crypto_decomposition.py"
       - "config/crypto_market_regime_entry_v0.2.json"
       - "schemas/crypto_p0_p6_v0.2.schema.json"
@@ -47,6 +49,7 @@ jobs:
           python -m pytest -q \
             tests/test_crypto_entry.py \
             tests/test_crypto_risk_engine.py \
+            tests/test_crypto_permission_overlay.py \
             tests/test_crypto_decomposition.py
 
       - name: Fetch BTC PIT daily history
@@ -87,6 +90,8 @@ jobs:
               raise SystemExit("missing_artifact_fields:" + ",".join(missing))
           assert p["rule_version"] == "crypto-market-regime-entry-v0.2"
           assert p["p6"]["threshold_retuned"] is False
+          assert p["permission"]["buy_allowed"] is False
+          assert p["permission"]["execution_gate"] == "DISABLED"
 
           d = json.load(open("artifacts/crypto/crypto_decomposition_v0.2.json", encoding="utf-8"))
           assert d["threshold_retuned"] is False
