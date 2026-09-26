@@ -1,0 +1,55 @@
+{
+  "version": "0.1",
+  "status": "COVERAGE_PLAN_NOT_INGESTED",
+  "canonical_market_family": "BINANCE_USDM_PERPETUAL",
+  "assets": ["BTC", "ETH", "SOL"],
+  "required_metrics": [
+    "funding_rate_8h",
+    "open_interest_24h_pct_change",
+    "basis_1d"
+  ],
+  "preferred_metrics": [
+    "top_trader_ls_position_ratio",
+    "taker_buy_sell_ratio",
+    "liquidation_usd_1d"
+  ],
+  "price_context": [
+    "mark_price",
+    "index_price"
+  ],
+  "providers": {
+    "exchange_native": {
+      "source_id": "BINANCE_USDM",
+      "role": "current_and_recent"
+    },
+    "archive": {
+      "source_id": "COINMETRICS_MARKET",
+      "role": "long_history",
+      "credential_required": true,
+      "coverage_discovery_required": true
+    }
+  },
+  "stitching": {
+    "silent_splice": false,
+    "minimum_overlap_days": 30,
+    "required_fields": [
+      "source_id",
+      "provider_market_id",
+      "canonical_market_id",
+      "coverage_start",
+      "coverage_end",
+      "methodology_version",
+      "overlap_n",
+      "max_abs_discrepancy",
+      "transition_status"
+    ]
+  },
+  "pit": {
+    "required": true,
+    "eligibility": "available_at <= decision_timestamp",
+    "uncertain_publication_lag": "CONSERVATIVE_LAG_AND_REVIEW"
+  },
+  "promotion": {
+    "status_until_validated": "DERIVATIVES_DATA_NOT_READY"
+  }
+}
