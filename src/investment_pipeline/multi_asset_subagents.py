@@ -58,7 +58,10 @@ class DecisionContract:
     asset: AssetClass
     signal_state: str
     permission_status: Status
+    market_score: float | None
     market_gate: Gate
+    raw_regime: str | None
+    confirmed_regime: str | None
     risk_gate: Gate
     evidence_status: Status
     source_retrieval_status: Status
@@ -184,6 +187,7 @@ class RegimeAgent:
                 "market_score": score,
                 "market_gate": gate.value,
                 "raw_regime": raw_regime,
+                "confirmed_regime": raw_regime,
             },
         )
 
@@ -378,9 +382,16 @@ class DecisionAgent:
             asset=asset,
             signal_state=str(signal.payload.get("signal_state", "DATA_NOT_READY")),
             permission_status=permission.status,
+            market_score=(
+                float(regime.payload["market_score"])
+                if regime.payload.get("market_score") is not None
+                else None
+            ),
             market_gate=Gate(
                 regime.payload.get("market_gate", Gate.DATA_NOT_READY.value)
             ),
+            raw_regime=regime.payload.get("raw_regime"),
+            confirmed_regime=regime.payload.get("confirmed_regime"),
             risk_gate=Gate(
                 risk.payload.get("risk_gate", Gate.DATA_NOT_READY.value)
             ),
