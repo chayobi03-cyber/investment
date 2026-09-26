@@ -5,7 +5,10 @@ from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Any, Mapping, Protocol
 
+from src.investment_pipeline.conflict_detection_agent import ConflictDetectionAgent
 from src.investment_pipeline.hallucination_guard_agent import HallucinationGuardAgent
+from src.investment_pipeline.source_quality_agent import SourceQualityAgent
+from src.investment_pipeline.source_retrieval_agent import SourceRetrievalAgent, SourceRecord
 
 BUY_ALLOWED = False
 EXECUTION_ALLOWED = False
@@ -57,6 +60,9 @@ class DecisionContract:
     market_gate: Gate
     risk_gate: Gate
     evidence_status: Status
+    source_retrieval_status: Status
+    source_quality_status: Status
+    conflict_status: Status
     hallucination_status: Status
     buy_allowed: bool
     execution_allowed: bool
@@ -348,6 +354,9 @@ class DecisionAgent:
         regime: AgentResult,
         risk: AgentResult,
         evidence: AgentResult,
+        source_retrieval: AgentResult,
+        source_quality: AgentResult,
+        conflict: AgentResult,
         hallucination: AgentResult,
     ) -> DecisionContract:
         blockers: list[str] = [
@@ -356,6 +365,9 @@ class DecisionAgent:
             *regime.blocker_codes,
             *risk.blocker_codes,
             *evidence.blocker_codes,
+            *source_retrieval.blocker_codes,
+            *source_quality.blocker_codes,
+            *conflict.blocker_codes,
             *hallucination.blocker_codes,
         ]
 
@@ -369,6 +381,12 @@ class DecisionAgent:
             blockers.append("RISK_NOT_READY")
         if evidence.status != Status.PASS:
             blockers.append("EVIDENCE_NOT_READY")
+        if source_retrieval.status != Status.PASS:
+            blockers.append("SOURCE_RETRIEVAL_NOT_READY")
+        if source_quality.status != Status.PASS:
+            blockers.append("SOURCE_QUALITY_BLOCK")
+        if conflict.status != Status.PASS:
+            blockers.append("CONFLICT_DETECTION_BLOCK")
         if hallucination.status != Status.PASS:
             blockers.append("HALLUCINATION_GUARD_BLOCK")
 
@@ -384,6 +402,9 @@ class DecisionAgent:
                 risk.payload.get("risk_gate", Gate.DATA_NOT_READY.value)
             ),
             evidence_status=evidence.status,
+            source_retrieval_status=source_retrieval.status,
+            source_quality_status=source_quality.status,
+            conflict_status=conflict.status,
             hallucination_status=hallucination.status,
             buy_allowed=BUY_ALLOWED,
             execution_allowed=EXECUTION_ALLOWED,
@@ -400,6 +421,9 @@ class MultiAssetOrchestrator:
         self.permission = PermissionAgent()
         self.risk = RiskAgent()
         self.evidence = EvidenceAgent()
+        self.source_retrieval = SourceRetrievalAgent()
+        self.source_quality = SourceQualityAgent()
+        self.conflict_detection = ConflictDetectionAgent()
         self.hallucination_guard = HallucinationGuardAgent()
         self.signals: dict[AssetClass, SignalAgent] = {
             AssetClass.EQUITY: EquitySignalAgent(),
@@ -419,6 +443,7 @@ class MultiAssetOrchestrator:
         regime_weights: Mapping[str, float],
         signal_features: Mapping[str, Any],
         evidence_claims: list[Mapping[str, Any]],
+        source_records: list[SourceRecord],
         risk_inputs: Mapping[str, Any],
         permission_inputs: Mapping[str, bool],
     ) -> DecisionContract:
@@ -452,6 +477,18 @@ class MultiAssetOrchestrator:
                     self.evidence.name, None, Status.DATA_NOT_READY, {},
                     ("PIT_GATE_NOT_GREEN",),
                 ),
+                source_retrieval=AgentResult(
+                    self.source_retrieval.name, None, Status.DATA_NOT_READY, {},
+                    ("PIT_GATE_NOT_GREEN",),
+                ),
+                source_quality=AgentResult(
+                    self.source_quality.name, None, Status.DATA_NOT_READY, {},
+                    ("PIT_GATE_NOT_GREEN",),
+                ),
+                conflict=AgentResult(
+                    self.conflict_detection.name, None, Status.DATA_NOT_READY, {},
+                    ("PIT_GATE_NOT_GREEN",),
+                ),
                 hallucination=AgentResult(
                     self.hallucination_guard.name, None, Status.DATA_NOT_READY, {},
                     ("PIT_GATE_NOT_GREEN",),
@@ -466,6 +503,49 @@ class MultiAssetOrchestrator:
         )
         risk = self.risk.run(**risk_inputs)
         evidence = self.evidence.run(evidence_claims)
+
+        retrieval_result = self.source_retrieval.run(
+            evidence_claims,
+            source_records,
+            decision_timestamp=decision_timestamp,
+        )
+        source_retrieval = AgentResult(
+            self.source_retrieval.name,
+            None,
+            Status.PASS if retrieval_result.status == "PASS" else Status.DATA_NOT_READY,
+            {
+                "records": retrieval_result.records,
+                "referenced_sources": retrieval_result.referenced_sources,
+            },
+            retrieval_result.blocker_codes,
+        )
+
+        quality_result = self.source_quality.run(
+            evidence_claims,
+            [
+                {
+                    "source_id": source.source_id,
+                    "source_class": source.source_type,
+                }
+                for source in source_records
+            ],
+        )
+        source_quality = AgentResult(
+            self.source_quality.name,
+            None,
+            Status.PASS if quality_result.status == "PASS" else Status.BLOCKED,
+            {"classifications": dict(quality_result.classifications)},
+            quality_result.blocker_codes,
+        )
+
+        conflict_result = self.conflict_detection.run(evidence_claims)
+        conflict = AgentResult(
+            self.conflict_detection.name,
+            None,
+            Status.PASS if conflict_result.status == "PASS" else Status.BLOCKED,
+            {"conflict_groups": list(conflict_result.conflict_groups)},
+            conflict_result.blocker_codes,
+        )
 
         guard_result = self.hallucination_guard.verify(
             evidence_claims,
@@ -501,5 +581,8 @@ class MultiAssetOrchestrator:
             regime=regime,
             risk=risk,
             evidence=evidence,
+            source_retrieval=source_retrieval,
+            source_quality=source_quality,
+            conflict=conflict,
             hallucination=hallucination,
         )
