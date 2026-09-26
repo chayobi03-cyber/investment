@@ -202,6 +202,43 @@ class HallucinationGuardAgent:
         # become verified merely because its referenced IDs exist; every
         # supporting claim must itself be verified.
         findings_by_id = {finding.claim_id: finding for finding in findings}
+
+        # Detect inference cycles before resolving transitive support.
+        inference_support = {
+            str(claim.get("claim_id", "")): [
+                str(x) for x in claim.get("supporting_claim_ids", [])
+            ]
+            for claim in claims
+            if claim.get("claim_type") == ClaimType.INFERENCE.value
+        }
+
+        def has_cycle(node: str, stack: set[str], visited: set[str]) -> bool:
+            if node in stack:
+                return True
+            if node in visited:
+                return False
+            visited.add(node)
+            stack.add(node)
+            for dep in inference_support.get(node, []):
+                if dep in inference_support and has_cycle(dep, stack, visited):
+                    return True
+            stack.remove(node)
+            return False
+
+        visited: set[str] = set()
+        for node in inference_support:
+            if has_cycle(node, set(), visited):
+                finding = findings_by_id.get(node)
+                if finding is not None and finding.status == VerificationStatus.VERIFIED:
+                    findings_by_id[node] = VerificationFinding(
+                        claim_id=node,
+                        status=VerificationStatus.UNSUPPORTED,
+                        reason_codes=("INFERENCE_CYCLE",),
+                    )
+                    blockers.append(f"{node}:INFERENCE_CYCLE")
+
+        # Resolve inference support transitively until stable. Every supporting
+        # claim must itself be verified.
         changed = True
         while changed:
             changed = False
@@ -231,7 +268,6 @@ class HallucinationGuardAgent:
                     )
                     changed = True
 
-        # Any inference cycle or unresolved dependency remains blocked.
         findings = [findings_by_id.get(f.claim_id, f) for f in findings]
         verified_count = sum(
             1 for finding in findings if finding.status == VerificationStatus.VERIFIED
