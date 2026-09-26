@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Any, Mapping, Protocol
 
+from src.investment_pipeline.claim_contract import validate_claim_structure
 from src.investment_pipeline.conflict_detection_agent import ConflictDetectionAgent
 from src.investment_pipeline.hallucination_guard_agent import HallucinationGuardAgent
 from src.investment_pipeline.source_quality_agent import SourceQualityAgent
@@ -260,29 +261,11 @@ class EvidenceAgent:
     name = "evidence"
 
     def run(self, claims: list[Mapping[str, Any]]) -> AgentResult:
-        blockers: list[str] = []
-        for claim in claims:
-            claim_id = str(claim.get("claim_id", "UNKNOWN"))
-            claim_type = str(claim.get("claim_type", ""))
-
-            for required in ("claim_id", "claim_type", "statement", "scope"):
-                if not claim.get(required):
-                    blockers.append(f"{claim_id}:EVIDENCE_MISSING:{required}")
-
-            if claim_type in {"FACT", "CALCULATION"}:
-                for required in ("source_id", "source_timestamp", "available_at"):
-                    if not claim.get(required):
-                        blockers.append(f"{claim_id}:EVIDENCE_MISSING:{required}")
-
-            if claim_type == "CALCULATION" and not claim.get("calculation"):
-                blockers.append(f"{claim_id}:EVIDENCE_MISSING:calculation")
-
-            if claim_type == "INFERENCE":
-                if not claim.get("supporting_claim_ids"):
-                    blockers.append(f"{claim_id}:EVIDENCE_MISSING:supporting_claim_ids")
-                if not claim.get("reasoning"):
-                    blockers.append(f"{claim_id}:EVIDENCE_MISSING:reasoning")
-
+        blockers = [
+            blocker
+            for claim in claims
+            for blocker in validate_claim_structure(claim)
+        ]
         status = Status.PASS if not blockers else Status.DATA_NOT_READY
         return AgentResult(
             self.name,
