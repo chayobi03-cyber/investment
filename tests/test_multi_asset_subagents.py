@@ -106,6 +106,8 @@ def test_signal_is_separate_from_permission():
     assert result.confirmed_regime == "R1"
     assert result.execution_allowed is False
     assert result.permission_status == Status.BLOCKED
+    assert result.decision_status == "BLOCKED"
+    assert result.promotion_status == "DISABLED"
     assert "MACRO_BLOCK" in result.blocker_codes
 
 
@@ -172,6 +174,8 @@ def test_verified_evidence_passes_hallucination_guard_but_buy_remains_locked():
     )
 
     assert result.hallucination_status.value == "PASS"
+    assert result.decision_status == "RESEARCH_ONLY"
+    assert result.promotion_status == "DISABLED"
     assert result.buy_allowed is False
     assert result.execution_allowed is False
 
