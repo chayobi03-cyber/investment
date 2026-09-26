@@ -12,6 +12,7 @@ on:
       - "src/investment_pipeline/conflict_detection_agent.py"
       - "tests/test_multi_asset_subagents.py"
       - "tests/test_hallucination_guard_agent.py"
+      - "tests/test_claim_contract.py"
       - "tests/test_source_retrieval_agent.py"
       - "tests/test_source_quality_agent.py"
       - "tests/test_conflict_detection_agent.py"
@@ -66,6 +67,7 @@ jobs:
           python -m pytest -q \
             tests/test_multi_asset_subagents.py \
             tests/test_hallucination_guard_agent.py \
+            tests/test_claim_contract.py \
             tests/test_source_retrieval_agent.py \
             tests/test_source_quality_agent.py \
             tests/test_conflict_detection_agent.py
