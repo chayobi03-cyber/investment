@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping, FrozenSet
-
+from typing import FrozenSet, Mapping
 
 DEFAULT_WEIGHTS: dict[str, float] = {
-    "trend": 0.25,
-    "flow": 0.20,
-    "volatility_risk": 0.15,
-    "derivatives": 0.15,
-    "macro": 0.15,
-    "breadth": 0.10,
+    "trend": 0.20,
+    "flow_institutional": 0.20,
+    "macro_liquidity": 0.20,
+    "breadth_relative_strength": 0.15,
+    "derivatives": 0.10,
+    "volatility_risk": 0.10,
+    "regulation_market_structure": 0.05,
 }
 
 REGIMES: tuple[tuple[str, float, float], ...] = (
@@ -32,12 +32,13 @@ EXPOSURE_MULTIPLIER: dict[str, float] = {
 
 
 class DataNotReady(ValueError):
-    """Raised when a required score input is absent or invalid."""
+    pass
 
 
 @dataclass(frozen=True)
 class CryptoDecision:
     market_score: float | None
+    market_gate: str
     raw_regime: str | None
     confirmed_regime: str | None
     buy_state: str
@@ -58,6 +59,7 @@ class CryptoObservation:
     leadership_state: str = "neutral"
     fundamental_intact: bool = False
     macro_shock_active: bool = False
+    derivatives_hard_block: bool = False
     severe_systemic_stress: bool = False
     worsening_shock_clusters: FrozenSet[str] = frozenset()
     stabilization_clusters: FrozenSet[str] = frozenset()
@@ -77,17 +79,24 @@ def compute_market_score(
     axis_scores: Mapping[str, float],
     weights: Mapping[str, float] | None = None,
 ) -> float:
-    """Compute a deterministic weighted score from already-normalized 0–100 axes."""
     w = dict(weights or DEFAULT_WEIGHTS)
     if set(w) != set(DEFAULT_WEIGHTS):
         raise DataNotReady("invalid_axis_set")
-    total = sum(w.values())
-    if abs(total - 1.0) > 1e-9:
+    if abs(sum(w.values()) - 1.0) > 1e-9:
         raise DataNotReady("weights_must_sum_to_1")
     missing = sorted(set(w) - set(axis_scores))
     if missing:
         raise DataNotReady("missing_axes:" + ",".join(missing))
     return round(sum(_validate_score(axis_scores[k]) * w[k] for k in w), 4)
+
+
+def market_gate_from_score(score: float) -> str:
+    score = _validate_score(score)
+    if score >= 70.0:
+        return "GREEN"
+    if score >= 55.0:
+        return "YELLOW"
+    return "RED"
 
 
 def regime_from_score(score: float) -> str:
@@ -104,22 +113,20 @@ def confirm_regime(
     severe_systemic_stress: bool,
     worsening_shock_clusters: FrozenSet[str],
 ) -> str:
-    """Apply the research stress override without silently changing the raw score."""
     if severe_systemic_stress or len(worsening_shock_clusters) >= 2:
         return "R6"
     return raw_regime
 
 
-def derive_buy_state(obs: CryptoObservation) -> tuple[str, tuple[str, ...]]:
-    """Fail-closed state machine. No state here implies live execution."""
+def derive_buy_state(
+    obs: CryptoObservation,
+    *,
+    market_gate: str,
+) -> tuple[str, tuple[str, ...]]:
     reasons: list[str] = []
 
     if not obs.data_ready:
         return "B0", ("DATA_NOT_READY",)
-    try:
-        compute_market_score(obs.axis_scores)
-    except DataNotReady as exc:
-        return "B0", (str(exc),)
 
     if obs.severe_systemic_stress:
         reasons.append("SEVERE_SYSTEMIC_STRESS")
@@ -127,8 +134,15 @@ def derive_buy_state(obs: CryptoObservation) -> tuple[str, tuple[str, ...]]:
         reasons.append("MULTI_SHOCK")
     if obs.asset_structural_break:
         reasons.append("ASSET_STRUCTURAL_BREAK")
+    if obs.macro_shock_active:
+        reasons.append("MACRO_HARD_BLOCK")
+    if obs.derivatives_hard_block:
+        reasons.append("DERIVATIVES_HARD_BLOCK")
     if reasons:
         return "B0", tuple(reasons)
+
+    if market_gate == "RED":
+        return "B0", ("MARKET_GATE_RED",)
 
     if not obs.price_in_interest_zone:
         return "B0", ("PRICE_ZONE_NOT_REACHED",)
@@ -136,20 +150,14 @@ def derive_buy_state(obs: CryptoObservation) -> tuple[str, tuple[str, ...]]:
     if not obs.trend_stabilizing or len(obs.stabilization_clusters) < 1:
         return "B1", ("CONFIRMATION_INSUFFICIENT",)
 
-    b2_ok = not obs.macro_shock_active
-    if not b2_ok:
-        return "B1", ("MACRO_SHOCK_ACTIVE",)
+    if market_gate == "YELLOW":
+        return "B2", ("MARKET_GATE_YELLOW_CAP",)
 
-    if (
+    if not (
         obs.persistence_ok
         and obs.leadership_state != "deteriorating"
         and obs.fundamental_intact
     ):
-        b3_ok = True
-    else:
-        b3_ok = False
-
-    if not b3_ok:
         return "B2", ("SCOUT_ONLY",)
 
     b4_ok = (
@@ -165,14 +173,14 @@ def derive_buy_state(obs: CryptoObservation) -> tuple[str, tuple[str, ...]]:
 
 
 def evaluate(obs: CryptoObservation) -> CryptoDecision:
-    reasons: list[str] = []
     if not obs.data_ready:
         return CryptoDecision(
             market_score=None,
+            market_gate="DATA_NOT_READY",
             raw_regime=None,
             confirmed_regime=None,
             buy_state="B0",
-            exposure_multiplier=EXPOSURE_MULTIPLIER["B0"],
+            exposure_multiplier=0.0,
             reason_codes=("DATA_NOT_READY",),
             permission_status="BLOCKED",
         )
@@ -182,6 +190,7 @@ def evaluate(obs: CryptoObservation) -> CryptoDecision:
     except DataNotReady as exc:
         return CryptoDecision(
             market_score=None,
+            market_gate="DATA_NOT_READY",
             raw_regime=None,
             confirmed_regime=None,
             buy_state="B0",
@@ -196,16 +205,17 @@ def evaluate(obs: CryptoObservation) -> CryptoDecision:
         severe_systemic_stress=obs.severe_systemic_stress,
         worsening_shock_clusters=obs.worsening_shock_clusters,
     )
-
-    buy_state, state_reasons = derive_buy_state(obs)
-    reasons.extend(state_reasons)
+    gate = "RED" if confirmed_regime == "R6" else market_gate_from_score(market_score)
+    buy_state, state_reasons = derive_buy_state(obs, market_gate=gate)
+    permission = "BLOCKED" if buy_state == "B0" else "RESEARCH_ONLY"
 
     return CryptoDecision(
         market_score=market_score,
+        market_gate=gate,
         raw_regime=raw_regime,
         confirmed_regime=confirmed_regime,
         buy_state=buy_state,
         exposure_multiplier=EXPOSURE_MULTIPLIER[buy_state],
-        reason_codes=tuple(reasons),
-        permission_status="BLOCKED" if buy_state == "B0" else "RESEARCH_ONLY",
+        reason_codes=state_reasons,
+        permission_status=permission,
     )
