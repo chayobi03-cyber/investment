@@ -62,6 +62,9 @@ def test_pit_lookahead_fails_closed():
     assert result.buy_allowed is False
     assert result.execution_allowed is False
     assert "PIT_GATE_NOT_GREEN" in result.blocker_codes
+    assert result.market_score is None
+    assert result.raw_regime is None
+    assert result.confirmed_regime is None
 
 
 def test_signal_is_separate_from_permission():
@@ -98,6 +101,9 @@ def test_signal_is_separate_from_permission():
     )
     assert result.signal_state == "B3"
     assert result.buy_allowed is False
+    assert result.market_score == 77.5
+    assert result.raw_regime == "R1"
+    assert result.confirmed_regime == "R1"
     assert result.execution_allowed is False
     assert result.permission_status == Status.BLOCKED
     assert "MACRO_BLOCK" in result.blocker_codes
