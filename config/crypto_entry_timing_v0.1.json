@@ -1,0 +1,37 @@
+{
+  "version": "0.1",
+  "status": "RESEARCH_ONLY_NOT_VALIDATED",
+  "asset": "BTCUSDT",
+  "execution": {
+    "signal_timestamp": "daily_close",
+    "entry_timestamp": "next_daily_open",
+    "automatic_orders": false
+  },
+  "trend": {
+    "condition": "close > MA200 AND MA20 > MA50 AND MA50 > MA200"
+  },
+  "zones": {
+    "Z0": {"min_drawdown": -0.05, "max_drawdown": 0.0},
+    "Z1": {"min_drawdown": -0.08, "max_drawdown": -0.05},
+    "Z2": {"min_drawdown": -0.12, "max_drawdown": -0.08},
+    "Z3": {"min_drawdown": null, "max_drawdown": -0.12}
+  },
+  "stabilization": {
+    "return_3d_gt": 0.0,
+    "close_gte_ma20": true,
+    "trend_required": true
+  },
+  "episode": {
+    "cooldown_bars": 5,
+    "primary_transition_states": ["B2", "B3", "B4"]
+  },
+  "outcomes_days": [1, 5, 20, 60],
+  "promotion_horizons_days": [90, 180, 365],
+  "p6_required_data": [
+    "BTC_flow_or_ETF_flow",
+    "derivatives_funding_oi",
+    "macro_rates_fx",
+    "liquidity_risk",
+    "geopolitical_transmission"
+  ]
+}
