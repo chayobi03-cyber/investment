@@ -335,6 +335,9 @@ class CryptoSignalAgent:
 class DecisionAgent:
     name = "decision"
 
+    def __init__(self) -> None:
+        self.decision_gate = DecisionGateAgent()
+
     def run(
         self,
         *,
@@ -439,7 +442,6 @@ class MultiAssetOrchestrator:
         self.source_quality = SourceQualityAgent()
         self.conflict_detection = ConflictDetectionAgent()
         self.hallucination_guard = HallucinationGuardAgent()
-        self.decision_gate = DecisionGateAgent()
         self.signals: dict[AssetClass, SignalAgent] = {
             AssetClass.EQUITY: EquitySignalAgent(),
             AssetClass.GOLD: GoldSignalAgent(),
