@@ -79,6 +79,21 @@ class HallucinationGuardAgent:
         findings: list[VerificationFinding] = []
         by_id: dict[str, Mapping[str, Any]] = {}
 
+        # Register every claim id first so inference support can reference
+        # a claim that appears later in the same batch.
+        for claim in claims:
+            claim_id = str(claim.get("claim_id", ""))
+            if claim_id and claim_id not in by_id:
+                by_id[claim_id] = claim
+
+        duplicate_ids = {
+            claim_id
+            for claim_id in (str(c.get("claim_id", "")) for c in claims)
+            if claim_id and sum(
+                1 for c in claims if str(c.get("claim_id", "")) == claim_id
+            ) > 1
+        }
+
         for claim in claims:
             claim_id = str(claim.get("claim_id", ""))
             reasons: list[str] = []
@@ -88,10 +103,8 @@ class HallucinationGuardAgent:
 
             if not claim_id:
                 reasons.append("CLAIM_ID_MISSING")
-            elif claim_id in by_id:
+            elif claim_id in duplicate_ids:
                 reasons.append("DUPLICATE_CLAIM_ID")
-            else:
-                by_id[claim_id] = claim
 
             claim_type = str(claim.get("claim_type", ""))
             if claim_type not in {x.value for x in ClaimType}:
