@@ -1,0 +1,192 @@
+{
+  "version": "0.2",
+  "status": "PREREGISTERED_RESEARCH_NOT_VALIDATED",
+  "primary_asset": "BTCUSDT",
+  "secondary_assets": [
+    "ETHUSDT",
+    "SOLUSDT"
+  ],
+  "execution": {
+    "signal_timestamp": "daily_close",
+    "entry_timestamp": "next_daily_open",
+    "automatic_orders": false
+  },
+  "market_score": {
+    "weights": {
+      "trend": 0.2,
+      "flow_institutional": 0.2,
+      "macro_liquidity": 0.2,
+      "breadth_relative_strength": 0.15,
+      "derivatives": 0.1,
+      "volatility_risk": 0.1,
+      "regulation_market_structure": 0.05
+    },
+    "normalization": "point_in_time_0_100",
+    "higher_is_healthier": true,
+    "gates": {
+      "green_min": 70,
+      "yellow_min": 55,
+      "red_max_exclusive": 55
+    },
+    "stress_override": {
+      "severe_systemic_stress_forces_r6": true,
+      "independent_worsening_clusters_forces_r6": 2
+    }
+  },
+  "regime": {
+    "R1": [
+      75,
+      100
+    ],
+    "R2": [
+      60,
+      74.999999
+    ],
+    "R3": [
+      50,
+      59.999999
+    ],
+    "R4": [
+      40,
+      49.999999
+    ],
+    "R5": [
+      25,
+      39.999999
+    ],
+    "R6": [
+      0,
+      24.999999
+    ]
+  },
+  "trend": {
+    "ma_fast": 20,
+    "ma_mid": 50,
+    "ma_slow": 200,
+    "condition": "close > MA200 AND MA20 > MA50 AND MA50 > MA200"
+  },
+  "pullback_zones": {
+    "reference_high_days": 60,
+    "exclude_current_bar": true,
+    "Z0": {
+      "min_drawdown": -0.05,
+      "max_drawdown": 0
+    },
+    "Z1": {
+      "min_drawdown": -0.08,
+      "max_drawdown": -0.05
+    },
+    "Z2": {
+      "min_drawdown": -0.12,
+      "max_drawdown": -0.08
+    },
+    "Z3": {
+      "min_drawdown": null,
+      "max_drawdown": -0.12
+    }
+  },
+  "stabilization": {
+    "return_3d_gt": 0,
+    "close_gte_ma20": true,
+    "green_closes_last_3_min": 2,
+    "trend_required": true
+  },
+  "breakout": {
+    "prior_high_days": 60,
+    "close_buffer": 0.005,
+    "volume_ratio_20d_min": 1.2,
+    "return_3d_gt": 0
+  },
+  "macro": {
+    "soft_warning": {
+      "DXY_20d_pct_gt": 0.015,
+      "US10Y_10d_bp_gt": 20,
+      "US_REAL_YIELD_10d_bp_gt": 15,
+      "WTI_5d_pct_gt": 0.08,
+      "USD_KRW_20d_pct_gt": 0.02
+    },
+    "hard_extreme": {
+      "DXY_20d_pct_gt": 0.03,
+      "US10Y_10d_bp_gt": 35,
+      "US_REAL_YIELD_10d_bp_gt": 25,
+      "WTI_5d_pct_gt": 0.12,
+      "USD_KRW_20d_pct_gt": 0.035
+    },
+    "hard_rule": "two_or_more_soft_warning_conditions_active_and_worsening OR any_hard_extreme"
+  },
+  "derivatives": {
+    "funding_8h_normal_abs_lte": 0.0001,
+    "funding_8h_warning_positive_gt": 0.0003,
+    "funding_8h_warning_negative_lt": -0.0003,
+    "funding_8h_hard_positive_gt": 0.0005,
+    "funding_8h_hard_negative_lt": -0.0005,
+    "oi_24h_warning_abs_gt": 0.08,
+    "oi_24h_hard_gt": 0.12,
+    "top_trader_ls_warning_high_gt": 1.5,
+    "top_trader_ls_warning_low_lt": 0.7,
+    "top_trader_ls_hard_high_gt": 1.8,
+    "top_trader_ls_hard_low_lt": 0.55
+  },
+  "volatility": {
+    "rv_7d_to_60d_normal_lte": 1.25,
+    "rv_7d_to_60d_warning_lte": 1.5,
+    "rv_7d_to_60d_risk_off_gt": 1.5,
+    "hard_1d_range_pct_gte": 0.1
+  },
+  "breadth": {
+    "green_min_pct_above_ma20": 0.65,
+    "yellow_min_pct_above_ma20": 0.5,
+    "alt_rotation_eth_btc_20d_return_gt": 0,
+    "alt_rotation_universe_pct_above_ma20_min": 0.6
+  },
+  "buy_states": {
+    "B0": {
+      "exposure_multiplier": 0
+    },
+    "B1": {
+      "exposure_multiplier": 0
+    },
+    "B2": {
+      "exposure_multiplier": 0.2
+    },
+    "B3": {
+      "exposure_multiplier": 0.6
+    },
+    "B4": {
+      "exposure_multiplier": 1
+    }
+  },
+  "staged_entry": [
+    0.2,
+    0.25,
+    0.3,
+    0.25
+  ],
+  "episode": {
+    "cooldown_bars": 5,
+    "rearm_requires_zone_exit": true,
+    "primary_transition_states": [
+      "B2",
+      "B3",
+      "B4"
+    ]
+  },
+  "outcomes_days": [
+    1,
+    5,
+    20,
+    60
+  ],
+  "promotion_horizons_days": [
+    90,
+    180,
+    365
+  ],
+  "p6_min_history_bars": 200,
+  "deployment": {
+    "automatic_orders": false,
+    "leverage": false,
+    "margin": false,
+    "live_status": "DISABLED_UNTIL_P6_PROMOTION"
+  }
+}
