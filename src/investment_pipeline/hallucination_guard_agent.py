@@ -198,35 +198,41 @@ class HallucinationGuardAgent:
                 )
             )
 
-        verified_ids = {
-            finding.claim_id
-            for finding in findings
-            if finding.status == VerificationStatus.VERIFIED
-        }
-        revised: list[VerificationFinding] = []
-        for claim, finding in zip(claims, findings):
-            if (
-                finding.status == VerificationStatus.VERIFIED
-                and claim.get("claim_type") == ClaimType.INFERENCE.value
-            ):
-                support_ids = {str(x) for x in claim.get("supporting_claim_ids", [])}
-                missing = sorted(support_ids - verified_ids)
-                if missing:
-                    revised.append(
-                        VerificationFinding(
-                            claim_id=finding.claim_id,
-                            status=VerificationStatus.UNSUPPORTED,
-                            reason_codes=("INFERENCE_SUPPORT_NOT_VERIFIED",),
-                        )
+        # Resolve inference support transitively until stable. A chain cannot
+        # become verified merely because its referenced IDs exist; every
+        # supporting claim must itself be verified.
+        findings_by_id = {finding.claim_id: finding for finding in findings}
+        changed = True
+        while changed:
+            changed = False
+            for claim in claims:
+                if claim.get("claim_type") != ClaimType.INFERENCE.value:
+                    continue
+                claim_id = str(claim.get("claim_id", "UNKNOWN"))
+                finding = findings_by_id.get(claim_id)
+                if finding is None or finding.status != VerificationStatus.VERIFIED:
+                    continue
+                support_ids = [str(x) for x in claim.get("supporting_claim_ids", [])]
+                unresolved = [
+                    support_id
+                    for support_id in support_ids
+                    if findings_by_id.get(support_id) is None
+                    or findings_by_id[support_id].status != VerificationStatus.VERIFIED
+                ]
+                if unresolved:
+                    findings_by_id[claim_id] = VerificationFinding(
+                        claim_id=claim_id,
+                        status=VerificationStatus.UNSUPPORTED,
+                        reason_codes=("INFERENCE_SUPPORT_NOT_VERIFIED",),
                     )
                     blockers.append(
-                        f"{finding.claim_id}:INFERENCE_SUPPORT_NOT_VERIFIED:"
-                        + ",".join(missing)
+                        f"{claim_id}:INFERENCE_SUPPORT_NOT_VERIFIED:"
+                        + ",".join(sorted(unresolved))
                     )
-                    continue
-            revised.append(finding)
+                    changed = True
 
-        findings = revised
+        # Any inference cycle or unresolved dependency remains blocked.
+        findings = [findings_by_id.get(f.claim_id, f) for f in findings]
         verified_count = sum(
             1 for finding in findings if finding.status == VerificationStatus.VERIFIED
         )
