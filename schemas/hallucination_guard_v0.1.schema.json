@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/chayobi03-cyber/investment/blob/main/schemas/hallucination_guard_v0.1.schema.json",
+  "title": "Hallucination Guard V0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decision_timestamp", "claims"],
+  "properties": {
+    "decision_timestamp": {"type":"string","format":"date-time"},
+    "claims": {
+      "type":"array",
+      "items":{"$ref":"#/$defs/claim"},
+      "minItems":1
+    }
+  },
+  "$defs": {
+    "claim": {
+      "type":"object",
+      "additionalProperties": false,
+      "required":["claim_id","claim_type","statement","scope"],
+      "properties": {
+        "claim_id":{"type":"string","minLength":1},
+        "claim_type":{"enum":["FACT","CALCULATION","INFERENCE"]},
+        "statement":{"type":"string","minLength":1},
+        "scope":{"type":"string","minLength":1},
+        "source_id":{"type":["string","null"]},
+        "source_timestamp":{"type":["string","null"],"format":"date-time"},
+        "available_at":{"type":["string","null"],"format":"date-time"},
+        "calculation":{"type":["string","null"]},
+        "expected_value":{"type":["number","null"]},
+        "actual_value":{"type":["number","null"]},
+        "tolerance":{"type":["number","null"],"minimum":0},
+        "supporting_claim_ids":{
+          "type":"array",
+          "items":{"type":"string"}
+        },
+        "reasoning":{"type":["string","null"]},
+        "explicitly_labeled_inference":{"type":"boolean"},
+        "conflicts_with":{
+          "type":"array",
+          "items":{"type":"string"}
+        },
+        "conflict_resolution":{"type":["string","null"]}
+      }
+    }
+  }
+}
