@@ -18,29 +18,141 @@
     "source_quality_status",
     "conflict_status",
     "hallucination_status",
+    "decision_status",
+    "promotion_status",
     "buy_allowed",
     "execution_allowed",
     "blocker_codes"
   ],
   "properties": {
-    "asset": {"enum":["EQUITY","GOLD","CRYPTO"]},
-    "signal_state": {"type":"string","minLength":1},
-    "permission_status": {"enum":["PASS","BLOCKED","DATA_NOT_READY"]},
-    "market_score": {"type":["number","null"],"minimum":0,"maximum":100},
-    "market_gate": {"enum":["GREEN","YELLOW","RED","DATA_NOT_READY"]},
-    "raw_regime": {"type":["string","null"],"enum":["R1","R2","R3","R4","R5","R6",null]},
-    "confirmed_regime": {"type":["string","null"],"enum":["R1","R2","R3","R4","R5","R6",null]},
-    "risk_gate": {"enum":["GREEN","YELLOW","RED","DATA_NOT_READY"]},
-    "evidence_status": {"enum":["PASS","BLOCKED","DATA_NOT_READY"]},
-    "source_retrieval_status": {"enum":["PASS","BLOCKED","DATA_NOT_READY"]},
-    "source_quality_status": {"enum":["PASS","BLOCKED","DATA_NOT_READY"]},
-    "conflict_status": {"enum":["PASS","BLOCKED","DATA_NOT_READY"]},
-    "hallucination_status": {"enum":["PASS","BLOCKED","DATA_NOT_READY"]},
-    "buy_allowed": {"const":false},
-    "execution_allowed": {"const":false},
+    "asset": {
+      "enum": [
+        "EQUITY",
+        "GOLD",
+        "CRYPTO"
+      ]
+    },
+    "signal_state": {
+      "type": "string",
+      "minLength": 1
+    },
+    "permission_status": {
+      "enum": [
+        "PASS",
+        "BLOCKED",
+        "DATA_NOT_READY"
+      ]
+    },
+    "market_score": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 100
+    },
+    "market_gate": {
+      "enum": [
+        "GREEN",
+        "YELLOW",
+        "RED",
+        "DATA_NOT_READY"
+      ]
+    },
+    "raw_regime": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        null
+      ]
+    },
+    "confirmed_regime": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        null
+      ]
+    },
+    "risk_gate": {
+      "enum": [
+        "GREEN",
+        "YELLOW",
+        "RED",
+        "DATA_NOT_READY"
+      ]
+    },
+    "evidence_status": {
+      "enum": [
+        "PASS",
+        "BLOCKED",
+        "DATA_NOT_READY"
+      ]
+    },
+    "source_retrieval_status": {
+      "enum": [
+        "PASS",
+        "BLOCKED",
+        "DATA_NOT_READY"
+      ]
+    },
+    "source_quality_status": {
+      "enum": [
+        "PASS",
+        "BLOCKED",
+        "DATA_NOT_READY"
+      ]
+    },
+    "conflict_status": {
+      "enum": [
+        "PASS",
+        "BLOCKED",
+        "DATA_NOT_READY"
+      ]
+    },
+    "hallucination_status": {
+      "enum": [
+        "PASS",
+        "BLOCKED",
+        "DATA_NOT_READY"
+      ]
+    },
+    "buy_allowed": {
+      "const": false
+    },
+    "execution_allowed": {
+      "const": false
+    },
     "blocker_codes": {
-      "type":"array",
-      "items":{"type":"string"}
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "decision_status": {
+      "enum": [
+        "DATA_NOT_READY",
+        "BLOCKED",
+        "RESEARCH_ONLY"
+      ]
+    },
+    "promotion_status": {
+      "const": "DISABLED"
     }
   }
 }
