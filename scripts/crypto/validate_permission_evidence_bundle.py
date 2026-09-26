@@ -12,6 +12,15 @@ REQUIRED = {
 }
 
 def read(path: Path) -> pd.DataFrame:
+    manifest_path = path.with_suffix(".manifest.json")
+    if manifest_path.exists():
+        import json
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        status = manifest.get("status")
+        if status == "COLLECTED_WITH_GAPS":
+            raise SystemExit(f"EVIDENCE_FAIL:source_manifest_has_gaps:{path}")
+        if status not in {"COLLECTED_PROVISIONAL_PIT", "PASS"}:
+            raise SystemExit(f"EVIDENCE_FAIL:invalid_source_manifest_status:{path}:{status}")
     df = pd.read_csv(path)
     missing = sorted(REQUIRED - set(df.columns))
     if missing:
