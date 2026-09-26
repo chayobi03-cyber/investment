@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Any, Mapping, Protocol
 
+from src.investment_pipeline.hallucination_guard_agent import HallucinationGuardAgent
+
 BUY_ALLOWED = False
 EXECUTION_ALLOWED = False
 
@@ -55,6 +57,7 @@ class DecisionContract:
     market_gate: Gate
     risk_gate: Gate
     evidence_status: Status
+    hallucination_status: Status
     buy_allowed: bool
     execution_allowed: bool
     blocker_codes: tuple[str, ...] = field(default_factory=tuple)
@@ -328,6 +331,7 @@ class DecisionAgent:
         regime: AgentResult,
         risk: AgentResult,
         evidence: AgentResult,
+        hallucination: AgentResult,
     ) -> DecisionContract:
         blockers: list[str] = [
             *signal.blocker_codes,
@@ -335,6 +339,7 @@ class DecisionAgent:
             *regime.blocker_codes,
             *risk.blocker_codes,
             *evidence.blocker_codes,
+            *hallucination.blocker_codes,
         ]
 
         if signal.status != Status.PASS:
@@ -347,6 +352,8 @@ class DecisionAgent:
             blockers.append("RISK_NOT_READY")
         if evidence.status != Status.PASS:
             blockers.append("EVIDENCE_NOT_READY")
+        if hallucination.status != Status.PASS:
+            blockers.append("HALLUCINATION_GUARD_BLOCK")
 
         # Hard kill switch. Never derived from score or exposure.
         return DecisionContract(
@@ -360,6 +367,7 @@ class DecisionAgent:
                 risk.payload.get("risk_gate", Gate.DATA_NOT_READY.value)
             ),
             evidence_status=evidence.status,
+            hallucination_status=hallucination.status,
             buy_allowed=BUY_ALLOWED,
             execution_allowed=EXECUTION_ALLOWED,
             blocker_codes=tuple(sorted(set(blockers))),
@@ -375,6 +383,7 @@ class MultiAssetOrchestrator:
         self.permission = PermissionAgent()
         self.risk = RiskAgent()
         self.evidence = EvidenceAgent()
+        self.hallucination_guard = HallucinationGuardAgent()
         self.signals: dict[AssetClass, SignalAgent] = {
             AssetClass.EQUITY: EquitySignalAgent(),
             AssetClass.GOLD: GoldSignalAgent(),
@@ -426,6 +435,10 @@ class MultiAssetOrchestrator:
                     self.evidence.name, None, Status.DATA_NOT_READY, {},
                     ("PIT_GATE_NOT_GREEN",),
                 ),
+                hallucination=AgentResult(
+                    self.hallucination_guard.name, None, Status.DATA_NOT_READY, {},
+                    ("PIT_GATE_NOT_GREEN",),
+                ),
             )
 
         regime = self.regime.run(axis_scores, weights=regime_weights)
@@ -437,6 +450,33 @@ class MultiAssetOrchestrator:
         risk = self.risk.run(**risk_inputs)
         evidence = self.evidence.run(evidence_claims)
 
+        guard_result = self.hallucination_guard.verify(
+            evidence_claims,
+            decision_timestamp=decision_timestamp,
+        )
+        hallucination = AgentResult(
+            self.hallucination_guard.name,
+            None,
+            Status.PASS if guard_result.status == "PASS" else (
+                Status.DATA_NOT_READY
+                if guard_result.status == "DATA_NOT_READY"
+                else Status.BLOCKED
+            ),
+            {
+                "verified_claims": guard_result.verified_claims,
+                "total_claims": guard_result.total_claims,
+                "findings": [
+                    {
+                        "claim_id": finding.claim_id,
+                        "status": finding.status.value,
+                        "reason_codes": list(finding.reason_codes),
+                    }
+                    for finding in guard_result.findings
+                ],
+            },
+            guard_result.blocker_codes,
+        )
+
         return self.decision.run(
             asset=asset,
             signal=signal,
@@ -444,4 +484,5 @@ class MultiAssetOrchestrator:
             regime=regime,
             risk=risk,
             evidence=evidence,
+            hallucination=hallucination,
         )
