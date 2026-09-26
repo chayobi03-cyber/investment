@@ -224,18 +224,36 @@ def main() -> int:
                 "blocker_codes": list(permission_result.blocker_codes),
                 "buy_allowed": BUY_ALLOWED,
             },
+            "signal_decomposition": {
+                "by_signal_type": {
+                    str(k): int(v)
+                    for k, v in primary.get("signal_type", pd.Series(dtype=str)).value_counts().items()
+                },
+                "by_entry_state": {
+                    str(k): int(v)
+                    for k, v in primary["entry_state"].value_counts().items()
+                },
+                "permission_regime_available": bool(
+                    primary["confirmed_regime"].isin(
+                        {"R1", "R2", "R3", "R4", "R5", "R6"}
+                    ).any()
+                ),
+                "by_regime": {
+                    str(k): int(v)
+                    for k, v in primary[
+                        primary["confirmed_regime"].isin(
+                            {"R1", "R2", "R3", "R4", "R5", "R6"}
+                        )
+                    ]["confirmed_regime"].value_counts().items()
+                },
+            },
         },
         "p2": {
             "status": "PASS",
             "primary_events": int(len(primary)),
             "cooldown_bars": V02_COOLDOWN_BARS,
             "episode_ids": int(signals["episode_id"].dropna().nunique()),
-            "regime_decomposition": {
-                "status": permission_result.status,
-                "by_regime": event_stats(
-                    primary[primary["confirmed_regime"].isin({"R1", "R2", "R3", "R4", "R5", "R6"})]
-                ) if permission_result.status == "PASS" else None,
-            },
+            "decomposition_status": permission_result.status,
         },
         "p3": {
             "status": "PASS",
