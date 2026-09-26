@@ -17,6 +17,9 @@ from src.investment_pipeline.crypto_permission import (
     BUY_ALLOWED,
     attach_permission_overlay,
 )
+from src.investment_pipeline.signal_decomposition_agent import (
+    SignalDecompositionAgent,
+)
 
 OUTCOME_HORIZONS = (5, 20, 60, 90, 180, 365)
 CANDIDATE_STATES = {"B2", "B3", "B4"}
@@ -27,10 +30,9 @@ def _num(series: pd.Series) -> pd.Series:
 
 
 def add_signal_type(signals: pd.DataFrame) -> pd.DataFrame:
-    out = signals.copy()
-    out["signal_type"] = out["breakout"].fillna(False).map(
-        lambda x: "breakout" if bool(x) else "pullback"
-    )
+    """Backward-compatible wrapper around the deterministic decomposition agent."""
+    out = SignalDecompositionAgent().apply(signals)
+    out["signal_type"] = out["signal_type"].str.lower()
     return out
 
 
@@ -112,6 +114,7 @@ def decompose(
         signals,
         permission_history,
     )
+    signals = SignalDecompositionAgent().apply(signals)
     primary = signals[
         signals["primary_event"] & signals["entry_state"].isin(CANDIDATE_STATES)
     ].copy()
@@ -123,16 +126,6 @@ def decompose(
         & oos["confirmed_regime"].isin({"R1", "R2", "R3", "R4", "R5"})
         & (oos["permission_market_gate"] != "RED")
     ].copy()
-
-    market_regime_col = next(
-        (
-            col
-            for col in ("confirmed_regime", "raw_regime", "market_regime")
-            if col in signals.columns
-            and signals[col].isin({"R1", "R2", "R3", "R4", "R5", "R6"}).any()
-        ),
-        None,
-    )
 
     wf_rows: list[dict] = []
     for fold in fold_boundaries(len(signals)):
@@ -147,6 +140,16 @@ def decompose(
                 "by_signal_type": grouped_summary(test, ["signal_type"]),
                 "by_zone": grouped_summary(test, ["zone"]),
                 "by_entry_state": grouped_summary(test, ["entry_state"]),
+                "by_regime_and_signal_type": grouped_summary(
+                    test, ["decomposition_regime", "signal_type"]
+                ),
+                "by_regime_and_entry_state": grouped_summary(
+                    test, ["decomposition_regime", "entry_state"]
+                ),
+                "by_regime_state_signal": grouped_summary(
+                    test,
+                    ["decomposition_regime", "entry_state", "signal_type"],
+                ),
             }
         )
 
@@ -188,35 +191,38 @@ def decompose(
             "blocker_codes": list(permission_result.blocker_codes),
             "buy_allowed": BUY_ALLOWED,
         },
-        "market_regime": (
-            {
-                "status": "AVAILABLE",
-                "column": market_regime_col,
-                "by_regime": grouped_summary(primary, [market_regime_col]),
-                "oos_by_regime": grouped_summary(oos, [market_regime_col]),
-                "by_regime_and_signal_type": grouped_summary(
-                    primary, [market_regime_col, "signal_type"]
-                ),
-                "oos_by_regime_and_signal_type": grouped_summary(
-                    oos, [market_regime_col, "signal_type"]
-                ),
-                "by_regime_and_entry_state": grouped_summary(
-                    primary, [market_regime_col, "entry_state"]
-                ),
-                "oos_by_regime_and_entry_state": grouped_summary(
-                    oos, [market_regime_col, "entry_state"]
-                ),
-            }
-            if market_regime_col
-            else {
-                "status": "DATA_NOT_READY",
-                "reason": (
-                    "Full Market Score / confirmed R1-R6 history is not present in "
-                    "the BTC price-only PIT dataset. This decomposition therefore "
-                    "does not substitute a price proxy for the missing permission-layer regime."
-                ),
-            }
-        ),
+        "market_regime": {
+            "status": (
+                "AVAILABLE"
+                if primary["decomposition_regime"].isin(
+                    {"R1", "R2", "R3", "R4", "R5", "R6"}
+                ).any()
+                else "DATA_NOT_READY"
+            ),
+            "column": "decomposition_regime",
+            "by_regime": grouped_summary(primary, ["decomposition_regime"]),
+            "oos_by_regime": grouped_summary(oos, ["decomposition_regime"]),
+            "by_regime_and_signal_type": grouped_summary(
+                primary, ["decomposition_regime", "signal_type"]
+            ),
+            "oos_by_regime_and_signal_type": grouped_summary(
+                oos, ["decomposition_regime", "signal_type"]
+            ),
+            "by_regime_and_entry_state": grouped_summary(
+                primary, ["decomposition_regime", "entry_state"]
+            ),
+            "oos_by_regime_and_entry_state": grouped_summary(
+                oos, ["decomposition_regime", "entry_state"]
+            ),
+            "by_regime_state_signal": grouped_summary(
+                primary,
+                ["decomposition_regime", "entry_state", "signal_type"],
+            ),
+            "oos_by_regime_state_signal": grouped_summary(
+                oos,
+                ["decomposition_regime", "entry_state", "signal_type"],
+            ),
+        },
         "walk_forward": wf_rows,
         "guardrails": [
             "No threshold was changed after observing OOS results.",
