@@ -162,7 +162,7 @@ def test_verified_evidence_passes_hallucination_guard_but_buy_remains_locked():
             "source_timestamp": now,
             "available_at": now,
         }],
-        source_records=[test_source_record()],
+        source_records=[_source_record()],
         risk_inputs={
             "max_drawdown": -0.1,
             "mae": -0.05,
