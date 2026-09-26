@@ -3,28 +3,60 @@
   "status": "STRUCTURE_ONLY_NOT_VALIDATED",
   "decision_clock": "UTC_daily_close",
   "cross_asset": {
-    "assets": ["BTC", "ETH", "SOL"],
+    "assets": [
+      "BTC",
+      "ETH",
+      "SOL"
+    ],
     "spot_sources": {
       "primary": "COINBASE_EXCHANGE",
       "fallback": "BINANCE_SPOT_PUBLIC"
     },
     "symbols": {
-      "BTC": ["BTC-USD", "BTCUSDT"],
-      "ETH": ["ETH-USD", "ETHUSDT"],
-      "SOL": ["SOL-USD", "SOLUSDT"]
+      "BTC": [
+        "BTC-USD",
+        "BTCUSDT"
+      ],
+      "ETH": [
+        "ETH-USD",
+        "ETHUSDT"
+      ],
+      "SOL": [
+        "SOL-USD",
+        "SOLUSDT"
+      ]
     }
   },
   "macro_liquidity": {
     "required_series": [
-      {"series_id": "DXY_20d_pct_change", "source_class": "official_index_vendor_or_licensed_mirror"},
-      {"series_id": "US10Y_10d_bp_change", "source_id": "FRED:DGS10"},
-      {"series_id": "US_REAL_YIELD_10d_bp_change", "source_id": "FRED:DFII10"},
-      {"series_id": "WTI_5d_pct_change", "source_id": "FRED:DCOILWTICO"},
-      {"series_id": "USD_KRW_20d_pct_change", "source_class": "official_fx_source"}
+      {
+        "series_id": "DXY_20d_pct_change",
+        "source_class": "official_index_vendor_or_licensed_mirror"
+      },
+      {
+        "series_id": "US10Y_10d_bp_change",
+        "source_id": "FRED:DGS10"
+      },
+      {
+        "series_id": "US_REAL_YIELD_10d_bp_change",
+        "source_id": "FRED:DFII10"
+      },
+      {
+        "series_id": "WTI_5d_pct_change",
+        "source_id": "FRED:DCOILWTICO"
+      },
+      {
+        "series_id": "USD_KRW_20d_pct_change",
+        "source_class": "official_fx_source"
+      }
     ]
   },
   "derivatives": {
-    "assets": ["BTC", "ETH", "SOL"],
+    "assets": [
+      "BTC",
+      "ETH",
+      "SOL"
+    ],
     "fields": [
       "funding_rate_8h",
       "open_interest_24h_pct_change",
@@ -36,8 +68,17 @@
       "index_price"
     ],
     "providers": [
-      {"source_id": "BINANCE_USDM", "role": "current_and_recent", "priority": 1},
-      {"source_id": "COINMETRICS_MARKET", "role": "long_history_archive", "priority": 2, "credential_required": true}
+      {
+        "source_id": "BINANCE_USDM",
+        "role": "current_and_recent",
+        "priority": 1
+      },
+      {
+        "source_id": "COINMETRICS_MARKET",
+        "role": "long_history_archive",
+        "priority": 2,
+        "credential_required": true
+      }
     ],
     "archive_policy": {
       "canonical_source": "COINMETRICS_MARKET",
@@ -48,14 +89,28 @@
   },
   "regulation_market_structure": {
     "required": true,
-    "sources": ["SEC", "CFTC", "FSC_KOREA", "FCA", "EU_PRIMARY_REGULATOR"],
+    "sources": [
+      "SEC",
+      "CFTC",
+      "FSC_KOREA",
+      "FCA",
+      "EU_PRIMARY_REGULATOR"
+    ],
     "event_model": "event_timestamp_plus_available_at",
     "current_label_backfill_forbidden": true
   },
   "geopolitical_transmission": {
     "required": true,
     "event_model": "event_timestamp_plus_available_at",
-    "channels": ["energy", "inflation", "rates", "credit", "trade_sanctions", "capital_controls", "exchange_access"]
+    "channels": [
+      "energy",
+      "inflation",
+      "rates",
+      "credit",
+      "trade_sanctions",
+      "capital_controls",
+      "exchange_access"
+    ]
   },
   "pit": {
     "required_fields": [
@@ -75,6 +130,7 @@
   },
   "promotion": {
     "automatic_orders": false,
+    "buy_allowed": false,
     "live_status": "DISABLED_UNTIL_P6_PROMOTION"
   }
 }
