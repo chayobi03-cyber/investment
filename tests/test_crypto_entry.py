@@ -58,6 +58,7 @@ class CryptoEntryTests(unittest.TestCase):
     def test_episode_clustering_deduplicates(self):
         out = generate_signals(make_frame())
         out.loc[210:213, "entry_state"] = "B2"
+        out.loc[214:218, "zone"] = "Z0"
         out.loc[219:220, "entry_state"] = "B3"
 
         clustered = cluster_episodes(out, cooldown_bars=5)
