@@ -7,8 +7,14 @@ on:
     paths:
       - "src/investment_pipeline/multi_asset_subagents.py"
       - "src/investment_pipeline/hallucination_guard_agent.py"
+      - "src/investment_pipeline/source_retrieval_agent.py"
+      - "src/investment_pipeline/source_quality_agent.py"
+      - "src/investment_pipeline/conflict_detection_agent.py"
       - "tests/test_multi_asset_subagents.py"
       - "tests/test_hallucination_guard_agent.py"
+      - "tests/test_source_retrieval_agent.py"
+      - "tests/test_source_quality_agent.py"
+      - "tests/test_conflict_detection_agent.py"
       - "config/multi_asset_subagents_v0.1.json"
       - "schemas/hallucination_guard_v0.1.schema.json"
       - ".github/workflows/multi-asset-subagents-ci.yml"
@@ -57,7 +63,10 @@ jobs:
         run: |
           python -m pytest -q \
             tests/test_multi_asset_subagents.py \
-            tests/test_hallucination_guard_agent.py
+            tests/test_hallucination_guard_agent.py \
+            tests/test_source_retrieval_agent.py \
+            tests/test_source_quality_agent.py \
+            tests/test_conflict_detection_agent.py
 
       - name: Import smoke test
         env:
