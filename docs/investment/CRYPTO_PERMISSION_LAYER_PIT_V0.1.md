@@ -124,6 +124,13 @@ Raw source observations are retained separately. Derived metrics reference the r
 
 Missing required permission evidence => DATA_NOT_READY / BLOCKED.
 
+## Lesson learned / rule revision
+
+1. Permission must be an overlay, not a second signal generator. Recomputing B2-B4 after permission inputs would contaminate the frozen-threshold experiment.
+2. Regime R1-R6 must come from the validated market-score permission layer. BTC price-only data must never be used as a regime proxy.
+3. `BUY_ALLOWED=false` is independent from exposure multipliers. B2/B3/B4 can remain useful as research labels while all live execution remains disabled.
+4. A missing permission history is a normal `DATA_NOT_READY` state, not a reason to impute, forward-fill, or promote the signal.
+
 ## Research sequence
 
 1. frozen price signal;
