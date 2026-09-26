@@ -14,12 +14,18 @@ def make_frame(n=260):
     dates = pd.date_range("2025-01-01", periods=n, freq="D", tz="UTC")
     base = pd.Series(range(n), dtype=float) * 10 + 1000
     close = base.copy()
-    # Deterministic pullback and recovery within a valid long-term trend.
-    close.iloc[180:186] *= 0.93
-    close.iloc[186:191] *= 0.96
+
+    if n > 185:
+        end = min(n, 186)
+        close.iloc[180:end] = close.iloc[180:end] * 0.93
+    if n > 186:
+        end = min(n, 191)
+        close.iloc[186:end] = close.iloc[186:end] * 0.96
+
     high = close * 1.01
     low = close * 0.99
     open_ = close * 0.995
+
     return pd.DataFrame(
         {
             "timestamp": dates,
@@ -50,11 +56,16 @@ class CryptoEntryTests(unittest.TestCase):
         self.assertIn("stabilization", out.columns)
 
     def test_episode_clustering_deduplicates(self):
-        out = cluster_episodes(generate_signals(make_frame()), cooldown_bars=5)
-        candidate = int(out["entry_state"].isin(["B2", "B3", "B4"]).sum())
-        primary = int(out["primary_event"].sum())
-        self.assertGreater(primary, 0)
-        self.assertLessEqual(primary, candidate)
+        out = generate_signals(make_frame())
+        out.loc[210:213, "entry_state"] = "B2"
+        out.loc[219:220, "entry_state"] = "B3"
+
+        clustered = cluster_episodes(out, cooldown_bars=5)
+        candidate = int(clustered["entry_state"].isin(["B2", "B3", "B4"]).sum())
+        primary = int(clustered["primary_event"].sum())
+
+        self.assertEqual(candidate, 6)
+        self.assertEqual(primary, 2)
 
     def test_forward_outcomes_use_next_open(self):
         out = add_forward_outcomes(
