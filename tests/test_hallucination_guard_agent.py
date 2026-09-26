@@ -134,3 +134,31 @@ def test_unverified_inference_cannot_support_another_inference():
     )
     assert result.status == "BLOCKED"
     assert any("INFERENCE_SUPPORT_NOT_VERIFIED" in b for b in result.blocker_codes)
+
+
+def test_cyclic_inference_graph_is_blocked():
+    result = HallucinationGuardAgent().verify(
+        [
+            {
+                "claim_id": "I1",
+                "claim_type": "INFERENCE",
+                "statement": "Cycle A",
+                "scope": "decision",
+                "supporting_claim_ids": ["I2"],
+                "reasoning": "Depends on I2",
+                "explicitly_labeled_inference": True,
+            },
+            {
+                "claim_id": "I2",
+                "claim_type": "INFERENCE",
+                "statement": "Cycle B",
+                "scope": "decision",
+                "supporting_claim_ids": ["I1"],
+                "reasoning": "Depends on I1",
+                "explicitly_labeled_inference": True,
+            },
+        ],
+        decision_timestamp=NOW,
+    )
+    assert result.status == "BLOCKED"
+    assert any("INFERENCE_CYCLE" in b for b in result.blocker_codes)
