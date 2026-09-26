@@ -77,7 +77,13 @@ jobs:
           python - <<'PY'
           from src.investment_pipeline.multi_asset_subagents import MultiAssetOrchestrator
           from src.investment_pipeline.hallucination_guard_agent import HallucinationGuardAgent
+          from src.investment_pipeline.source_retrieval_agent import SourceRetrievalAgent
+          from src.investment_pipeline.source_quality_agent import SourceQualityAgent
+          from src.investment_pipeline.conflict_detection_agent import ConflictDetectionAgent
           assert MultiAssetOrchestrator()
           assert HallucinationGuardAgent()
+          assert SourceRetrievalAgent()
+          assert SourceQualityAgent()
+          assert ConflictDetectionAgent()
           print("imports=PASS")
           PY
