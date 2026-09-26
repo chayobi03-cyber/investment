@@ -12,7 +12,14 @@
     "threshold_mutation_allowed": false,
     "missing_data_behavior": "DATA_NOT_READY",
     "lookahead_forbidden": true,
-    "hallucination_guard_required": true
+    "hallucination_guard_required": true,
+    "claim_verification_order": [
+      "source_retrieval",
+      "source_quality",
+      "conflict_detection",
+      "evidence",
+      "hallucination_guard"
+    ]
   },
   "agents": {
     "data_pit": {
@@ -89,6 +96,31 @@
         "blocker_codes"
       ],
       "hard_gate": true
+    },
+    "source_retrieval": {
+      "role": "validate retrieved source artifacts, PIT availability, content hashes and cited-source coverage",
+      "outputs": [
+        "status",
+        "records",
+        "referenced_sources",
+        "blocker_codes"
+      ]
+    },
+    "source_quality": {
+      "role": "classify source strength without subjective truth scoring and enforce declared minimum source class",
+      "outputs": [
+        "status",
+        "classifications",
+        "blocker_codes"
+      ]
+    },
+    "conflict_detection": {
+      "role": "detect explicit structured conflicts without choosing a preferred side",
+      "outputs": [
+        "status",
+        "conflict_groups",
+        "blocker_codes"
+      ]
     }
   }
 }
