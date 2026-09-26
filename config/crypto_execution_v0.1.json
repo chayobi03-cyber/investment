@@ -1,0 +1,39 @@
+{
+  "version": "0.1",
+  "status": "RESEARCH_ONLY_NOT_LIVE",
+  "asset": "BTCUSDT",
+  "reference": {
+    "lookback_high_days": 60,
+    "zones": {
+      "BUY_1": -0.05,
+      "BUY_2": -0.08,
+      "BUY_3": -0.12
+    }
+  },
+  "sleeve_allocation": {
+    "BUY_1": 0.20,
+    "BUY_2": 0.25,
+    "BUY_3": 0.30,
+    "BUY_4": 0.25
+  },
+  "confirmation": {
+    "ret_3d_gt": 0.0,
+    "close_gte_ma20": true,
+    "buy_3_requires_close_gte_ma50": true
+  },
+  "no_chase": {
+    "drawdown_gt": -0.02,
+    "action": "WAIT"
+  },
+  "execution": {
+    "blind_limit_orders": false,
+    "automatic_orders": false,
+    "next_session_after_confirm": true
+  },
+  "hard_blocks": [
+    "DATA_NOT_READY",
+    "STRUCTURAL_TREND_BREAK",
+    "MULTI_SHOCK",
+    "SEVERE_SYSTEMIC_STRESS"
+  ]
+}

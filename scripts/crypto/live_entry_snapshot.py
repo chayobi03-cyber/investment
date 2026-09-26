@@ -49,7 +49,11 @@ def get_live_price() -> float:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--output", type=Path, default=Path("artifacts/crypto/live_entry.json"))
+    ap.add_argument(
+        "--output",
+        type=Path,
+        default=Path("artifacts/crypto/live_entry.json"),
+    )
     args = ap.parse_args()
 
     daily = get_daily(365)
@@ -58,19 +62,41 @@ def main() -> int:
     live = get_live_price()
 
     prior_high60 = float(last["prior_high60"])
-    z1_high = prior_high60 * 0.95
-    z1_low = prior_high60 * 0.92
-    z2_high = z1_low
-    z2_low = prior_high60 * 0.88
+    buy1_trigger = prior_high60 * 0.95
+    buy2_trigger = prior_high60 * 0.92
+    buy3_trigger = prior_high60 * 0.88
+    breakout_trigger = prior_high60
 
-    if live > z1_high:
+    daily_trend = bool(last["trend_ok"])
+    daily_stabilization = bool(last["stabilization"])
+    close_gte_ma20 = bool(last["close"] >= last["ma20"]) if pd.notna(last["ma20"]) else False
+    close_gte_ma50 = bool(last["close"] >= last["ma50"]) if pd.notna(last["ma50"]) else False
+
+    if live > breakout_trigger:
+        live_zone = "BREAKOUT"
+    elif live > buy1_trigger:
         live_zone = "Z0"
-    elif live > z1_low:
+    elif live > buy2_trigger:
         live_zone = "Z1"
-    elif live > z2_low:
+    elif live > buy3_trigger:
         live_zone = "Z2"
     else:
         live_zone = "Z3"
+
+    if not daily_trend:
+        execution_state = "BLOCKED"
+    elif live >= prior_high60 * 0.98 and live < breakout_trigger:
+        execution_state = "WAIT_NO_CHASE"
+    elif live <= buy1_trigger and live > buy2_trigger and daily_stabilization and close_gte_ma20:
+        execution_state = "BUY_1_READY"
+    elif live <= buy2_trigger and live > buy3_trigger and daily_stabilization and close_gte_ma20:
+        execution_state = "BUY_2_READY"
+    elif live <= buy3_trigger and daily_stabilization and close_gte_ma20 and close_gte_ma50:
+        execution_state = "BUY_3_READY"
+    elif live > breakout_trigger and daily_trend:
+        execution_state = "BREAKOUT_CONFIRMATION_WATCH"
+    else:
+        execution_state = "WAIT_CONFIRMATION"
 
     result = {
         "status": "RESEARCH_ONLY",
@@ -80,25 +106,57 @@ def main() -> int:
         "live_price": live,
         "daily_state": str(last["entry_state"]),
         "daily_zone": str(last["zone"]),
-        "daily_trend_ok": bool(last["trend_ok"]),
-        "daily_stabilization": bool(last["stabilization"]),
         "live_zone": live_zone,
-        "prior_high60": prior_high60,
-        "triggers": {
-            "Z1_enter": z1_high,
-            "Z2_enter": z1_low,
-            "Z3_enter": z2_low,
+        "daily_trend_ok": daily_trend,
+        "daily_stabilization": daily_stabilization,
+        "reference_prior_60d_high": prior_high60,
+        "execution_state": execution_state,
+        "purchase_plan": {
+            "BUY_1": {
+                "trigger_price": buy1_trigger,
+                "allocation_of_crypto_sleeve": 0.20,
+                "requires": ["Z1_REACHED", "3D_RETURN_GT_0", "CLOSE_GTE_MA20"],
+            },
+            "BUY_2": {
+                "trigger_price": buy2_trigger,
+                "allocation_of_crypto_sleeve": 0.25,
+                "requires": ["Z2_REACHED", "3D_RETURN_GT_0", "CLOSE_GTE_MA20"],
+            },
+            "BUY_3": {
+                "trigger_price": buy3_trigger,
+                "allocation_of_crypto_sleeve": 0.30,
+                "requires": [
+                    "Z3_REACHED",
+                    "3D_RETURN_GT_0",
+                    "CLOSE_GTE_MA20",
+                    "CLOSE_GTE_MA50",
+                ],
+            },
+            "BUY_4": {
+                "trigger_price": "confirmation event",
+                "allocation_of_crypto_sleeve": 0.25,
+                "requires": [
+                    "stabilization_persistence",
+                    "independent_risk_cluster_confirmation",
+                ],
+            },
+            "BREAKOUT": {
+                "trigger_price": breakout_trigger,
+                "execution": "next_session_after_confirmed_daily_close",
+                "allocation": "separate research path",
+            },
         },
-        "distance_to_first_trigger_pct": (live / z1_high - 1.0) * 100.0,
-        "action": (
-            "WAIT"
-            if live > z1_high
-            else "WATCH_Z1_CONFIRMATION"
-            if live > z1_low
-            else "WATCH_Z2_CONFIRMATION"
-            if live > z2_low
-            else "DEEP_DISLOCATION_WATCH"
-        ),
+        "current_confirmation": {
+            "ret_3d_positive": float(last["ret3"]) > 0 if pd.notna(last["ret3"]) else False,
+            "close_gte_ma20": close_gte_ma20,
+            "close_gte_ma50": close_gte_ma50,
+        },
+        "invalidation": [
+            "STRUCTURAL_TREND_BREAK",
+            "DATA_NOT_READY",
+            "MULTI_SHOCK",
+            "SEVERE_SYSTEMIC_STRESS",
+        ],
         "automatic_order": False,
     }
 
