@@ -22,6 +22,11 @@ class SourceRecord:
     retrieved_at: datetime
     content_hash: str
 
+    @property
+    def source_class(self) -> str:
+        """Semantic alias: source_type stores the declared source class."""
+        return self.source_type
+
 
 @dataclass(frozen=True)
 class SourceRetrievalResult:
