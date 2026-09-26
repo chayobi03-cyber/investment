@@ -49,6 +49,8 @@ jobs:
           import json
           json.load(open("config/crypto_permission_layer_v0.1.json", encoding="utf-8"))
           json.load(open("schemas/crypto_permission_layer_v0.1.schema.json", encoding="utf-8"))
+          cfg = json.load(open("config/crypto_permission_layer_v0.1.json", encoding="utf-8"))
+          assert cfg["promotion"]["buy_allowed"] is False
           print("contract_json=PASS")
           PY
 
