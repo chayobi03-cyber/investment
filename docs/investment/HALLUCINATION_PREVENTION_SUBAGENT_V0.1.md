@@ -69,3 +69,9 @@ Both gates are required.
 ## Current limitation
 
 This deterministic v0.1 checks structured claims and evidence metadata. It does not independently establish the real-world truth of an arbitrary external statement. External source retrieval, source-quality ranking, semantic contradiction detection, and human-review escalation are later layers.
+
+## Additional hard gate: inference chains
+
+An inference may cite another inference only when the supporting claim is itself verified. Verification is resolved transitively; unresolved dependency or cyclic support cannot become VERIFIED by reference alone.
+
+This prevents an unsupported fact -> plausible inference -> plausible inference -> decision chain from being accepted as evidence.
