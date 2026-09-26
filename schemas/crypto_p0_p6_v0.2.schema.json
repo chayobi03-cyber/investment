@@ -5,6 +5,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "permission",
     "schema_version",
     "record_id",
     "asset",
@@ -80,6 +81,9 @@
     },
     "p6": {
       "$ref": "#/$defs/p6"
+    },
+    "permission": {
+      "$ref": "#/$defs/permission"
     }
   },
   "$defs": {
@@ -551,6 +555,54 @@
         }
       },
       "additionalProperties": true
+    },
+    "permission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "buy_allowed",
+        "matched_rows",
+        "eligible_primary_events",
+        "regime_coverage",
+        "blocker_codes",
+        "execution_gate"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/stage_status"
+        },
+        "buy_allowed": {
+          "const": false
+        },
+        "matched_rows": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eligible_primary_events": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "regime_coverage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "blocker_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "execution_gate": {
+          "type": "string",
+          "enum": [
+            "DISABLED",
+            "BLOCKED",
+            "RESEARCH_ONLY"
+          ]
+        }
+      }
     }
   }
 }
