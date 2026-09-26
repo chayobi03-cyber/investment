@@ -256,9 +256,27 @@ class EvidenceAgent:
     def run(self, claims: list[Mapping[str, Any]]) -> AgentResult:
         blockers: list[str] = []
         for claim in claims:
-            for required in ("claim_id", "source_id", "timestamp", "calculation"):
+            claim_id = str(claim.get("claim_id", "UNKNOWN"))
+            claim_type = str(claim.get("claim_type", ""))
+
+            for required in ("claim_id", "claim_type", "statement", "scope"):
                 if not claim.get(required):
-                    blockers.append(f"EVIDENCE_MISSING:{required}")
+                    blockers.append(f"{claim_id}:EVIDENCE_MISSING:{required}")
+
+            if claim_type in {"FACT", "CALCULATION"}:
+                for required in ("source_id", "source_timestamp", "available_at"):
+                    if not claim.get(required):
+                        blockers.append(f"{claim_id}:EVIDENCE_MISSING:{required}")
+
+            if claim_type == "CALCULATION" and not claim.get("calculation"):
+                blockers.append(f"{claim_id}:EVIDENCE_MISSING:calculation")
+
+            if claim_type == "INFERENCE":
+                if not claim.get("supporting_claim_ids"):
+                    blockers.append(f"{claim_id}:EVIDENCE_MISSING:supporting_claim_ids")
+                if not claim.get("reasoning"):
+                    blockers.append(f"{claim_id}:EVIDENCE_MISSING:reasoning")
+
         status = Status.PASS if not blockers else Status.DATA_NOT_READY
         return AgentResult(
             self.name,
@@ -267,7 +285,6 @@ class EvidenceAgent:
             {"claim_count": len(claims)},
             tuple(sorted(set(blockers))),
         )
-
 
 class EquitySignalAgent:
     asset = AssetClass.EQUITY
