@@ -2,17 +2,17 @@
 // Sends a Web Push to the mobile PWA when the live snapshot's daily state is B3+.
 // Never fails the monitor: missing secrets or dead subscriptions are logged and skipped.
 //
-// env: WEBPUSH_SUBSCRIPTIONS (JSON object or array), VAPID_PRIVATE_KEY,
-//      VAPID_SUBJECT (optional), PAGE_URL (optional)
+// env: WEBPUSH_SUBSCRIPTIONS — JSON object or array copied from the app; each entry is a
+//      PushSubscription plus the `vapid_private_key` it was created with.
+//      VAPID_SUBJECT, PAGE_URL (optional)
 // args: --snapshot <path> --state <path> [--test]
 
+import { createECDH } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
 import webpush from "web-push";
 import { decideAlert, buildMessage, parseSubscriptions } from "./decide.mjs";
 
-const here = dirname(fileURLToPath(import.meta.url));
 const arg = (name, dflt) => {
   const i = process.argv.indexOf(name);
   return i > -1 ? process.argv[i + 1] : dflt;
@@ -22,16 +22,21 @@ const snapshotPath = arg("--snapshot", "artifacts/crypto/live_entry.json");
 const statePath = arg("--state", ".state/push_state.json");
 const pageUrl = process.env.PAGE_URL || "https://chayobi03-cyber.github.io/investment/";
 
-const configJs = readFileSync(resolve(here, "../../../mobile/push-config.js"), "utf8");
-const publicKey = configJs.match(/VAPID_PUBLIC_KEY = "([^"]+)"/)[1];
-const privateKey = process.env.VAPID_PRIVATE_KEY;
 const subs = parseSubscriptions(process.env.WEBPUSH_SUBSCRIPTIONS);
-
-if (!privateKey || !subs.length) {
-  console.log("PUSH_SKIPPED=missing VAPID_PRIVATE_KEY or WEBPUSH_SUBSCRIPTIONS secret");
+if (!subs.length) {
+  console.log("PUSH_SKIPPED=missing WEBPUSH_SUBSCRIPTIONS secret");
   process.exit(0);
 }
-webpush.setVapidDetails(process.env.VAPID_SUBJECT || pageUrl, publicKey, privateKey);
+
+function vapidFor(sub) {
+  const ecdh = createECDH("prime256v1");
+  ecdh.setPrivateKey(Buffer.from(sub.vapid_private_key, "base64url"));
+  return {
+    subject: process.env.VAPID_SUBJECT || pageUrl,
+    publicKey: ecdh.getPublicKey().toString("base64url"),
+    privateKey: sub.vapid_private_key,
+  };
+}
 
 const snapshot = JSON.parse(readFileSync(snapshotPath, "utf8"));
 const lastState = existsSync(statePath) ? JSON.parse(readFileSync(statePath, "utf8")) : {};
@@ -45,7 +50,11 @@ if (test) message.title = `[테스트] ${message.title}`;
 let delivered = 0;
 for (const sub of subs) {
   try {
-    await webpush.sendNotification(sub, JSON.stringify(message), { TTL: 6 * 3600 });
+    const { endpoint, keys } = sub;
+    await webpush.sendNotification({ endpoint, keys }, JSON.stringify(message), {
+      TTL: 6 * 3600,
+      vapidDetails: vapidFor(sub),
+    });
     delivered++;
   } catch (e) {
     const host = (() => { try { return new URL(sub.endpoint).host; } catch { return "?"; } })();

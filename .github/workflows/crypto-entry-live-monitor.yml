@@ -76,7 +76,6 @@ jobs:
       - name: Push B3+ alert to phone
         env:
           WEBPUSH_SUBSCRIPTIONS: ${{ secrets.WEBPUSH_SUBSCRIPTIONS }}
-          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
         run: |
           npm ci --prefix scripts/crypto/push --no-audit --no-fund

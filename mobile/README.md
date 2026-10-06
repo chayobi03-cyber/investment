@@ -36,9 +36,10 @@ Setup (once per phone):
 
 1. Open the installed app (iPhone: must be launched from the home-screen icon, iOS 16.4+)
    → **알림 켜기** → allow → **구독 정보 복사**.
-2. Repo Settings → Secrets and variables → Actions → add:
-   - `VAPID_PRIVATE_KEY` — private half of the key in `mobile/push-config.js`
-   - `WEBPUSH_SUBSCRIPTIONS` — the copied JSON (for several phones: a JSON array of them)
+2. Repo Settings → Secrets and variables → Actions → new secret `WEBPUSH_SUBSCRIPTIONS`
+   = the copied JSON (for several phones: a JSON array `[ {...}, {...} ]`).
+   The VAPID key pair is generated on the phone; the copied value contains its
+   private key, so treat it like a password. Nothing secret is committed.
 3. Actions → crypto-entry-live-monitor → Run workflow with **test_push** checked
    to receive a test notification.
 

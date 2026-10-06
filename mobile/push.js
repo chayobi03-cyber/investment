@@ -1,19 +1,41 @@
-import { VAPID_PUBLIC_KEY } from "./push-config.js";
+// Opt-in for B3+ push alerts. The VAPID key pair is generated on this phone and
+// never committed: the copied secret entry carries the subscription together
+// with its private key, which only the monitor workflow (repo secret) can read.
 
+const KEY_STORE = "crypto-entry-v0.2:vapid";
 const $ = (id) => document.getElementById(id);
-
-function urlBase64ToUint8Array(s) {
-  const pad = "=".repeat((4 - (s.length % 4)) % 4);
-  const raw = atob((s + pad).replace(/-/g, "+").replace(/_/g, "/"));
-  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
-}
+const b64url = (buf) =>
+  btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const fromB64url = (s) =>
+  Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (s.length % 4)) % 4)), (c) =>
+    c.charCodeAt(0));
 
 const isStandalone = () =>
   window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 
-function show(sub) {
+async function vapidKeys() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY_STORE));
+    if (saved?.publicKey && saved?.privateKey) return saved;
+  } catch {
+    /* fall through and generate */
+  }
+  const pair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign"]);
+  const keys = {
+    publicKey: b64url(await crypto.subtle.exportKey("raw", pair.publicKey)),
+    privateKey: (await crypto.subtle.exportKey("jwk", pair.privateKey)).d,
+  };
+  try {
+    localStorage.setItem(KEY_STORE, JSON.stringify(keys));
+  } catch {
+    /* without storage a later visit just re-subscribes with a new key */
+  }
+  return keys;
+}
+
+function show(sub, keys) {
   $("pushOut").hidden = false;
-  $("pushJson").value = JSON.stringify(sub);
+  $("pushJson").value = JSON.stringify({ ...sub.toJSON(), vapid_private_key: keys.privateKey });
 }
 
 async function enable() {
@@ -29,15 +51,19 @@ async function enable() {
     if ((await Notification.requestPermission()) !== "granted") {
       throw new Error("알림 권한이 거부되었습니다. 설정에서 허용해 주세요.");
     }
+    const keys = await vapidKeys();
     const reg = await navigator.serviceWorker.ready;
-    const sub =
-      (await reg.pushManager.getSubscription()) ||
-      (await reg.pushManager.subscribe({
+    let sub = await reg.pushManager.getSubscription();
+    const own = sub && b64url(sub.options.applicationServerKey) === keys.publicKey;
+    if (sub && !own) await sub.unsubscribe();
+    if (!own) {
+      sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      }));
-    show(sub);
-    $("pushMsg").textContent = "아래 구독 정보를 복사해 GitHub 시크릿 WEBPUSH_SUBSCRIPTIONS에 넣으세요.";
+        applicationServerKey: fromB64url(keys.publicKey),
+      });
+    }
+    show(sub, keys);
+    $("pushMsg").textContent = "아래 값을 복사해 GitHub 시크릿 WEBPUSH_SUBSCRIPTIONS에 넣으세요. 비밀번호처럼 다루세요.";
   } catch (e) {
     $("pushMsg").textContent = e.message || String(e);
   }
@@ -54,11 +80,3 @@ async function copy() {
 
 $("pushOn").addEventListener("click", enable);
 $("pushCopy").addEventListener("click", copy);
-
-// Reflect an existing subscription without prompting.
-if ("serviceWorker" in navigator && "PushManager" in window && Notification.permission === "granted") {
-  navigator.serviceWorker.ready
-    .then((reg) => reg.pushManager.getSubscription())
-    .then((sub) => sub && show(sub))
-    .catch(() => {});
-}

@@ -2,7 +2,7 @@
 // cached here: app.js keeps the last computed snapshot in localStorage instead.
 const SHELL = "btc-entry-shell-v2";
 const FILES = [
-  "./", "./index.html", "./style.css", "./app.js", "./entry.js", "./data.js", "./push.js", "./push-config.js",
+  "./", "./index.html", "./style.css", "./app.js", "./entry.js", "./data.js", "./push.js",
   "./manifest.webmanifest", "./icons/icon-180.png", "./icons/icon-192.png", "./icons/icon-512.png",
 ];
 
