@@ -1,0 +1,2 @@
+[functions.collect-market-observations]
+verify_jwt = false

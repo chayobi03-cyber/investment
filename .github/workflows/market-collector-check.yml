@@ -1,0 +1,26 @@
+name: Market Collector Check
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/functions/collect-market-observations/**'
+      - 'supabase/config.toml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deno-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.x
+      - name: Type-check collector
+        run: deno check supabase/functions/collect-market-observations/index.ts
+      - name: Format check
+        run: deno fmt --check supabase/functions/collect-market-observations/index.ts

@@ -1,241 +1,123 @@
 # Market Data Auto Acquisition V1
 
 Date: 2026-09-17
-Status: IMPLEMENTATION DESIGN — acquisition layer only; no live order execution
+Status: IMPLEMENTATION — code ready; deployment binding pending
 
-## 1. Objective
+## Objective
 
-Replace the current daily `yfinance` monitor transport with a timestamp-preserving acquisition layer that can automatically collect:
+Replace the current daily `yfinance` monitor transport with a timestamp-preserving acquisition layer for intraday market-permission checks and later PIT/OOS validation.
 
-- Korea intraday market/leader data
-- US/global market proxy data
-- FX / rates / oil / volatility / credit macro inputs
-- geopolitical event metadata for later transmission validation
-
-The acquisition layer must preserve `observed_at`, `available_at`, source identity and revision status so that the BUY Trigger Engine remains point-in-time safe.
-
-## 2. Recommended Architecture
+## Architecture
 
 ```text
-Supabase Cron
-    |
-    +--> Edge Function: market-collector
-            |
-            +--> KIS adapter
-            |      - KOSPI/KOSDAQ index
-            |      - Korea leaders / watchlist
-            |      - domestic FX and overseas equity observations where supported
-            |      - REST snapshot + optional WebSocket collector on long-lived worker
-            |
-            +--> Alpaca adapter (US fallback / connected market-data path)
-            |      - SPY / QQQ / SOXX / TSM / AVGO / AMD etc.
-            |      - minute bars / latest trade / snapshot
-            |
-            +--> FRED / Treasury / EIA adapter
-            |      - rates / credit / VIX / oil / broad dollar / macro
-            |
-            +--> GDELT event adapter (discovery only)
-                   - event metadata and publication/observation timestamps
-                   - never converted directly into a buy score
-            |
-            v
-      raw market observations
-            |
-            v
-      normalized / derived factors
-            |
-            v
-      permission engine -> alert only
+Supabase Cron (1 minute)
+        |
+        v
+Edge Function: collect-market-observations
+        |
+        +--> KIS Open API
+        |      -> unified domestic stock snapshots
+        |
+        +--> later: Alpaca / US market
+        +--> later: FRED / Treasury / EIA
+        +--> later: GDELT event discovery
+        |
+        v
+Supabase raw market observations
+        |
+        v
+Market Regime / BUY Permission
 ```
 
-## 3. Scheduler Decision
+Supabase Cron is the preferred scheduler because it supports minute-level recurring jobs, can invoke Edge Functions, and records job execution history. citehttps://supabase.com/docs/guides/cron
 
-Use **Supabase Cron + Edge Function** as the primary scheduler for periodic snapshots.
+## Implemented now
 
-Reason:
+### KIS collector
 
-- Supabase Cron can invoke an Edge Function periodically, including every minute.
-- Cron execution history is stored in Postgres and can be monitored.
-- Secrets can be kept in Supabase Vault rather than in source code.
-- GitHub Actions remains the CI/test/deployment layer, not the live data collector.
+`supabase/functions/collect-market-observations/index.ts`
 
-Recommended collection frequency:
+Verified against the official KIS developer examples:
 
-- Korea session: 1 minute snapshots during market hours
-- US session: 1 minute snapshots during the required monitoring window
-- Daily macro: after the authoritative source publishes
-- Event discovery: every 15 minutes
+- endpoint `/uapi/domestic-stock/v1/quotations/inquire-price`
+- TR ID `FHKST01010100`
+- market selector `UN` for integrated domestic market
+- default universe is the project's existing ten-stock research universe
+- credentials are read only from Edge Function secrets
+- each run gets a UUID and each observation stores PIT `observed_at` and `available_at`
+- `observed_at` is the collector capture timestamp for that KIS snapshot
+- KIS `bsop_date` / `stck_cntg_hour` are provider event metadata preserved inside `raw_payload`; they do not define the snapshot observation timestamp
+- `available_at` is assigned by the database with `DEFAULT now()` at INSERT time, so the PIT availability gate reflects database persistence time rather than a client-side estimate
+- the collector reports both attempted rows and rows actually inserted; duplicate rows skipped by the database are reported separately
+- partial provider failure is reported; missing observations are never imputed
+- retries are idempotent through the database identity key
 
-The four decision checkpoints remain 08:30 / 09:30 / 10:30 / 14:30 KST, but they consume stored observations instead of creating a new ad-hoc request at the checkpoint.
+KIS officially documents REST and WebSocket access. The WebSocket domestic KRX trade stream is `H0STCNT0`, while unified/NXT streams are separately identified in current KIS documentation. The V1 collector intentionally starts with REST snapshots because they are easier to deploy, replay, and audit. citehttps://apiportal.koreainvestment.com/docshttps://github.com/koreainvestment/open-trading-api/blob/main/examples_user/domestic_stock/domestic_stock_functions_ws.py
 
-## 4. Source Hierarchy
+### Raw storage
 
-### A. Korea live / intraday
+`supabase/schema/market_observations_v1.sql`
 
-**Primary candidate: Korea Investment & Securities Open API (KIS).**
+The table stores source/feed identity, market session, timestamps, OHLCV/quote fields, revision status, rule version, and the original KIS payload. `available_at` defaults to the database `now()` value at insert time and must satisfy `available_at >= observed_at`.
 
-KIS provides REST and WebSocket interfaces and publishes official Python examples for domestic real-time trade/quote data. Domestic real-time trade uses WebSocket TR `H0STCNT0`; real-time quotes use `H0STASP0`.
+RLS is enabled and direct `anon`/`authenticated` table access is revoked. The collector writes with the server-side Supabase secret key only.
 
-Use KIS credentials only through secrets. Do not commit app keys or app secrets.
+### Scheduler
 
-### B. US equities
+`supabase/cron/market_collector_v1.sql`
 
-**Primary candidate: Alpaca market data API where credentials/subscription permit.**
+The schedule is intentionally split around the Korea session boundary:
 
-The Basic plan provides live IEX equity data and 30 WebSocket symbol subscriptions. SIP provides consolidated all-exchange coverage but requires the higher subscription tier.
+- `23:30-23:59 UTC` = `08:30-08:59 KST`, weekdays, preserving the existing pre-open checkpoint;
+- `00:00-05:59 UTC` = `09:00-14:59 KST`, weekdays, continuous 1-minute acquisition;
+- `06:00-06:35 UTC` = `15:00-15:35 KST`, weekdays, closing window.
 
-For the market engine, the distinction must be stored as `feed=iex|sip`; IEX data must never be labeled as consolidated US market data.
+Database timezone remains UTC. The pre-open block is a separate Cron job so the collection starts exactly at 08:30 KST rather than collecting the entire prior UTC hour.
 
-KIS overseas-stock WebSocket is an additional candidate if the project's KIS account supports the required instruments. It can reduce provider count, but coverage must be verified before replacing Alpaca.
+## Secrets / deployment
 
-### C. Rates / oil / macro
-
-Use authoritative daily sources where the signal is inherently daily:
-
-- U.S. Treasury daily yield curve for Treasury rates
-- FRED/ALFRED for VIX, HY OAS, Treasury series, broad dollar and other macro histories
-- EIA/FRED for Brent/WTI spot series
-
-For backtests, use ALFRED real-time periods/vintages where revision risk matters.
-
-### D. Geopolitical events
-
-Use GDELT as an automated discovery stream because it updates on a 15-minute cadence and provides structured event/mention records.
-
-GDELT is **not** the canonical truth source for a war or geopolitical claim. Store it as event discovery/evidence metadata, then require source verification before promotion into a transmission state.
-
-## 5. Why not continue with yfinance
-
-The current monitor uses `yfinance` daily bars even at intraday checkpoints. That produces a mislabeled architecture: the workflow timestamp changes, but the underlying observation is still daily.
-
-`yfinance` may remain a diagnostic/research fallback, but it must not be the canonical source for the live monitor or PIT validation dataset.
-
-## 6. Canonical Observation Schema
-
-Every acquired observation must include:
+Required Edge Function secrets:
 
 ```text
-observation_id
-source_id
-provider
-instrument_type
-symbol_or_series
-market
-market_session
-observed_at
-available_at
-timezone
-raw_value
-unit
-feed
-revision_status
-source_version
-collector_version
-retrieved_at
-quality_status
-error_code
+KIS_APP_KEY
+KIS_APP_SECRET
+MARKET_COLLECTOR_SECRET
+KIS_SYMBOLS (optional)
 ```
 
-For bars:
+The function uses the current `SUPABASE_SECRET_KEYS` environment when available, falling back to `SUPABASE_SERVICE_ROLE_KEY` for compatibility. Supabase recommends server-side secret keys only in controlled environments and never in browser/client code. citehttps://supabase.com/docs/guides/functions/secretshttps://supabase.com/docs/guides/getting-started/api-keys
 
-```text
-open
-high
-low
-close
-volume
-trade_count
-vwap
-```
+Cron-side secrets should be stored in Supabase Vault, not committed to Git. citehttps://supabase.com/docs/guides/database/vault
 
-For quotes:
+## Current blocker
 
-```text
-bid_price
-bid_size
-ask_price
-ask_size
-```
+The connected Supabase accounts currently expose a `Northstar` project and a separate `GeoAPT` project. The `Northstar` database contains the family-app tables rather than the investment market-data schema, so the collector has **not** been deployed into that project. No schema mutation was made against the wrong project.
 
-No record is accepted without `observed_at <= available_at` and a non-null `source_id`.
+Deployment therefore waits for the correct Investment Supabase project/ref binding and its KIS credentials.
 
-## 7. Data QA / Fail-Closed Rules
+## Promotion gate
 
-1. Missing critical Korea or US market data -> `DATA_BLOCKED` for the affected decision.
-2. Missing rates/oil/FX data -> retain raw observation state but block any escalation rule that explicitly depends on that cluster.
-3. Provider feed changes -> create a new `source_version`; never overwrite historical provenance silently.
-4. Duplicate timestamp/instrument records -> deterministic idempotency key; changed content with same key is a hard conflict.
-5. Clock/session mismatch -> reject the observation instead of silently converting timezones.
-6. IEX must be labeled as IEX, never promoted to `US_CONSOLIDATED`.
-7. GDELT event discovery cannot directly raise B2/B3/B4.
-8. No order API is exposed from the acquisition function.
+Acquisition GREEN requires:
 
-## 8. Storage
+1. correct Investment Supabase project bound;
+2. `market_observations` schema applied;
+3. Edge Function deployed;
+4. KIS secrets configured;
+5. one successful real observation inserted;
+6. repeated runs prove idempotency and timestamp correctness;
+7. Cron history shows successful scheduled collection;
+8. an induced source failure produces `DATA_BLOCKED` rather than imputation.
 
-Recommended separation:
+Only after acquisition GREEN should the canonical stored data replace the current live monitor input.
 
-```text
-raw_market_observations
-raw_event_observations
-normalized_market_factors
-derived_market_state
-permission_decisions
-collector_runs
-source_health
-```
+## Next implementation
 
-The raw layer is append-only. Derived/normalized tables can be rebuilt from raw observations using the recorded rule/source versions.
+1. Bind the correct Investment Supabase project.
+2. Deploy KIS collector and apply schema.
+3. Run one real end-to-end Korea session and verify timestamps/duplicates.
+4. Add KOSPI index/breadth collector.
+5. Add US/global and macro collectors.
+6. Switch `auto_market_monitor_v1.py` from `yfinance` to canonical stored observations.
+7. Build the P0-P3 PIT backtest dataset.
 
-## 9. Collector Health
-
-Every run writes:
-
-```text
-run_id
-started_at
-completed_at
-collector_version
-source_id
-requested_count
-accepted_count
-rejected_count
-latency_ms
-status
-error_summary
-```
-
-A health failure is itself observable and must be included in the next market review.
-
-## 10. Implementation Sequence
-
-1. Add provider-neutral observation schema and source registry extension.
-2. Build KIS domestic REST snapshot adapter for KOSPI + Samsung + SK hynix + required leaders.
-3. Add minute persistence to Supabase.
-4. Add Alpaca US snapshot/minute-bar adapter and explicit `feed` field.
-5. Add FRED/Treasury/EIA daily collector with publication/available timestamps.
-6. Add GDELT discovery collector without score linkage.
-7. Rework `auto_market_monitor_v1.py` to read canonical stored observations rather than call yfinance.
-8. Start automatic collection and verify one full Korea session.
-9. Only after clean collection, generate the P0-P3 PIT backtest dataset.
-
-## 11. Promotion Gate
-
-The acquisition layer is not considered production-ready until all are demonstrated:
-
-- one complete Korea trading session captured automatically;
-- no critical timestamp/session defects;
-- retry/idempotency tested;
-- raw-to-derived lineage reproducible;
-- source/feed labels preserved;
-- one automatic failure correctly produces `DATA_BLOCKED`;
-- historical PIT dataset and live dataset use the same source semantics where applicable.
-
-## 12. Research Boundary
-
-This document defines **data acquisition**, not a trading strategy.
-
-The BUY Trigger Engine remains frozen and separate:
-
-`Market state -> Permission -> BuyStrength -> Action`
-
-No accuracy, expected return or B3/B4 live promotion is implied by successful data collection.
+The BUY Trigger Engine remains frozen and is not promoted by this change. No live orders are created by the acquisition layer.
