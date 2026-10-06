@@ -7,3 +7,5 @@ data/raw/*.json
 data/raw/*.csv
 data/processed/*.json
 data/processed/*.csv
+node_modules/
+.state/

@@ -2,6 +2,11 @@ name: crypto-entry-live-monitor
 
 on:
   workflow_dispatch:
+    inputs:
+      test_push:
+        description: "Send a test push to the phone regardless of state"
+        type: boolean
+        default: false
   push:
     branches: ["main"]
     paths:
@@ -9,6 +14,7 @@ on:
       - ".github/workflows/crypto-entry-live-monitor.yml"
       - "src/investment_pipeline/crypto_entry.py"
       - "requirements.txt"
+      - "scripts/crypto/push/**"
   schedule:
     - cron: "*/15 * * * *"
 
@@ -54,6 +60,36 @@ jobs:
           print("THRESHOLD_EVIDENCE=" + d["promotion_gate"]["threshold_evidence"])
           print("FULL_PERMISSION=" + d["promotion_gate"]["full_buy_permission"])
           PY
+
+      - name: Restore push dedupe state
+        uses: actions/cache/restore@v4
+        with:
+          path: .state/push_state.json
+          key: push-state-${{ github.run_id }}
+          restore-keys: push-state-
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Push B3+ alert to phone
+        env:
+          WEBPUSH_SUBSCRIPTIONS: ${{ secrets.WEBPUSH_SUBSCRIPTIONS }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+        run: |
+          npm ci --prefix scripts/crypto/push --no-audit --no-fund
+          node scripts/crypto/push/send_entry_push.mjs \
+            --snapshot artifacts/crypto/live_entry.json \
+            --state .state/push_state.json \
+            ${{ inputs.test_push && '--test' || '' }}
+
+      - name: Save push dedupe state
+        if: hashFiles('.state/push_state.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: .state/push_state.json
+          key: push-state-${{ github.run_id }}
 
       - name: Upload snapshot
         uses: actions/upload-artifact@v4

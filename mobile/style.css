@@ -44,3 +44,8 @@ button:disabled { opacity: .4; }
 .chart .line { fill: none; stroke: var(--accent); stroke-width: 1.8; vector-effect: non-scaling-stroke; }
 .chart .guide { stroke: var(--muted); stroke-dasharray: 3 3; stroke-width: 1; vector-effect: non-scaling-stroke; opacity: .6; }
 .foot { font-size: 12px; color: var(--muted); }
+button.text { width: auto; height: 36px; font-size: 14px; padding: 0 14px; border-radius: 18px; }
+.push textarea {
+  width: 100%; margin: 8px 0; padding: 8px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--fg); font: 11px ui-monospace, Menlo, monospace; resize: none;
+}

@@ -25,6 +25,28 @@ no orders are ever placed.
    - Android (Chrome): ⋮ → **Install app** / Add to Home screen
 3. Launch from the home-screen icon; it runs full-screen as a standalone app.
 
+## B3+ push alerts
+
+The phone app can't run while closed, so the alert is sent by the existing
+`crypto-entry-live-monitor` workflow (`scripts/crypto/push/send_entry_push.mjs`):
+when the daily state is B3 or B4 it sends one Web Push per completed daily bar.
+The message is research-only: `buy_allowed` stays false.
+
+Setup (once per phone):
+
+1. Open the installed app (iPhone: must be launched from the home-screen icon, iOS 16.4+)
+   → **알림 켜기** → allow → **구독 정보 복사**.
+2. Repo Settings → Secrets and variables → Actions → new secret `WEBPUSH_SUBSCRIPTIONS`
+   = the copied JSON (for several phones: a JSON array `[ {...}, {...} ]`).
+   The VAPID key pair is generated on the phone; the copied value contains its
+   private key, so treat it like a password. Nothing secret is committed.
+3. Actions → crypto-entry-live-monitor → Run workflow with **test_push** checked
+   to receive a test notification.
+
+Missing secrets or expired subscriptions are logged and skipped; they never fail the monitor.
+GitHub runs the `*/15` schedule only a few times a day, so an alert can arrive hours
+after the daily close.
+
 ## Local test
 
 ```bash
