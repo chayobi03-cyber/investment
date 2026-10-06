@@ -566,6 +566,10 @@ Early Warning → Crisis Confirmation attribution window를 먼저 동결하고 
 
 특히 USD/JPY 155 하회는 candidate warning으로만 테스트한다.
 
+### P1 — Walk-forward validation harness (implemented 2026-09-08)
+
+`src/investment_pipeline/walkforward.py` now implements the point-in-time / walk-forward validation ("Experiment A: score monotonicity", Level 3-5) that the Market Decision Framework and Market Regime Engine specs required but had no code for. See `docs/investment/WALKFORWARD_VALIDATION_METHODOLOGY_V1.md`. It is validated on synthetic fixtures only (`tests/test_walkforward.py`); no real market/stock score has been run through it yet because `data/` does not exist in this repository. Before any `_score` column is connected to BuyStrength/Action, run `scripts/run_walkforward_validation.py` against the real `normalized_factors.csv` and require at least `NOT_FALSIFIED_CANDIDATE`, then continue with Levels 6-10 (parameter sensitivity, transaction costs, cross-market validation, multiple-testing correction, shadow operation).
+
 ### P2 — Portfolio deployment engine
 
 다음 매핑을 명시적인 audit 가능한 규칙으로 만든다.
@@ -731,3 +735,5 @@ Git Commit: YES / NO — <대상>
 **Document status:** ACTIVE HANDOVER  
 **Authority:** Existing repository governance + latest lessons learned through 2026-09-08  
 **Next expected update:** After the next material validation result or portfolio-account reconciliation
+
+**2026-09-08 addendum:** Added the walk-forward/point-in-time validation harness (`src/investment_pipeline/walkforward.py`, `docs/investment/WALKFORWARD_VALIDATION_METHODOLOGY_V1.md`, `docs/governance/LESSONS_LEARNED_2026-09-08_WALKFORWARD_VALIDATION.md`). It is tooling only, validated on synthetic fixtures — it does not itself constitute a validated score, and the KRX/OpenDART data connection (P2 in this section) is still the blocking gate before it can be run on real data.
