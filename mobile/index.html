@@ -68,6 +68,17 @@
     </section>
   </main>
 
+  <section class="card push">
+    <div class="row"><span class="label">B3 이상 알림</span><button id="pushOn" type="button" class="text">알림 켜기</button></div>
+    <div class="desc">일봉 상태가 B3·B4가 되면 앱이 꺼져 있어도 푸시로 알려줍니다 (하루 최대 1회).</div>
+    <p class="desc" id="pushMsg"></p>
+    <div id="pushOut" hidden>
+      <textarea id="pushJson" readonly rows="4"></textarea>
+      <button id="pushCopy" type="button" class="text">구독 정보 복사</button>
+    </div>
+  </section>
+
   <script type="module" src="app.js"></script>
+  <script type="module" src="push.js"></script>
 </body>
 </html>
