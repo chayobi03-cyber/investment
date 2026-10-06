@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1115">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BTC Entry">
+  <title>BTC Entry Monitor</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div>
+      <h1>BTC 진입 모니터 <small>v0.2</small></h1>
+      <p id="status" class="status">시작 중…</p>
+    </div>
+    <button id="refresh" type="button" aria-label="새로고침">↻</button>
+  </header>
+
+  <p class="banner">RESEARCH ONLY · 검증 전 규칙 · 매수 권한 BLOCKED</p>
+
+  <main id="main" hidden>
+    <section class="card hero">
+      <div class="price" id="price">—</div>
+      <div class="sub" id="liveDd"></div>
+    </section>
+
+    <section class="card">
+      <div class="row">
+        <span class="label">일봉 진입 상태</span>
+        <span class="pill" id="state">—</span>
+      </div>
+      <div class="desc" id="stateText"></div>
+      <div class="code" id="reason"></div>
+    </section>
+
+    <section class="card">
+      <div class="row"><span class="label">실시간 구간</span><strong id="liveZone">—</strong></div>
+      <div class="desc" id="liveZoneText"></div>
+      <div class="chart" id="chart"></div>
+      <dl class="grid">
+        <dt>돌파 확인</dt><dd id="lvBreak">—</dd>
+        <dt>Z1 상단 (-5%)</dt><dd id="lvZ1u">—</dd>
+        <dt>Z1 하단 (-8%)</dt><dd id="lvZ1l">—</dd>
+        <dt>Z2 하단 (-12%)</dt><dd id="lvZ2l">—</dd>
+      </dl>
+    </section>
+
+    <section class="card">
+      <dl class="grid">
+        <dt>일봉 구간</dt><dd id="dailyZone">—</dd>
+        <dt>추세 (MA 정배열)</dt><dd id="trend">—</dd>
+        <dt>안정화</dt><dd id="stab">—</dd>
+        <dt>직전 60일 고점</dt><dd id="high60">—</dd>
+        <dt>MA20 / 50 / 200</dt><dd id="ma">—</dd>
+      </dl>
+    </section>
+
+    <section class="card foot">
+      <div id="action"></div>
+      <div id="bar"></div>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

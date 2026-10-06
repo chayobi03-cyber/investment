@@ -1,0 +1,60 @@
+name: mobile-pwa
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "mobile/**"
+      - "src/investment_pipeline/crypto_entry.py"
+      - "tests/test_mobile_entry_parity.py"
+      - ".github/workflows/mobile-pwa.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "mobile/**"
+      - "src/investment_pipeline/crypto_entry.py"
+      - "tests/test_mobile_entry_parity.py"
+      - ".github/workflows/mobile-pwa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: python -m pip install -r requirements.txt numpy
+      - name: JS port must match Python crypto_entry
+        env:
+          PYTHONPATH: .
+        run: python -m pytest tests/test_mobile_entry_parity.py tests/test_crypto_entry.py -q
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: parity
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: mobile
+      - id: deployment
+        uses: actions/deploy-pages@v4
