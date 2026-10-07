@@ -66,7 +66,9 @@ jobs:
           post_status=$?
           set -e
 
-          test "$pre_status" -eq 0
+          # r01_pit_runner exits 0 only for ALLOW; BLOCK and HUMAN_REVIEW both exit 2
+          # (fail-closed). The decision field below distinguishes them.
+          test "$pre_status" -eq 2
           test "$same_status" -eq 2
           test "$post_status" -eq 0
           test "$(grep '^decision:' artifacts/r01/pit/pre_release.yaml | awk '{print $2}')" = "BLOCK"
@@ -74,20 +76,20 @@ jobs:
           test "$(grep '^decision:' artifacts/r01/pit/post_release.yaml | awk '{print $2}')" = "ALLOW"
 
           cat > artifacts/r01/pit_matrix.yaml <<EOF
-pit_matrix:
-  manifest: "$manifest"
-  cases:
-    - decision_timestamp: "2025-08-17"
-      expected: BLOCK
-      exit_code: $pre_status
-    - decision_timestamp: "2025-08-18"
-      expected: HUMAN_REVIEW
-      exit_code: $same_status
-    - decision_timestamp: "2025-08-19"
-      expected: ALLOW
-      exit_code: $post_status
-  status: PASS
-EOF
+          pit_matrix:
+            manifest: "$manifest"
+            cases:
+              - decision_timestamp: "2025-08-17"
+                expected: BLOCK
+                exit_code: $pre_status
+              - decision_timestamp: "2025-08-18"
+                expected: HUMAN_REVIEW
+                exit_code: $same_status
+              - decision_timestamp: "2025-08-19"
+                expected: ALLOW
+                exit_code: $post_status
+            status: PASS
+          EOF
 
       - name: Generate R01 gate report
         id: gate
@@ -145,23 +147,23 @@ EOF
           if [ -z "$gate_exit" ]; then gate_exit="NOT_EXECUTED"; fi
 
           cat > artifacts/r01/ci_evidence.yaml <<EOF
-ci_evidence:
-  workflow_name: r01-provenance
-  workflow_status: EXECUTED
-  execution_conclusion: "${{ job.status }}"
-  commit_sha: "${GITHUB_SHA}"
-  workflow_run_id: "${GITHUB_RUN_ID}"
-  run_attempt: "${GITHUB_RUN_ATTEMPT}"
-  job_id: "${GITHUB_JOB}"
-  executed_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  event_name: "${GITHUB_EVENT_NAME}"
-  ref: "${GITHUB_REF}"
-  gate_report_exit_code: "${gate_exit}"
-  gate_report_sha256: "${report_sha}"
-  promotion:
-    eligible: false
-    status: PROVISIONAL
-EOF
+          ci_evidence:
+            workflow_name: r01-provenance
+            workflow_status: EXECUTED
+            execution_conclusion: "${{ job.status }}"
+            commit_sha: "${GITHUB_SHA}"
+            workflow_run_id: "${GITHUB_RUN_ID}"
+            run_attempt: "${GITHUB_RUN_ATTEMPT}"
+            job_id: "${GITHUB_JOB}"
+            executed_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            event_name: "${GITHUB_EVENT_NAME}"
+            ref: "${GITHUB_REF}"
+            gate_report_exit_code: "${gate_exit}"
+            gate_report_sha256: "${report_sha}"
+            promotion:
+              eligible: false
+              status: PROVISIONAL
+          EOF
 
           sha256sum artifacts/r01/ci_evidence.yaml > artifacts/r01/ci_evidence.sha256
 
