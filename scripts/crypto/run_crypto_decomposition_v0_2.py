@@ -118,6 +118,7 @@ def decompose(
     primary = signals[
         signals["primary_event"] & signals["entry_state"].isin(CANDIDATE_STATES)
     ].copy()
+    primary["year"] = primary["timestamp"].dt.year.astype(int)
 
     split = int(len(signals) * (1.0 - oos_fraction))
     oos = primary[primary.index >= split].copy()
