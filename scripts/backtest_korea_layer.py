@@ -19,6 +19,7 @@ import json
 import math
 import sys
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
 from typing import Iterable
 
@@ -196,7 +197,7 @@ def event_metrics(df: pd.DataFrame, events: list[Event]) -> tuple[pd.DataFrame, 
     rows = []
     used_trigger_dates: set[pd.Timestamp] = set()
     for ev in events:
-        candidates = triggers[(triggers >= ev.start - pd.Timedelta(days=365)) & (triggers <= ev.start)]
+        candidates = triggers[(triggers >= ev.start - timedelta(days=365)) & (triggers <= ev.start)]
         trig = candidates[0] if len(candidates) else pd.NaT
         if pd.notna(trig):
             used_trigger_dates.add(trig)
@@ -219,7 +220,7 @@ def event_metrics(df: pd.DataFrame, events: list[Event]) -> tuple[pd.DataFrame, 
     # FP = L2 trigger with no >=15% drawdown in the next 60 calendar days.
     fp_rows = []
     for trig in triggers:
-        future = df.loc[trig : trig + pd.Timedelta(days=60), "drawdown_252"].dropna()
+        future = df.loc[trig : trig + timedelta(days=60), "drawdown_252"].dropna()
         reaches = bool((future <= -0.15).any()) if not future.empty else False
         if not reaches:
             fp_rows.append({"trigger": trig.date().isoformat(), "fp": True})
@@ -247,14 +248,14 @@ def band_metrics(df: pd.DataFrame, name: str, low: float, high: float, current_h
             "l2_trigger": bool(df.loc[ts, "l2_trigger"]),
         }
         for days, label in HORIZONS.items():
-            target = ts + pd.Timedelta(days=days)
+            target = ts + timedelta(days=days)
             future_idx = df.index[df.index >= target]
             if len(future_idx):
                 ft = future_idx[0]
                 row[f"ret_{label}"] = float(df.loc[ft, "kospi"] / base - 1.0)
             else:
                 row[f"ret_{label}"] = np.nan
-            window = df.loc[ts : ts + pd.Timedelta(days=days), "kospi"]
+            window = df.loc[ts : ts + timedelta(days=days), "kospi"]
             row[f"mdd_{label}"] = float(window.min() / base - 1.0) if not window.empty else np.nan
         recovery = df.loc[ts:, "kospi"] >= base
         row["recovery_days"] = float((recovery.index[0] - ts).days) if bool(recovery.any()) else np.nan

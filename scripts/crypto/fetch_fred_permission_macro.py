@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import io
+from datetime import timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -49,7 +50,7 @@ def build_evidence(series_id: str, frame: pd.DataFrame, content_hash: str) -> pd
     # Conservative PIT model: treat the observation as available no earlier
     # than the following UTC day. This avoids lookahead but is intentionally
     # not used as a same-day release-time claim.
-    out["available_at"] = out["observation_timestamp"] + pd.Timedelta(days=1)
+    out["available_at"] = out["observation_timestamp"] + timedelta(days=1)
     out["asset"] = "MULTI_ASSET"
     out["series_id"] = f"FRED:{series_id}"
     out["source_id"] = f"FRED:{series_id}"

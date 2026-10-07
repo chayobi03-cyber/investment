@@ -1,4 +1,5 @@
 import unittest
+from datetime import timedelta
 
 import pandas as pd
 
@@ -29,7 +30,7 @@ def make_frame(n=260):
     return pd.DataFrame(
         {
             "timestamp": dates,
-            "available_at": dates + pd.Timedelta(hours=1),
+            "available_at": dates + timedelta(hours=1),
             "open": open_,
             "high": high,
             "low": low,

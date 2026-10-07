@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import time
+from datetime import timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -17,12 +18,12 @@ def fetch(days: int) -> pd.DataFrame:
         raise ValueError("days_must_be_at_least_200")
 
     end = pd.Timestamp.now(tz="UTC").floor("D")
-    start = end - pd.Timedelta(days=days + 2)
+    start = end - timedelta(days=days + 2)
     rows: list[list[float]] = []
 
     cursor = end
     while cursor > start:
-        batch_start = max(start, cursor - pd.Timedelta(days=COINBASE_MAX_CANDLES))
+        batch_start = max(start, cursor - timedelta(days=COINBASE_MAX_CANDLES))
         params = {
             "granularity": 86400,
             "start": batch_start.isoformat(),
@@ -39,13 +40,13 @@ def fetch(days: int) -> pd.DataFrame:
         if not batch:
             break
         rows.extend(batch)
-        cursor = batch_start - pd.Timedelta(seconds=1)
+        cursor = batch_start - timedelta(seconds=1)
         time.sleep(0.10)
 
     df = pd.DataFrame(rows, columns=["timestamp_s", "low", "high", "open", "close", "volume"])
     df["timestamp"] = pd.to_datetime(df["timestamp_s"], unit="s", utc=True)
     # Research decision is made at the completed daily candle close.
-    df["available_at"] = df["timestamp"] + pd.Timedelta(days=1)
+    df["available_at"] = df["timestamp"] + timedelta(days=1)
     for col in ["open", "high", "low", "close", "volume"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 

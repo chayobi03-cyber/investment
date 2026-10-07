@@ -1,0 +1,75 @@
+name: crypto-asset-review
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "scripts/crypto/run_asset_review_v0_1.py"
+      - "scripts/crypto/fetch_multi_asset_daily.py"
+      - "config/crypto_asset_review_v0.1.json"
+      - "tests/test_asset_review.py"
+      - ".github/workflows/crypto-asset-review.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/crypto/run_asset_review_v0_1.py"
+      - "config/crypto_asset_review_v0.1.json"
+      - ".github/workflows/crypto-asset-review.yml"
+  schedule:
+    - cron: "17 2 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Unit tests
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -q -W error::DeprecationWarning tests/test_asset_review.py tests/test_live_entry_snapshot.py
+
+      - name: Fetch Coinbase PIT daily history
+        env:
+          PYTHONPATH: .
+        run: |
+          assets=$(python -c "import json; c=json.load(open('config/crypto_asset_review_v0.1.json')); print(' '.join(c['monitored'] + c['candidates']))")
+          python scripts/crypto/fetch_multi_asset_daily.py \
+            --days 3000 --allow-missing \
+            --assets $assets \
+            --out artifacts/crypto/asset_review_1d.csv
+
+      - name: Review frozen and volatility-scaled rule per asset
+        env:
+          PYTHONPATH: .
+        run: |
+          python scripts/crypto/run_asset_review_v0_1.py \
+            artifacts/crypto/asset_review_1d.csv \
+            --output artifacts/crypto/asset_review_v0.1.json \
+            --summary artifacts/crypto/asset_review_v0.1.md
+          cat artifacts/crypto/asset_review_v0.1.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload review
+        uses: actions/upload-artifact@v4
+        with:
+          name: crypto-asset-review-${{ github.run_id }}
+          path: |
+            artifacts/crypto/asset_review_v0.1.json
+            artifacts/crypto/asset_review_v0.1.md
+            artifacts/crypto/asset_review_1d.csv
+          retention-days: 30
