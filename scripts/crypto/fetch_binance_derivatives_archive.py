@@ -14,6 +14,8 @@ import requests
 
 BASE = "https://data.binance.vision/data/futures/um"
 SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
+# Must match the PRIMARY derivatives source in config/permission_evidence_registry_v0.1.json.
+SOURCE_ID = "BINANCE_VISION_DERIVATIVES_ARCHIVE"
 METRICS_COLUMNS = [
     "create_time",
     "symbol",
@@ -88,7 +90,7 @@ def collect_symbol(symbol: str, start: date, end: date) -> tuple[list[dict], lis
             frame = frame.dropna(subset=["observation_timestamp"]).copy()
             frame["available_at"] = frame["observation_timestamp"].dt.floor("D") + timedelta(days=1)
             frame["asset"] = symbol.replace("USDT", "")
-            frame["source_id"] = "BINANCE_VISION_METRICS"
+            frame["source_id"] = SOURCE_ID
             frame["provenance_hash"] = content_hash
             frame["ingested_at"] = pd.Timestamp.now(tz="UTC")
             keep = [
@@ -136,7 +138,7 @@ def main() -> int:
     manifest = {
         "status": "COLLECTED_PROVISIONAL_PIT" if not any(missing_by_symbol.values()) else "COLLECTED_WITH_GAPS",
         "missing_days": missing_by_symbol,
-        "source": "BINANCE_VISION_DERIVATIVES_ARCHIVE",
+        "source": SOURCE_ID,
         "known_quality_warnings": [
             "Binance Public Data reports historical metrics gaps and timestamp-label changes; do not silently treat gaps as zero or forward-fill.",
         ],
