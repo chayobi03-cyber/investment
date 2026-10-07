@@ -32,4 +32,7 @@ def test_no_silent_derivatives_provider_splice():
     assert cfg["global_controls"]["silent_provider_splice_forbidden"] is True
     derivatives = next(x for x in cfg["families"] if x["family_id"] == "derivatives")
     sources = derivatives["datasets"][0]["primary_sources"]
-    assert [x["role"] for x in sources] == ["PRIMARY", "ARCHIVE"]
+    # Every provider is declared with an explicit role; exactly one is primary.
+    assert [x["role"] for x in sources] == ["PRIMARY", "FALLBACK", "ARCHIVE"]
+    assert sources[0]["source_id"] == "BINANCE_VISION_DERIVATIVES_ARCHIVE"
+    assert len({x["source_id"] for x in sources}) == len(sources)

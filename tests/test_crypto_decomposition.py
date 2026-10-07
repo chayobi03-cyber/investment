@@ -14,6 +14,7 @@ class CryptoDecompositionTests(unittest.TestCase):
             {
                 "breakout": [True, False, False],
                 "entry_state": ["B3", "B2", "B4"],
+                "zone": ["BREAKOUT", "Z1", "Z3"],
             }
         )
         out = add_signal_type(frame)

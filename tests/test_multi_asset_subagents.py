@@ -52,6 +52,7 @@ def test_pit_lookahead_fails_closed():
         regime_weights={"trend": 0.5, "breadth": 0.5},
         signal_features={"signal_state": "B3"},
         evidence_claims=[],
+        source_records=[],
         risk_inputs={
             "max_drawdown": -0.1,
             "mae": -0.05,
