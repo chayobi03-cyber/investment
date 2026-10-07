@@ -33,3 +33,32 @@ def test_b3_plus_sends_once_per_daily_bar(state):
     assert decide(snap, {})["send"]
     assert decide(snap, {"decision_bar": "d1"})["send"]
     assert not decide(snap, {"decision_bar": "d2"})["send"]
+
+
+def run(expr: str):
+    script = (
+        "import * as d from './scripts/crypto/push/decide.mjs';"
+        f"process.stdout.write(JSON.stringify({expr}));"
+    )
+    out = subprocess.run([NODE, "--input-type=module", "-e", script],
+                         capture_output=True, text=True, cwd=ROOT, check=True)
+    return json.loads(out.stdout)
+
+
+def test_dedupe_state_is_per_asset_and_reads_legacy_btc_file():
+    legacy = {"decision_bar": "d1", "state": "B3"}
+    assert run(f"d.stateFor({json.dumps(legacy)}, 'BTC')") == legacy
+    assert run(f"d.stateFor({json.dumps(legacy)}, 'ETH')") == {}
+    multi = {"BTC": {"decision_bar": "d1"}, "SOL": {"decision_bar": "d2"}}
+    assert run(f"d.stateFor({json.dumps(multi)}, 'SOL')") == {"decision_bar": "d2"}
+    assert run(f"d.stateFor({json.dumps(multi)}, 'ETH')") == {}
+
+
+def test_message_names_the_asset_and_deep_links_to_it():
+    snap = {"asset": "SOLUSDT", "daily_core_state": "B3", "daily_zone": "Z2", "decision_bar": "d1",
+            "live_price": 142.5, "prior_high60": 160.0}
+    msg = run(f"d.buildMessage({json.dumps(snap)}, 'https://x.github.io/investment/')")
+    assert msg["title"] == "SOL B3 · Z2"
+    assert msg["body"].startswith("$142.50 ")
+    assert msg["url"] == "https://x.github.io/investment/?asset=SOL"
+    assert "BLOCKED" in msg["body"]

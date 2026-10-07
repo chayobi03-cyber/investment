@@ -49,3 +49,10 @@ button.text { width: auto; height: 36px; font-size: 14px; padding: 0 14px; borde
   width: 100%; margin: 8px 0; padding: 8px; border-radius: 8px; border: 1px solid var(--line);
   background: var(--bg); color: var(--fg); font: 11px ui-monospace, Menlo, monospace; resize: none;
 }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.tabs button {
+  width: auto; height: 44px; border-radius: 12px; font-size: 15px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.tabs button[aria-selected="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.tabs .pill { font-size: 12px; padding: 1px 8px; }

@@ -1,7 +1,15 @@
 import { buildSnapshot } from "./entry.js";
 import { getDaily, getLivePrice } from "./data.js";
 
-const CACHE_KEY = "crypto-entry-v0.2:last-snapshot";
+const CACHE_KEY = "crypto-entry-v0.2:snapshots";
+const LEGACY_CACHE_KEY = "crypto-entry-v0.2:last-snapshot"; // BTC-only builds
+const ASSET_KEY = "crypto-entry-v0.2:asset";
+// Same v0.2 rules for every asset; ETH and SOL are the config's secondary assets.
+const ASSETS = [
+  { sym: "BTC", product: "BTC-USD", asset: "BTCUSDT" },
+  { sym: "ETH", product: "ETH-USD", asset: "ETHUSDT" },
+  { sym: "SOL", product: "SOL-USD", asset: "SOLUSDT" },
+];
 const AUTO_REFRESH_MS = 15 * 60 * 1000; // same cadence as the GitHub Actions monitor
 const $ = (id) => document.getElementById(id);
 
@@ -21,25 +29,51 @@ const ZONE_TEXT = {
   UNKNOWN: "데이터 부족",
 };
 
-const usd = (x) => (x == null ? "—" : "$" + Math.round(x).toLocaleString("en-US"));
+const usd = (x) =>
+  x == null
+    ? "—"
+    : "$" +
+      (x >= 1000
+        ? Math.round(x).toLocaleString("en-US")
+        : x.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 const pct = (x) => (x == null ? "—" : (x >= 0 ? "+" : "") + (x * 100).toFixed(2) + "%");
 const when = (iso) => new Date(iso).toLocaleString("ko-KR", { hour12: false });
 
-function loadCached() {
+function storageGet(key) {
   try {
-    return JSON.parse(localStorage.getItem(CACHE_KEY));
+    return JSON.parse(localStorage.getItem(key));
   } catch {
     return null;
   }
 }
 
-function saveCached(snap) {
+function storageSet(key, value) {
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(snap));
+    localStorage.setItem(key, JSON.stringify(value));
   } catch {
     /* storage unavailable: still render */
   }
 }
+
+function loadCached() {
+  const all = storageGet(CACHE_KEY) || {};
+  if (!all.BTC) {
+    const legacy = storageGet(LEGACY_CACHE_KEY);
+    if (legacy) all.BTC = legacy;
+  }
+  return all;
+}
+
+function initialAsset() {
+  const fromUrl = new URLSearchParams(location.search).get("asset");
+  const saved = storageGet(ASSET_KEY);
+  return [fromUrl, saved].find((s) => ASSETS.some((a) => a.sym === s)) || "BTC";
+}
+
+let selected = initialAsset();
+let snapshots = loadCached();
+let errors = {};
+const fresh = new Set(); // assets fetched successfully in this session
 
 function sparkline(points, levels) {
   if (!points?.length) return "";
@@ -57,7 +91,20 @@ function sparkline(points, levels) {
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="최근 90일 종가">${guides}<path d="${path}" class="line"/></svg>`;
 }
 
-function render(snap, { stale = false, error = null } = {}) {
+function renderTabs() {
+  $("tabs").innerHTML = ASSETS.map(({ sym }) => {
+    const state = snapshots[sym]?.daily_core_state ?? "—";
+    return `<button type="button" role="tab" data-sym="${sym}" aria-selected="${sym === selected}">` +
+      `<span>${sym}</span><span class="pill" data-state="${state}">${state}</span></button>`;
+  }).join("");
+}
+
+function render() {
+  renderTabs();
+  $("title").textContent = `${selected} 진입 모니터`;
+  const snap = snapshots[selected];
+  const error = errors[selected];
+  const stale = !fresh.has(selected);
   $("status").textContent = error
     ? `오프라인/오류 — 마지막 저장값 표시 (${error})`
     : stale
@@ -92,6 +139,13 @@ function render(snap, { stale = false, error = null } = {}) {
   $("bar").textContent = `기준 일봉 ${when(snap.decision_bar)} · 조회 ${when(snap.fetched_at)}`;
 }
 
+async function fetchAsset({ product, asset }) {
+  const [daily, live] = await Promise.all([getDaily(product, 365), getLivePrice(product)]);
+  const snap = buildSnapshot(daily, live, `Coinbase ${product} public API (browser)`, asset);
+  snap.fetched_at = new Date().toISOString();
+  return snap;
+}
+
 let busy = false;
 async function refresh() {
   if (busy) return;
@@ -99,23 +153,34 @@ async function refresh() {
   $("refresh").disabled = true;
   $("status").textContent = "불러오는 중…";
   $("status").className = "status";
-  try {
-    const [daily, live] = await Promise.all([getDaily(365), getLivePrice()]);
-    const snap = buildSnapshot(daily, live, "Coinbase BTC-USD public API (browser)");
-    snap.fetched_at = new Date().toISOString();
-    saveCached(snap);
-    render(snap);
-  } catch (e) {
-    render(loadCached(), { error: e.message || String(e) });
-  } finally {
-    busy = false;
-    $("refresh").disabled = false;
-  }
+  const results = await Promise.allSettled(ASSETS.map(fetchAsset));
+  errors = {};
+  results.forEach((r, i) => {
+    const { sym } = ASSETS[i];
+    if (r.status === "fulfilled") {
+      snapshots[sym] = r.value;
+      fresh.add(sym);
+    } else {
+      errors[sym] = r.reason?.message || String(r.reason);
+    }
+  });
+  storageSet(CACHE_KEY, snapshots);
+  render();
+  busy = false;
+  $("refresh").disabled = false;
 }
+
+$("tabs").addEventListener("click", (e) => {
+  const sym = e.target.closest("[data-sym]")?.dataset.sym;
+  if (!sym || sym === selected) return;
+  selected = sym;
+  storageSet(ASSET_KEY, sym);
+  render();
+});
 
 $("refresh").addEventListener("click", refresh);
 document.addEventListener("visibilitychange", () => {
-  const snap = loadCached();
+  const snap = snapshots[selected];
   const age = snap ? Date.now() - Date.parse(snap.fetched_at) : Infinity;
   if (document.visibilityState === "visible" && age > 60 * 1000) refresh();
 });
@@ -125,5 +190,5 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch(() => {});
 }
 
-render(loadCached(), { stale: true });
+render();
 refresh();

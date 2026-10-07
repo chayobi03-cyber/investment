@@ -45,12 +45,24 @@ jobs:
         run: |
           python scripts/crypto/live_entry_snapshot.py \
             --output artifacts/crypto/live_entry.json
+          # Secondary assets: a fetch failure here must not hide the BTC result.
+          for p in ETH-USD SOL-USD; do
+            python scripts/crypto/live_entry_snapshot.py --product "$p" \
+              --output "artifacts/crypto/live_entry_${p%-USD}.json" \
+              || echo "::warning::$p snapshot failed"
+          done
 
       - name: Publish compact state
         run: |
           python - <<'PY'
           import json
           d = json.load(open("artifacts/crypto/live_entry.json", encoding="utf-8"))
+          for sym in ("ETH", "SOL"):
+              try:
+                  e = json.load(open(f"artifacts/crypto/live_entry_{sym}.json", encoding="utf-8"))
+                  print(f"{sym}_ENTRY_STATE={e['daily_core_state']} LIVE_ZONE={e['live_zone']} LIVE_PRICE={e['live_price']}")
+              except FileNotFoundError:
+                  print(f"{sym}_ENTRY_STATE=DATA_NOT_READY")
           print("CRYPTO_ENTRY_STATE=" + d["daily_core_state"])
           print("DAILY_ZONE=" + d["daily_zone"])
           print("LIVE_ZONE=" + d["live_zone"])
@@ -81,6 +93,8 @@ jobs:
           npm ci --prefix scripts/crypto/push --no-audit --no-fund
           node scripts/crypto/push/send_entry_push.mjs \
             --snapshot artifacts/crypto/live_entry.json \
+            --snapshot artifacts/crypto/live_entry_ETH.json \
+            --snapshot artifacts/crypto/live_entry_SOL.json \
             --state .state/push_state.json \
             ${{ inputs.test_push && '--test' || '' }}
 
@@ -95,5 +109,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: crypto-entry-live-${{ github.run_id }}
-          path: artifacts/crypto/live_entry.json
+          path: artifacts/crypto/live_entry*.json
           retention-days: 7
