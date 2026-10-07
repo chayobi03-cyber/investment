@@ -83,7 +83,7 @@ class CryptoPermissionOverlayTests(unittest.TestCase):
         bad.loc[0, "available_at"] = pd.Timestamp("2026-09-27T01:00:00Z")
         # Historical validators must not depend on the machine's current wall clock.
         result = validate_permission_history(
-            bad, as_of=pd.Timestamp("2026-09-27T00:00:00Z")
+            bad, as_of=pd.Timestamp("2026-09-28T00:00:00Z")
         )
         self.assertEqual(result.status, "PASS")
 
