@@ -161,7 +161,7 @@ export function liveZone(livePrice, priorHigh60) {
 }
 
 // Same fail-closed contract as scripts/crypto/live_entry_snapshot.py.
-export function buildSnapshot(daily, livePrice, dataSource) {
+export function buildSnapshot(daily, livePrice, dataSource, asset = "BTCUSDT") {
   if (daily.length < 200) throw new Error("DATA_NOT_READY: insufficient completed daily history");
   const signals = generateSignals(daily);
   const last = signals[signals.length - 1];
@@ -169,7 +169,7 @@ export function buildSnapshot(daily, livePrice, dataSource) {
   return {
     status: "RESEARCH_ONLY_NOT_VALIDATED",
     rule_version: "crypto-market-regime-entry-v0.2",
-    asset: "BTCUSDT",
+    asset,
     data_source: dataSource,
     decision_bar: new Date(last.timestamp).toISOString(),
     decision_bar_available_at: new Date(last.available_at).toISOString(),

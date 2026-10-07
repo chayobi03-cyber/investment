@@ -1,6 +1,6 @@
 {
-  "name": "BTC Entry Monitor v0.2",
-  "short_name": "BTC Entry",
+  "name": "Crypto Entry Monitor v0.2",
+  "short_name": "Crypto Entry",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -7,8 +7,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="BTC Entry">
-  <title>BTC Entry Monitor</title>
+  <meta name="apple-mobile-web-app-title" content="Crypto Entry">
+  <title>Crypto Entry Monitor</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -17,11 +17,13 @@
 <body>
   <header>
     <div>
-      <h1>BTC 진입 모니터 <small>v0.2</small></h1>
+      <h1><span id="title">진입 모니터</span> <small>v0.2</small></h1>
       <p id="status" class="status">시작 중…</p>
     </div>
     <button id="refresh" type="button" aria-label="새로고침">↻</button>
   </header>
+
+  <nav id="tabs" class="tabs" role="tablist" aria-label="자산"></nav>
 
   <p class="banner">RESEARCH ONLY · 검증 전 규칙 · 매수 권한 BLOCKED</p>
 
@@ -70,7 +72,7 @@
 
   <section class="card push">
     <div class="row"><span class="label">B3 이상 알림</span><button id="pushOn" type="button" class="text">알림 켜기</button></div>
-    <div class="desc">일봉 상태가 B3·B4가 되면 앱이 꺼져 있어도 푸시로 알려줍니다 (하루 최대 1회).</div>
+    <div class="desc">BTC·ETH·SOL 중 일봉 상태가 B3·B4가 되면 앱이 꺼져 있어도 푸시로 알려줍니다 (자산별 하루 최대 1회).</div>
     <p class="desc" id="pushMsg"></p>
     <div id="pushOut" hidden>
       <textarea id="pushJson" readonly rows="4"></textarea>

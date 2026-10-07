@@ -1,6 +1,6 @@
 // App-shell cache so the installed app opens offline. Market data is never
 // cached here: app.js keeps the last computed snapshot in localStorage instead.
-const SHELL = "btc-entry-shell-v2";
+const SHELL = "btc-entry-shell-v3";
 const FILES = [
   "./", "./index.html", "./style.css", "./app.js", "./entry.js", "./data.js", "./push.js",
   "./manifest.webmanifest", "./icons/icon-180.png", "./icons/icon-192.png", "./icons/icon-512.png",
@@ -41,7 +41,7 @@ self.addEventListener("push", (e) => {
     msg = { body: e.data && e.data.text() };
   }
   e.waitUntil(
-    self.registration.showNotification(msg.title || "BTC 진입 모니터", {
+    self.registration.showNotification(msg.title || "진입 모니터", {
       body: msg.body || "",
       tag: msg.tag || "btc-entry",
       icon: "icons/icon-192.png",
@@ -57,7 +57,9 @@ self.addEventListener("notificationclick", (e) => {
   e.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
       const open = list.find((c) => c.url.startsWith(self.registration.scope));
-      return open ? open.focus() : self.clients.openWindow(target);
+      if (!open) return self.clients.openWindow(target);
+      // Land on the asset the alert is about (?asset=ETH etc.).
+      return open.navigate(target).then((c) => (c || open).focus()).catch(() => open.focus());
     }),
   );
 });

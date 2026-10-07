@@ -10,11 +10,12 @@ import requests
 
 from src.investment_pipeline.crypto_entry import generate_signals
 
-KLINES = "https://api.exchange.coinbase.com/products/BTC-USD/candles"
-TICKER = "https://api.exchange.coinbase.com/products/BTC-USD/ticker"
+API = "https://api.exchange.coinbase.com/products/{product}"
+# Coinbase product -> asset id used in config/crypto_market_regime_entry_v0.2.json
+ASSETS = {"BTC-USD": "BTCUSDT", "ETH-USD": "ETHUSDT", "SOL-USD": "SOLUSDT"}
 
 
-def get_daily(days: int = 365) -> pd.DataFrame:
+def get_daily(product: str, days: int = 365) -> pd.DataFrame:
     end = pd.Timestamp.now(tz="UTC").floor("D")
     start = end - pd.Timedelta(days=days + 2)
     rows: list[list[float]] = []
@@ -23,7 +24,7 @@ def get_daily(days: int = 365) -> pd.DataFrame:
     while cursor > start:
         batch_start = max(start, cursor - pd.Timedelta(days=300))
         resp = requests.get(
-            KLINES,
+            API.format(product=product) + "/candles",
             params={
                 "granularity": 86400,
                 "start": batch_start.isoformat(),
@@ -60,9 +61,9 @@ def get_daily(days: int = 365) -> pd.DataFrame:
     )
 
 
-def get_live_price() -> float:
+def get_live_price(product: str) -> float:
     resp = requests.get(
-        TICKER,
+        API.format(product=product) + "/ticker",
         headers={"User-Agent": "investment-research/crypto-live-v0.2"},
         timeout=15,
     )
@@ -73,15 +74,16 @@ def get_live_price() -> float:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--output", type=Path, default=Path("artifacts/crypto/live_entry.json"))
+    ap.add_argument("--product", choices=sorted(ASSETS), default="BTC-USD")
     args = ap.parse_args()
 
-    daily = get_daily(365)
+    daily = get_daily(args.product, 365)
     if len(daily) < 200:
         raise SystemExit("DATA_NOT_READY: insufficient completed daily history")
 
     signals = generate_signals(daily)
     last = signals.iloc[-1]
-    live = get_live_price()
+    live = get_live_price(args.product)
 
     prior_high60 = float(last["prior_high60"])
     z1_high = prior_high60 * 0.95
@@ -107,8 +109,8 @@ def main() -> int:
     result = {
         "status": "RESEARCH_ONLY_NOT_VALIDATED",
         "rule_version": "crypto-market-regime-entry-v0.2",
-        "asset": "BTCUSDT",
-        "data_source": "Coinbase BTC-USD public API",
+        "asset": ASSETS[args.product],
+        "data_source": f"Coinbase {args.product} public API",
         "decision_bar": str(last["timestamp"]),
         "decision_bar_available_at": str(last["available_at"]),
         "live_price": live,

@@ -1,7 +1,9 @@
-# BTC Entry Monitor — mobile PWA
+# Crypto Entry Monitor — mobile PWA
 
 Runs `crypto-market-regime-entry-v0.2` (the same logic as
-`scripts/crypto/live_entry_snapshot.py`) entirely in the phone's browser.
+`scripts/crypto/live_entry_snapshot.py`) entirely in the phone's browser, for
+BTC, ETH and SOL (the config's primary and secondary assets, same frozen rules;
+open a specific one with `?asset=ETH`).
 No server, no API key, no GitHub Actions run needed.
 
 - `entry.js` — pure JS port of `src/investment_pipeline/crypto_entry.py`.
@@ -29,7 +31,8 @@ no orders are ever placed.
 
 The phone app can't run while closed, so the alert is sent by the existing
 `crypto-entry-live-monitor` workflow (`scripts/crypto/push/send_entry_push.mjs`):
-when the daily state is B3 or B4 it sends one Web Push per completed daily bar.
+for each of BTC/ETH/SOL whose daily state is B3 or B4 it sends one Web Push per
+completed daily bar (deduped per asset). Tapping it opens that asset.
 The message is research-only: `buy_allowed` stays false.
 
 Setup (once per phone):
