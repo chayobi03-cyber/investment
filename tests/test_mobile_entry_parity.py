@@ -3,6 +3,7 @@
 import json
 import shutil
 import subprocess
+from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
@@ -30,7 +31,7 @@ def random_walk(seed: int, n: int = 420) -> pd.DataFrame:
     low = np.minimum(open_, close) * (1 - rng.uniform(0, 0.02, n))
     ts = pd.date_range("2024-01-01", periods=n, freq="D", tz="UTC")
     return pd.DataFrame({
-        "timestamp": ts, "available_at": ts + pd.Timedelta(days=1),
+        "timestamp": ts, "available_at": ts + timedelta(days=1),
         "open": open_, "high": high, "low": low, "close": close,
         "volume": rng.lognormal(10, 0.4, n),
     })

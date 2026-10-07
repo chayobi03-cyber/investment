@@ -86,7 +86,7 @@ def collect_symbol(symbol: str, start: date, end: date) -> tuple[list[dict], lis
                 frame["create_time"], utc=True, errors="coerce"
             )
             frame = frame.dropna(subset=["observation_timestamp"]).copy()
-            frame["available_at"] = frame["observation_timestamp"].dt.floor("D") + pd.Timedelta(days=1)
+            frame["available_at"] = frame["observation_timestamp"].dt.floor("D") + timedelta(days=1)
             frame["asset"] = symbol.replace("USDT", "")
             frame["source_id"] = "BINANCE_VISION_METRICS"
             frame["provenance_hash"] = content_hash

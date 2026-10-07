@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import time
+from datetime import timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -13,21 +14,25 @@ MAX_CANDLES = 300
 PRODUCTS = {"BTC": "BTC-USD", "ETH": "ETH-USD", "SOL": "SOL-USD"}
 
 
+def product_for(asset: str) -> str:
+    return PRODUCTS.get(asset, f"{asset}-USD")
+
+
 def fetch_asset(asset: str, days: int) -> pd.DataFrame:
-    if asset not in PRODUCTS:
+    if not asset.isalnum() or not asset.isupper():
         raise ValueError(f"unsupported_asset:{asset}")
     if days < 200:
         raise ValueError("days_must_be_at_least_200")
 
     end = pd.Timestamp.now(tz="UTC").floor("D")
-    start = end - pd.Timedelta(days=int(days) + 2)
+    start = end - timedelta(days=int(days) + 2)
     cursor = end
     rows: list[list[float]] = []
 
     while cursor > start:
-        batch_start = max(start, cursor - pd.Timedelta(days=int(MAX_CANDLES)))
+        batch_start = max(start, cursor - timedelta(days=int(MAX_CANDLES)))
         response = requests.get(
-            BASE_URL.format(product=PRODUCTS[asset]),
+            BASE_URL.format(product=product_for(asset)),
             params={"granularity": 86400, "start": batch_start.isoformat(), "end": cursor.isoformat()},
             headers={"User-Agent": "investment-research/crypto-cross-asset-v0.1"},
             timeout=30,
@@ -37,7 +42,7 @@ def fetch_asset(asset: str, days: int) -> pd.DataFrame:
         if not batch:
             break
         rows.extend(batch)
-        cursor = batch_start - pd.Timedelta(seconds=1)
+        cursor = batch_start - timedelta(seconds=1)
         time.sleep(0.10)
 
     frame = pd.DataFrame(
@@ -45,9 +50,9 @@ def fetch_asset(asset: str, days: int) -> pd.DataFrame:
         columns=["timestamp_s", "low", "high", "open", "close", "volume"],
     )
     frame["asset"] = asset
-    frame["series_id"] = f"COINBASE:{PRODUCTS[asset]}:1d"
+    frame["series_id"] = f"COINBASE:{product_for(asset)}:1d"
     frame["timestamp"] = pd.to_datetime(frame["timestamp_s"], unit="s", utc=True)
-    frame["available_at"] = frame["timestamp"] + pd.Timedelta(days=1)
+    frame["available_at"] = frame["timestamp"] + timedelta(days=1)
 
     for col in ["open", "high", "low", "close", "volume"]:
         frame[col] = pd.to_numeric(frame[col], errors="coerce")
@@ -69,9 +74,24 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=3000)
     ap.add_argument("--out", type=Path, default=Path("artifacts/crypto/cross_asset_1d.csv"))
+    ap.add_argument("--assets", nargs="+", default=list(PRODUCTS), help="Coinbase USD base symbols")
+    ap.add_argument(
+        "--allow-missing",
+        action="store_true",
+        help="Skip assets whose fetch fails (unlisted product, API error) instead of aborting.",
+    )
     args = ap.parse_args()
 
-    frames = [fetch_asset(asset, args.days) for asset in PRODUCTS]
+    frames = []
+    for asset in args.assets:
+        try:
+            frames.append(fetch_asset(asset, args.days))
+        except (requests.RequestException, ValueError) as exc:
+            if not args.allow_missing:
+                raise
+            print(f"::warning::{asset} fetch skipped: {exc}")
+    if not frames:
+        raise SystemExit("DATA_NOT_READY: no asset fetched")
     result = pd.concat(frames, ignore_index=True).sort_values(["asset","timestamp"])
     args.out.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(args.out, index=False)

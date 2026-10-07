@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -17,12 +18,12 @@ ASSETS = {"BTC-USD": "BTCUSDT", "ETH-USD": "ETHUSDT", "SOL-USD": "SOLUSDT"}
 
 def get_daily(product: str, days: int = 365) -> pd.DataFrame:
     end = pd.Timestamp.now(tz="UTC").floor("D")
-    start = end - pd.Timedelta(days=days + 2)
+    start = end - timedelta(days=days + 2)
     rows: list[list[float]] = []
     cursor = end
 
     while cursor > start:
-        batch_start = max(start, cursor - pd.Timedelta(days=300))
+        batch_start = max(start, cursor - timedelta(days=300))
         resp = requests.get(
             API.format(product=product) + "/candles",
             params={
@@ -38,14 +39,14 @@ def get_daily(product: str, days: int = 365) -> pd.DataFrame:
         if not batch:
             break
         rows.extend(batch)
-        cursor = batch_start - pd.Timedelta(seconds=1)
+        cursor = batch_start - timedelta(seconds=1)
 
     df = pd.DataFrame(
         rows,
         columns=["timestamp_s", "low", "high", "open", "close", "volume"],
     )
     df["timestamp"] = pd.to_datetime(df["timestamp_s"], unit="s", utc=True)
-    df["available_at"] = df["timestamp"] + pd.Timedelta(days=1)
+    df["available_at"] = df["timestamp"] + timedelta(days=1)
     for c in ["open", "high", "low", "close", "volume"]:
         df[c] = pd.to_numeric(df[c], errors="coerce")
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -61,7 +62,7 @@ def main() -> int:
         raise SystemExit("P0_FAIL: duplicate timestamps")
     if not raw["timestamp"].is_monotonic_increasing:
         raise SystemExit("P0_FAIL: timestamps not ascending")
-    if (raw["available_at"] > raw["timestamp"] + pd.Timedelta(days=2)).any():
+    if (raw["available_at"] > raw["timestamp"] + timedelta(days=2)).any():
         raise SystemExit("P0_FAIL: unexpected availability lag")
     if (raw["high"] < raw[["open", "close"]].max(axis=1)).any():
         raise SystemExit("P0_FAIL: invalid highs")

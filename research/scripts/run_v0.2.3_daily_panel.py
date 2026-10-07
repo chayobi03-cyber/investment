@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import io,math
+from datetime import timedelta
 from pathlib import Path
 import pandas as pd
 import numpy as np
@@ -29,7 +30,7 @@ def get_fred(sid):
     return d.set_index('date')[sid]
 
 def get_yahoo(symbol):
-    p1=int(pd.Timestamp(START,tz='UTC').timestamp()); p2=int((pd.Timestamp(END,tz='UTC')+pd.Timedelta(days=2)).timestamp())
+    p1=int(pd.Timestamp(START,tz='UTC').timestamp()); p2=int((pd.Timestamp(END,tz='UTC')+timedelta(days=2)).timestamp())
     u=f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?period1={p1}&period2={p2}&interval=1d&events=history&includeAdjustedClose=true'
     r=requests.get(u,headers={'User-Agent':'Mozilla/5.0'},timeout=60); r.raise_for_status(); j=r.json()['chart']['result'][0]
     dates=pd.to_datetime(j['timestamp'],unit='s',utc=True).tz_convert(None).normalize(); vals=j['indicators']['quote'][0]['close']

@@ -1,0 +1,43 @@
+{
+  "version": "0.1",
+  "status": "PREREGISTERED_RESEARCH_NOT_VALIDATED",
+  "purpose": "Review whether the frozen BTC v0.2 entry rule, and a volatility-scaled variant calibrated only on each asset's own development history, hold on non-BTC assets; screen candidate assets for the monitor. Research only: does not change crypto_market_regime_entry_v0.2.json, the live app or buy permission.",
+  "data_source": "Coinbase USD spot daily candles (PIT: available_at = bar close + 1 day)",
+  "benchmark": "BTC",
+  "monitored": ["BTC", "ETH", "SOL"],
+  "candidates": ["XRP", "DOGE", "LINK", "AVAX", "ADA", "LTC", "BCH", "DOT", "SUI"],
+  "excluded_kinds": ["stablecoin", "wrapped", "exchange_token_without_coinbase_usd_pair"],
+  "history": {
+    "use_latest_contiguous_segment": true,
+    "max_gap_days": 7,
+    "gap_note": "Short exchange outages are tolerated; listing halts (months) cut history to the latest listing."
+  },
+  "frozen_variant": {
+    "rule": "crypto-market-regime-entry-v0.2 unchanged (src/investment_pipeline/crypto_entry.py)"
+  },
+  "scaled_variant": {
+    "method": "Apply the frozen classifier to drawdown60 / k, i.e. zone depths -5k%, -8k%, -12k% and the Z0 no-chase band -2k%. Trend, stabilization, breakout and cooldown are unchanged.",
+    "k_definition": "std(daily log return of asset) / std(daily log return of BTC) over the same dates, measured on the asset's development segment only",
+    "k_rounding_decimals": 2,
+    "k_clip": [0.5, 3.0],
+    "walk_forward_k": "re-measured on each fold's training rows only"
+  },
+  "evaluation": {
+    "oos_fraction": 0.20,
+    "gate": "the 7 conditions of docs/investment/CRYPTO_THRESHOLD_VALIDATION_GATE_V0.2.md via scripts/crypto/run_crypto_p0_p6_v0_2.threshold_validation",
+    "baseline": "simple >=5% pullback from prior 60D high, same cooldown, next-session open (unscaled for both variants)"
+  },
+  "screen": {
+    "min_history_days": 1095,
+    "min_median_usd_volume_90d": 20000000,
+    "volume_note": "Coinbase-only USD volume (close * base volume): a venue liquidity proxy, not global volume."
+  },
+  "rule_fit": "per asset: FROZEN_PASS, SCALED_PASS, BOTH_PASS or NEITHER_PASS on the OOS gate",
+  "recommendation_tiers": {
+    "MONITORED": "assets already in the monitor (BTC, ETH, SOL) are reviewed for rule fit, not tiered",
+    "ADD_TO_MONITOR_CANDIDATE": "screen eligible AND frozen or scaled threshold_validation PASS",
+    "WATCH": "screen eligible AND best variant passes >= 5 of 7 checks",
+    "NOT_RECOMMENDED": "otherwise",
+    "ranking_within_tier": ["checks_passed desc", "oos worst 20D MAE desc", "correlation to BTC asc"]
+  }
+}
