@@ -26,6 +26,27 @@ METRICS_COLUMNS = [
     "count_long_short_ratio",
     "sum_taker_long_short_vol_ratio",
 ]
+# Evidence rows are long-format (one value per series per observation), the
+# contract enforced by validate_permission_evidence_bundle.REQUIRED.
+METRIC_UNITS = {
+    "sum_open_interest": "base_asset",
+    "sum_open_interest_value": "USDT",
+    "sum_toptrader_long_short_ratio": "ratio",
+    "sum_taker_long_short_vol_ratio": "ratio",
+}
+EVIDENCE_COLUMNS = [
+    "asset",
+    "series_id",
+    "observation_timestamp",
+    "available_at",
+    "source_id",
+    "unit",
+    "value",
+    "ingested_at",
+    "provenance_hash",
+    "availability_method",
+    "symbol",
+]
 
 def sha256_bytes(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
@@ -110,6 +131,27 @@ def collect_symbol(symbol: str, start: date, end: date) -> tuple[list[dict], lis
             rows.extend(frame[available].to_dict("records"))
     return rows, missing_days
 
+def to_long_evidence(wide: pd.DataFrame) -> tuple[pd.DataFrame, int]:
+    """One row per (asset, metric, observation) with series_id, unit and value.
+
+    Missing metric values are dropped, never zero-filled; the count is returned
+    so the manifest can report it.
+    """
+    if wide.empty:
+        return pd.DataFrame(columns=EVIDENCE_COLUMNS), 0
+    metrics = [m for m in METRIC_UNITS if m in wide.columns]
+    ids = [c for c in wide.columns if c not in METRIC_UNITS]
+    long = wide.melt(id_vars=ids, value_vars=metrics, var_name="metric", value_name="value")
+    long["value"] = pd.to_numeric(long["value"], errors="coerce")
+    null_values = int(long["value"].isna().sum())
+    long = long.dropna(subset=["value"]).copy()
+    long["series_id"] = "BINANCE:" + long["symbol"].astype(str) + ":" + long["metric"]
+    long["unit"] = long["metric"].map(METRIC_UNITS)
+    long["availability_method"] = "CONSERVATIVE_NEXT_UTC_DAY"
+    long = long.sort_values(["asset", "series_id", "observation_timestamp"])
+    return long[EVIDENCE_COLUMNS].reset_index(drop=True), null_values
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--start", required=True)
@@ -126,12 +168,7 @@ def main() -> int:
         all_rows.extend(rows)
         missing_by_symbol[symbol] = sorted(missing_days)
 
-    out = pd.DataFrame(all_rows)
-    if not out.empty:
-        out = out.sort_values(["asset", "observation_timestamp"])
-        out["series_id"] = "BINANCE:" + out["symbol"].astype(str) + ":METRICS"
-        out["unit"] = "mixed"
-        out["availability_method"] = "CONSERVATIVE_NEXT_UTC_DAY"
+    out, null_values = to_long_evidence(pd.DataFrame(all_rows))
     args.out.parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(args.out, index=False)
     import json
@@ -139,6 +176,7 @@ def main() -> int:
         "status": "COLLECTED_PROVISIONAL_PIT" if not any(missing_by_symbol.values()) else "COLLECTED_WITH_GAPS",
         "missing_days": missing_by_symbol,
         "source": SOURCE_ID,
+        "null_metric_values_dropped": null_values,
         "known_quality_warnings": [
             "Binance Public Data reports historical metrics gaps and timestamp-label changes; do not silently treat gaps as zero or forward-fill.",
         ],

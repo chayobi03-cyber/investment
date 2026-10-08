@@ -36,6 +36,7 @@ jobs:
 
       - name: Run market monitor
         run: |
+          set -o pipefail
           python scripts/market_monitor/poll.py | tee /tmp/event.json
           cp runtime/market_state.json /tmp/market_state.json
 
