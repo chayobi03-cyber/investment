@@ -68,7 +68,8 @@ class MarketMonitorTests(unittest.TestCase):
         self.assertEqual(state["RISK"], "RED")
 
     def test_build_state_ignores_failed_or_missing_vix(self):
-        for vix in ({"ok": False, "error": "timeout"}, None):
+        # A failed quote may still carry a stale change_pct; it must not be used.
+        for vix in ({"ok": False, "change_pct": 5.0, "error": "stale"}, None):
             cfg, raw = self._raw(vix)
             state = MOD.build_state(cfg, raw)
             self.assertIsNone(state["metrics"]["VIX_pct"])
