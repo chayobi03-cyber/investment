@@ -36,6 +36,7 @@ jobs:
 
       - name: Run market monitor
         run: |
+          set -o pipefail
           python scripts/market_monitor/poll.py | tee /tmp/event.json
           cp runtime/market_state.json /tmp/market_state.json
 
@@ -45,6 +46,9 @@ jobs:
       - name: Update runtime branch
         run: |
           git fetch origin runtime/market-state:refs/remotes/origin/runtime/market-state || true
+          # The new state is in /tmp. Drop the untracked working copy so switching
+          # to a branch that tracks runtime/market_state.json can't abort.
+          rm -f runtime/market_state.json
           if git show-ref --verify --quiet refs/remotes/origin/runtime/market-state; then
             git switch -C runtime/market-state origin/runtime/market-state
           else

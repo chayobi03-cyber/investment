@@ -1,0 +1,73 @@
+name: collectors-ci
+
+# Unit tests for the collectors that otherwise only run on a schedule or by
+# dispatch (market-monitor, permission-evidence-backfill-v0-1), so a broken
+# collector fails its PR instead of the next scheduled run.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "scripts/market_monitor/poll.py"
+      - "config/market_monitor.json"
+      - ".github/workflows/market-monitor.yml"
+      - "scripts/crypto/fetch_binance_derivatives_archive.py"
+      - "scripts/crypto/fetch_fred_permission_macro.py"
+      - "scripts/crypto/validate_permission_evidence_bundle.py"
+      - ".github/workflows/permission-evidence-backfill-v0-1.yml"
+      - "tests/test_market_monitor.py"
+      - "tests/test_market_monitor_workflow.py"
+      - "tests/test_binance_derivatives_archive.py"
+      - "tests/test_fred_permission_macro.py"
+      - "tests/test_permission_evidence_bundle.py"
+      - "requirements.txt"
+      - ".github/workflows/collectors-ci.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/market_monitor/poll.py"
+      - "config/market_monitor.json"
+      - ".github/workflows/market-monitor.yml"
+      - "scripts/crypto/fetch_binance_derivatives_archive.py"
+      - "scripts/crypto/fetch_fred_permission_macro.py"
+      - "scripts/crypto/validate_permission_evidence_bundle.py"
+      - ".github/workflows/permission-evidence-backfill-v0-1.yml"
+      - "tests/test_market_monitor.py"
+      - "tests/test_market_monitor_workflow.py"
+      - "tests/test_binance_derivatives_archive.py"
+      - "tests/test_fred_permission_macro.py"
+      - "tests/test_permission_evidence_bundle.py"
+      - "requirements.txt"
+      - ".github/workflows/collectors-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Unit tests
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m pytest -q -W error::DeprecationWarning \
+            tests/test_market_monitor.py \
+            tests/test_market_monitor_workflow.py \
+            tests/test_binance_derivatives_archive.py \
+            tests/test_fred_permission_macro.py \
+            tests/test_permission_evidence_bundle.py

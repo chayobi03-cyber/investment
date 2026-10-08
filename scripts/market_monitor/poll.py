@@ -131,7 +131,7 @@ def build_state(cfg: dict, raw: dict) -> dict:
     breadth = up / len(leader_items) if leader_items else None
 
     vix = idx.get("VIX", {})
-    vix_change = vix.get("change_pct") if v.get("ok") else None
+    vix_change = vix.get("change_pct") if vix.get("ok") else None
 
     stale_cut = cfg["thresholds"]["max_stale_minutes"]
     observed_at = []

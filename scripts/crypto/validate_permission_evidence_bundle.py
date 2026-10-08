@@ -25,6 +25,8 @@ def read(path: Path) -> pd.DataFrame:
     missing = sorted(REQUIRED - set(df.columns))
     if missing:
         raise SystemExit(f"EVIDENCE_FAIL:missing_columns:{path}:{",".join(missing)}")
+    if df.empty:
+        raise SystemExit(f"EVIDENCE_FAIL:no_rows:{path}")
     for c in ("observation_timestamp", "available_at", "ingested_at"):
         df[c] = pd.to_datetime(df[c], utc=True, errors="coerce")
         if df[c].isna().any():
