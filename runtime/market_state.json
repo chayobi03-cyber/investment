@@ -1,0 +1,626 @@
+{
+  "state": {
+    "schema_version": "2.0",
+    "asof": "2026-10-08T13:34:02Z",
+    "session": "US",
+    "REGIME": "UNCONFIRMED",
+    "RISK": "GREEN",
+    "TREND": "GREEN",
+    "BREADTH": "AMBER",
+    "LEADERS": "AMBER",
+    "RATES": "GREEN",
+    "FX": "GREEN",
+    "OIL": "GREEN",
+    "GOLD": "GREEN",
+    "GEO": "N/A",
+    "BUY_TRIGGER": "UNCONFIRMED",
+    "DATA_QUALITY": "GREEN",
+    "metrics": {
+      "KOSPI_pct": -0.6313650468196541,
+      "NASDAQ_pct": -0.025128736670221308,
+      "SOX_pct": -0.0673093547528536,
+      "VIX_pct": 0.0,
+      "breadth_proxy": 0.38461538461538464,
+      "US10Y_pct": 0.0,
+      "USD_KRW_pct": 0.006703561419363346,
+      "WTI_pct": 0.0763105769786554,
+      "GOLD_pct": 0.012052839932752413,
+      "freshness_min": 0.023281266666666668
+    }
+  },
+  "event": {
+    "schema_version": "2.0",
+    "asof": "2026-10-08T13:34:02Z",
+    "alert": false,
+    "severity": "P2",
+    "session": "US",
+    "delta": [
+      "INITIAL_STATE"
+    ],
+    "state": {
+      "schema_version": "2.0",
+      "asof": "2026-10-08T13:34:02Z",
+      "session": "US",
+      "REGIME": "UNCONFIRMED",
+      "RISK": "GREEN",
+      "TREND": "GREEN",
+      "BREADTH": "AMBER",
+      "LEADERS": "AMBER",
+      "RATES": "GREEN",
+      "FX": "GREEN",
+      "OIL": "GREEN",
+      "GOLD": "GREEN",
+      "GEO": "N/A",
+      "BUY_TRIGGER": "UNCONFIRMED",
+      "DATA_QUALITY": "GREEN",
+      "metrics": {
+        "KOSPI_pct": -0.6313650468196541,
+        "NASDAQ_pct": -0.025128736670221308,
+        "SOX_pct": -0.0673093547528536,
+        "VIX_pct": 0.0,
+        "breadth_proxy": 0.38461538461538464,
+        "US10Y_pct": 0.0,
+        "USD_KRW_pct": 0.006703561419363346,
+        "WTI_pct": 0.0763105769786554,
+        "GOLD_pct": 0.012052839932752413,
+        "freshness_min": 0.023281266666666668
+      }
+    },
+    "data_quality": "GREEN"
+  },
+  "raw": {
+    "collected_at": "2026-10-08T13:34:02Z",
+    "groups": {
+      "indices": {
+        "KOSPI": {
+          "ok": true,
+          "symbol": "^KS11",
+          "price": 6625.93017578125,
+          "prev_price": 6668.02978515625,
+          "change_pct": -0.6313650468196541,
+          "timestamp": "2026-10-08T06:00:00Z",
+          "currency": "KRW",
+          "exchange": "KSC"
+        },
+        "KOSDAQ": {
+          "ok": true,
+          "symbol": "^KQ11",
+          "price": 892.27001953125,
+          "prev_price": 892.8300170898438,
+          "change_pct": -0.0627216320995827,
+          "timestamp": "2026-10-08T06:00:00Z",
+          "currency": "KRW",
+          "exchange": "KOE"
+        },
+        "SP500": {
+          "ok": true,
+          "symbol": "^GSPC",
+          "price": 7778.9599609375,
+          "prev_price": 7775.9599609375,
+          "change_pct": 0.038580445566460675,
+          "timestamp": "2026-10-08T13:33:54Z",
+          "currency": "USD",
+          "exchange": "SNP"
+        },
+        "NASDAQ": {
+          "ok": true,
+          "symbol": "^IXIC",
+          "price": 27398.86328125,
+          "prev_price": 27405.75,
+          "change_pct": -0.025128736670221308,
+          "timestamp": "2026-10-08T13:33:50Z",
+          "currency": "USD",
+          "exchange": "NIM"
+        },
+        "SOX": {
+          "ok": true,
+          "symbol": "^SOX",
+          "price": 12829.9921875,
+          "prev_price": 12838.6337890625,
+          "change_pct": -0.0673093547528536,
+          "timestamp": "2026-10-08T13:33:52Z",
+          "currency": "USD",
+          "exchange": "NIM"
+        },
+        "VIX": {
+          "ok": true,
+          "symbol": "^VIX",
+          "price": 15.550000190734863,
+          "prev_price": 15.550000190734863,
+          "change_pct": 0.0,
+          "timestamp": "2026-10-08T13:18:46Z",
+          "currency": "USD",
+          "exchange": "CXI"
+        }
+      },
+      "macro": {
+        "US10Y": {
+          "ok": true,
+          "symbol": "^TNX",
+          "price": 5.299000263214111,
+          "prev_price": 5.299000263214111,
+          "change_pct": 0.0,
+          "timestamp": "2026-10-08T13:18:45Z",
+          "currency": "USD",
+          "exchange": "CGI"
+        },
+        "US2Y_TNOTE_FUT": {
+          "ok": true,
+          "symbol": "ZT=F",
+          "price": 101.8203125,
+          "prev_price": 101.81640625,
+          "change_pct": 0.003836562440051594,
+          "timestamp": "2026-10-08T13:23:48Z",
+          "currency": "USD",
+          "exchange": "CBT"
+        },
+        "USD_KRW": {
+          "ok": true,
+          "symbol": "KRW=X",
+          "price": 1342.1500244140625,
+          "prev_price": 1342.06005859375,
+          "change_pct": 0.006703561419363346,
+          "timestamp": "2026-10-08T13:33:53Z",
+          "currency": "KRW",
+          "exchange": "CCY"
+        },
+        "USD_JPY": {
+          "ok": true,
+          "symbol": "JPY=X",
+          "price": 158.14700317382812,
+          "prev_price": 158.12899780273438,
+          "change_pct": 0.011386508068689238,
+          "timestamp": "2026-10-08T13:33:55Z",
+          "currency": "JPY",
+          "exchange": "CCY"
+        },
+        "DXY": {
+          "ok": true,
+          "symbol": "DX-Y.NYB",
+          "price": 102.3479995727539,
+          "prev_price": 102.34200286865234,
+          "change_pct": 0.005859475028313632,
+          "timestamp": "2026-10-08T13:23:55Z",
+          "currency": "USD",
+          "exchange": "NYB"
+        },
+        "WTI": {
+          "ok": true,
+          "symbol": "CL=F",
+          "price": 91.80000305175781,
+          "prev_price": 91.7300033569336,
+          "change_pct": 0.0763105769786554,
+          "timestamp": "2026-10-08T13:23:55Z",
+          "currency": "USD",
+          "exchange": "NYM"
+        },
+        "BRENT": {
+          "ok": true,
+          "symbol": "BZ=F",
+          "price": 104.30000305175781,
+          "prev_price": 104.23999786376953,
+          "change_pct": 0.05756445627205231,
+          "timestamp": "2026-10-08T13:23:54Z",
+          "currency": "USD",
+          "exchange": "NYM"
+        },
+        "GOLD": {
+          "ok": true,
+          "symbol": "GC=F",
+          "price": 4148.89990234375,
+          "prev_price": 4148.39990234375,
+          "change_pct": 0.012052839932752413,
+          "timestamp": "2026-10-08T13:23:52Z",
+          "currency": "USD",
+          "exchange": "CMX"
+        }
+      },
+      "korea_leaders": {
+        "SAMSUNG": {
+          "ok": true,
+          "symbol": "005930.KS",
+          "price": 262000.0,
+          "prev_price": 264000.0,
+          "change_pct": -0.7575757575757569,
+          "timestamp": "2026-10-08T06:00:00Z",
+          "currency": "KRW",
+          "exchange": "KSC"
+        },
+        "SK_HYNIX": {
+          "ok": true,
+          "symbol": "000660.KS",
+          "price": 1681000.0,
+          "prev_price": 1699000.0,
+          "change_pct": -1.059446733372571,
+          "timestamp": "2026-10-08T06:00:00Z",
+          "currency": "KRW",
+          "exchange": "KSC"
+        },
+        "SK_SQUARE": {
+          "ok": true,
+          "symbol": "402340.KS",
+          "price": 1050000.0,
+          "prev_price": 1061000.0,
+          "change_pct": -1.0367577756833168,
+          "timestamp": "2026-10-08T06:00:00Z",
+          "currency": "KRW",
+          "exchange": "KSC"
+        },
+        "SAMSUNG_SDI": {
+          "ok": true,
+          "symbol": "006400.KS",
+          "price": 569000.0,
+          "prev_price": 573000.0,
+          "change_pct": -0.6980802792321161,
+          "timestamp": "2026-10-08T06:00:00Z",
+          "currency": "KRW",
+          "exchange": "KSC"
+        },
+        "KB_FIN": {
+          "ok": true,
+          "symbol": "105560.KS",
+          "price": 162800.0,
+          "prev_price": 163800.0,
+          "change_pct": -0.6105006105006083,
+          "timestamp": "2026-10-08T06:00:00Z",
+          "currency": "KRW",
+          "exchange": "KSC"
+        },
+        "HYUNDAI": {
+          "ok": true,
+          "symbol": "005380.KS",
+          "price": 324500.0,
+          "prev_price": 325000.0,
+          "change_pct": -0.15384615384614886,
+          "timestamp": "2026-10-08T06:00:00Z",
+          "currency": "KRW",
+          "exchange": "KSC"
+        },
+        "SAMSUNG_FIRE": {
+          "ok": true,
+          "symbol": "000810.KS",
+          "price": 612000.0,
+          "prev_price": 611000.0,
+          "change_pct": 0.16366612111293755,
+          "timestamp": "2026-10-08T06:00:00Z",
+          "currency": "KRW",
+          "exchange": "KSC"
+        },
+        "SK_INNO": {
+          "ok": true,
+          "symbol": "096770.KS",
+          "price": 160900.0,
+          "prev_price": 160400.0,
+          "change_pct": 0.31172069825435855,
+          "timestamp": "2026-10-08T06:00:00Z",
+          "currency": "KRW",
+          "exchange": "KSC"
+        },
+        "DOOSAN_ENERBILITY": {
+          "ok": true,
+          "symbol": "034020.KS",
+          "price": 78000.0,
+          "prev_price": 75300.0,
+          "change_pct": 3.585657370517925,
+          "timestamp": "2026-10-08T06:00:00Z",
+          "currency": "KRW",
+          "exchange": "KSC"
+        },
+        "NAVER": {
+          "ok": true,
+          "symbol": "035420.KS",
+          "price": 183800.0,
+          "prev_price": 183100.0,
+          "change_pct": 0.38230475150191623,
+          "timestamp": "2026-10-08T06:00:00Z",
+          "currency": "KRW",
+          "exchange": "KSC"
+        },
+        "SAMSUNG_BIO": {
+          "ok": true,
+          "symbol": "207940.KS",
+          "price": 1219000.0,
+          "prev_price": 1220000.0,
+          "change_pct": -0.08196721311475308,
+          "timestamp": "2026-10-08T06:00:00Z",
+          "currency": "KRW",
+          "exchange": "KSC"
+        }
+      },
+      "us_leaders": {
+        "TSM": {
+          "ok": true,
+          "symbol": "TSM",
+          "price": 469.57000732421875,
+          "prev_price": 469.43499755859375,
+          "change_pct": 0.028760055455423483,
+          "timestamp": "2026-10-08T13:34:00Z",
+          "currency": "USD",
+          "exchange": "NYQ"
+        },
+        "AVGO": {
+          "ok": true,
+          "symbol": "AVGO",
+          "price": 368.8500061035156,
+          "prev_price": 368.9800109863281,
+          "change_pct": -0.035233584189287015,
+          "timestamp": "2026-10-08T13:34:01Z",
+          "currency": "USD",
+          "exchange": "NMS"
+        }
+      }
+    },
+    "all": {
+      "indices.KOSPI": {
+        "ok": true,
+        "symbol": "^KS11",
+        "price": 6625.93017578125,
+        "prev_price": 6668.02978515625,
+        "change_pct": -0.6313650468196541,
+        "timestamp": "2026-10-08T06:00:00Z",
+        "currency": "KRW",
+        "exchange": "KSC"
+      },
+      "indices.KOSDAQ": {
+        "ok": true,
+        "symbol": "^KQ11",
+        "price": 892.27001953125,
+        "prev_price": 892.8300170898438,
+        "change_pct": -0.0627216320995827,
+        "timestamp": "2026-10-08T06:00:00Z",
+        "currency": "KRW",
+        "exchange": "KOE"
+      },
+      "indices.SP500": {
+        "ok": true,
+        "symbol": "^GSPC",
+        "price": 7778.9599609375,
+        "prev_price": 7775.9599609375,
+        "change_pct": 0.038580445566460675,
+        "timestamp": "2026-10-08T13:33:54Z",
+        "currency": "USD",
+        "exchange": "SNP"
+      },
+      "indices.NASDAQ": {
+        "ok": true,
+        "symbol": "^IXIC",
+        "price": 27398.86328125,
+        "prev_price": 27405.75,
+        "change_pct": -0.025128736670221308,
+        "timestamp": "2026-10-08T13:33:50Z",
+        "currency": "USD",
+        "exchange": "NIM"
+      },
+      "indices.SOX": {
+        "ok": true,
+        "symbol": "^SOX",
+        "price": 12829.9921875,
+        "prev_price": 12838.6337890625,
+        "change_pct": -0.0673093547528536,
+        "timestamp": "2026-10-08T13:33:52Z",
+        "currency": "USD",
+        "exchange": "NIM"
+      },
+      "indices.VIX": {
+        "ok": true,
+        "symbol": "^VIX",
+        "price": 15.550000190734863,
+        "prev_price": 15.550000190734863,
+        "change_pct": 0.0,
+        "timestamp": "2026-10-08T13:18:46Z",
+        "currency": "USD",
+        "exchange": "CXI"
+      },
+      "macro.US10Y": {
+        "ok": true,
+        "symbol": "^TNX",
+        "price": 5.299000263214111,
+        "prev_price": 5.299000263214111,
+        "change_pct": 0.0,
+        "timestamp": "2026-10-08T13:18:45Z",
+        "currency": "USD",
+        "exchange": "CGI"
+      },
+      "macro.US2Y_TNOTE_FUT": {
+        "ok": true,
+        "symbol": "ZT=F",
+        "price": 101.8203125,
+        "prev_price": 101.81640625,
+        "change_pct": 0.003836562440051594,
+        "timestamp": "2026-10-08T13:23:48Z",
+        "currency": "USD",
+        "exchange": "CBT"
+      },
+      "macro.USD_KRW": {
+        "ok": true,
+        "symbol": "KRW=X",
+        "price": 1342.1500244140625,
+        "prev_price": 1342.06005859375,
+        "change_pct": 0.006703561419363346,
+        "timestamp": "2026-10-08T13:33:53Z",
+        "currency": "KRW",
+        "exchange": "CCY"
+      },
+      "macro.USD_JPY": {
+        "ok": true,
+        "symbol": "JPY=X",
+        "price": 158.14700317382812,
+        "prev_price": 158.12899780273438,
+        "change_pct": 0.011386508068689238,
+        "timestamp": "2026-10-08T13:33:55Z",
+        "currency": "JPY",
+        "exchange": "CCY"
+      },
+      "macro.DXY": {
+        "ok": true,
+        "symbol": "DX-Y.NYB",
+        "price": 102.3479995727539,
+        "prev_price": 102.34200286865234,
+        "change_pct": 0.005859475028313632,
+        "timestamp": "2026-10-08T13:23:55Z",
+        "currency": "USD",
+        "exchange": "NYB"
+      },
+      "macro.WTI": {
+        "ok": true,
+        "symbol": "CL=F",
+        "price": 91.80000305175781,
+        "prev_price": 91.7300033569336,
+        "change_pct": 0.0763105769786554,
+        "timestamp": "2026-10-08T13:23:55Z",
+        "currency": "USD",
+        "exchange": "NYM"
+      },
+      "macro.BRENT": {
+        "ok": true,
+        "symbol": "BZ=F",
+        "price": 104.30000305175781,
+        "prev_price": 104.23999786376953,
+        "change_pct": 0.05756445627205231,
+        "timestamp": "2026-10-08T13:23:54Z",
+        "currency": "USD",
+        "exchange": "NYM"
+      },
+      "macro.GOLD": {
+        "ok": true,
+        "symbol": "GC=F",
+        "price": 4148.89990234375,
+        "prev_price": 4148.39990234375,
+        "change_pct": 0.012052839932752413,
+        "timestamp": "2026-10-08T13:23:52Z",
+        "currency": "USD",
+        "exchange": "CMX"
+      },
+      "korea_leaders.SAMSUNG": {
+        "ok": true,
+        "symbol": "005930.KS",
+        "price": 262000.0,
+        "prev_price": 264000.0,
+        "change_pct": -0.7575757575757569,
+        "timestamp": "2026-10-08T06:00:00Z",
+        "currency": "KRW",
+        "exchange": "KSC"
+      },
+      "korea_leaders.SK_HYNIX": {
+        "ok": true,
+        "symbol": "000660.KS",
+        "price": 1681000.0,
+        "prev_price": 1699000.0,
+        "change_pct": -1.059446733372571,
+        "timestamp": "2026-10-08T06:00:00Z",
+        "currency": "KRW",
+        "exchange": "KSC"
+      },
+      "korea_leaders.SK_SQUARE": {
+        "ok": true,
+        "symbol": "402340.KS",
+        "price": 1050000.0,
+        "prev_price": 1061000.0,
+        "change_pct": -1.0367577756833168,
+        "timestamp": "2026-10-08T06:00:00Z",
+        "currency": "KRW",
+        "exchange": "KSC"
+      },
+      "korea_leaders.SAMSUNG_SDI": {
+        "ok": true,
+        "symbol": "006400.KS",
+        "price": 569000.0,
+        "prev_price": 573000.0,
+        "change_pct": -0.6980802792321161,
+        "timestamp": "2026-10-08T06:00:00Z",
+        "currency": "KRW",
+        "exchange": "KSC"
+      },
+      "korea_leaders.KB_FIN": {
+        "ok": true,
+        "symbol": "105560.KS",
+        "price": 162800.0,
+        "prev_price": 163800.0,
+        "change_pct": -0.6105006105006083,
+        "timestamp": "2026-10-08T06:00:00Z",
+        "currency": "KRW",
+        "exchange": "KSC"
+      },
+      "korea_leaders.HYUNDAI": {
+        "ok": true,
+        "symbol": "005380.KS",
+        "price": 324500.0,
+        "prev_price": 325000.0,
+        "change_pct": -0.15384615384614886,
+        "timestamp": "2026-10-08T06:00:00Z",
+        "currency": "KRW",
+        "exchange": "KSC"
+      },
+      "korea_leaders.SAMSUNG_FIRE": {
+        "ok": true,
+        "symbol": "000810.KS",
+        "price": 612000.0,
+        "prev_price": 611000.0,
+        "change_pct": 0.16366612111293755,
+        "timestamp": "2026-10-08T06:00:00Z",
+        "currency": "KRW",
+        "exchange": "KSC"
+      },
+      "korea_leaders.SK_INNO": {
+        "ok": true,
+        "symbol": "096770.KS",
+        "price": 160900.0,
+        "prev_price": 160400.0,
+        "change_pct": 0.31172069825435855,
+        "timestamp": "2026-10-08T06:00:00Z",
+        "currency": "KRW",
+        "exchange": "KSC"
+      },
+      "korea_leaders.DOOSAN_ENERBILITY": {
+        "ok": true,
+        "symbol": "034020.KS",
+        "price": 78000.0,
+        "prev_price": 75300.0,
+        "change_pct": 3.585657370517925,
+        "timestamp": "2026-10-08T06:00:00Z",
+        "currency": "KRW",
+        "exchange": "KSC"
+      },
+      "korea_leaders.NAVER": {
+        "ok": true,
+        "symbol": "035420.KS",
+        "price": 183800.0,
+        "prev_price": 183100.0,
+        "change_pct": 0.38230475150191623,
+        "timestamp": "2026-10-08T06:00:00Z",
+        "currency": "KRW",
+        "exchange": "KSC"
+      },
+      "korea_leaders.SAMSUNG_BIO": {
+        "ok": true,
+        "symbol": "207940.KS",
+        "price": 1219000.0,
+        "prev_price": 1220000.0,
+        "change_pct": -0.08196721311475308,
+        "timestamp": "2026-10-08T06:00:00Z",
+        "currency": "KRW",
+        "exchange": "KSC"
+      },
+      "us_leaders.TSM": {
+        "ok": true,
+        "symbol": "TSM",
+        "price": 469.57000732421875,
+        "prev_price": 469.43499755859375,
+        "change_pct": 0.028760055455423483,
+        "timestamp": "2026-10-08T13:34:00Z",
+        "currency": "USD",
+        "exchange": "NYQ"
+      },
+      "us_leaders.AVGO": {
+        "ok": true,
+        "symbol": "AVGO",
+        "price": 368.8500061035156,
+        "prev_price": 368.9800109863281,
+        "change_pct": -0.035233584189287015,
+        "timestamp": "2026-10-08T13:34:01Z",
+        "currency": "USD",
+        "exchange": "NMS"
+      }
+    }
+  }
+}
