@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import io
+import time
 from datetime import timedelta
 from pathlib import Path
 
@@ -22,13 +23,35 @@ SERIES = {
 def sha256_bytes(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
 
+# Waits between attempts; the CSV endpoint intermittently stalls for CI runners.
+RETRY_DELAYS_S = (2, 4, 8)
+
+def get_with_retry(series_id: str, start: str, end: str) -> requests.Response:
+    """GET one series, retrying timeouts, connection errors, 429 and 5xx.
+
+    Other HTTP statuses are returned for the caller to raise; the last
+    retryable failure is raised unchanged.
+    """
+    for attempt, delay in enumerate((*RETRY_DELAYS_S, None), start=1):
+        try:
+            r = requests.get(
+                FRED_URL,
+                params={"id": series_id, "cosd": start, "coed": end},
+                headers={"User-Agent": "investment-research/permission-evidence-v0.1"},
+                timeout=30,
+            )
+            if r.status_code != 429 and r.status_code < 500:
+                return r
+            r.raise_for_status()
+        except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as exc:
+            if delay is None:
+                raise
+            print(f"FRED_RETRY:{series_id}:attempt={attempt}:{type(exc).__name__}", flush=True)
+            time.sleep(delay)
+    raise AssertionError("unreachable")
+
 def fetch_series(series_id: str, start: str, end: str) -> tuple[pd.DataFrame, str]:
-    r = requests.get(
-        FRED_URL,
-        params={"id": series_id, "cosd": start, "coed": end},
-        headers={"User-Agent": "investment-research/permission-evidence-v0.1"},
-        timeout=30,
-    )
+    r = get_with_retry(series_id, start, end)
     r.raise_for_status()
     raw = r.content
     frame = pd.read_csv(io.BytesIO(raw))

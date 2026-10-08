@@ -8,7 +8,11 @@ on:
       - "scripts/market_monitor/**"
       - "tests/test_market_monitor_pit_p0p6.py"
       - ".github/workflows/historical-p0-p6-research.yml"
+  # The tests and scripts this job runs live only on the feature branch, so
+  # PRs into main must not trigger it.
   pull_request:
+    branches:
+      - "feat/observation-shock-episode-p0p6-v1"
     paths:
       - "scripts/market_monitor/**"
       - "tests/test_market_monitor_pit_p0p6.py"
