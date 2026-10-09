@@ -1,7 +1,7 @@
 {
   "state": {
     "schema_version": "2.0",
-    "asof": "2026-10-09T20:04:27Z",
+    "asof": "2026-10-09T23:59:46Z",
     "session": "GLOBAL_TRANSITION",
     "REGIME": "UNCONFIRMED",
     "RISK": "GREEN",
@@ -14,7 +14,7 @@
     "GOLD": "GREEN",
     "GEO": "N/A",
     "BUY_TRIGGER": "UNCONFIRMED",
-    "DATA_QUALITY": "GREEN",
+    "DATA_QUALITY": "AMBER",
     "metrics": {
       "KOSPI_pct": -0.6313650468196541,
       "NASDAQ_pct": 0.006773476806376522,
@@ -22,22 +22,24 @@
       "VIX_pct": 0.0,
       "breadth_proxy": 0.38461538461538464,
       "US10Y_pct": 0.0,
-      "USD_KRW_pct": -0.023867530291377115,
-      "WTI_pct": 0.021888907533140767,
-      "GOLD_pct": -0.0236888241610278,
-      "freshness_min": 0.1165508
+      "USD_KRW_pct": -0.09915056315609183,
+      "WTI_pct": 0.0,
+      "GOLD_pct": 0.0,
+      "freshness_min": 179.78540681666667
     }
   },
   "event": {
     "schema_version": "2.0",
-    "asof": "2026-10-09T20:04:27Z",
+    "asof": "2026-10-09T23:59:46Z",
     "alert": false,
     "severity": "P2",
     "session": "GLOBAL_TRANSITION",
-    "delta": [],
+    "delta": [
+      "DATA_QUALITY:GREEN->AMBER"
+    ],
     "state": {
       "schema_version": "2.0",
-      "asof": "2026-10-09T20:04:27Z",
+      "asof": "2026-10-09T23:59:46Z",
       "session": "GLOBAL_TRANSITION",
       "REGIME": "UNCONFIRMED",
       "RISK": "GREEN",
@@ -50,7 +52,7 @@
       "GOLD": "GREEN",
       "GEO": "N/A",
       "BUY_TRIGGER": "UNCONFIRMED",
-      "DATA_QUALITY": "GREEN",
+      "DATA_QUALITY": "AMBER",
       "metrics": {
         "KOSPI_pct": -0.6313650468196541,
         "NASDAQ_pct": 0.006773476806376522,
@@ -58,16 +60,16 @@
         "VIX_pct": 0.0,
         "breadth_proxy": 0.38461538461538464,
         "US10Y_pct": 0.0,
-        "USD_KRW_pct": -0.023867530291377115,
-        "WTI_pct": 0.021888907533140767,
-        "GOLD_pct": -0.0236888241610278,
-        "freshness_min": 0.1165508
+        "USD_KRW_pct": -0.09915056315609183,
+        "WTI_pct": 0.0,
+        "GOLD_pct": 0.0,
+        "freshness_min": 179.78540681666667
       }
     },
-    "data_quality": "GREEN"
+    "data_quality": "AMBER"
   },
   "raw": {
-    "collected_at": "2026-10-09T20:04:27Z",
+    "collected_at": "2026-10-09T23:59:46Z",
     "groups": {
       "indices": {
         "KOSPI": {
@@ -126,7 +128,7 @@
           "price": 14.84000015258789,
           "prev_price": 14.84000015258789,
           "change_pct": 0.0,
-          "timestamp": "2026-10-09T19:49:16Z",
+          "timestamp": "2026-10-09T20:15:00Z",
           "currency": "USD",
           "exchange": "CXI"
         }
@@ -148,67 +150,67 @@
           "price": 101.83984375,
           "prev_price": 101.83984375,
           "change_pct": 0.0,
-          "timestamp": "2026-10-09T19:54:08Z",
+          "timestamp": "2026-10-09T20:59:48Z",
           "currency": "USD",
           "exchange": "CBT"
         },
         "USD_KRW": {
           "ok": true,
           "symbol": "KRW=X",
-          "price": 1340.699951171875,
-          "prev_price": 1341.02001953125,
-          "change_pct": -0.023867530291377115,
-          "timestamp": "2026-10-09T20:04:15Z",
+          "price": 1340.02001953125,
+          "prev_price": 1341.3499755859375,
+          "change_pct": -0.09915056315609183,
+          "timestamp": "2026-10-09T20:55:00Z",
           "currency": "KRW",
           "exchange": "CCY"
         },
         "USD_JPY": {
           "ok": true,
           "symbol": "JPY=X",
-          "price": 158.24400329589844,
-          "prev_price": 158.23300170898438,
-          "change_pct": 0.006952776472179956,
-          "timestamp": "2026-10-09T20:04:21Z",
+          "price": 158.24600219726562,
+          "prev_price": 158.26800537109375,
+          "change_pct": -0.01390247749476492,
+          "timestamp": "2026-10-09T20:55:00Z",
           "currency": "JPY",
           "exchange": "CCY"
         },
         "DXY": {
           "ok": true,
           "symbol": "DX-Y.NYB",
-          "price": 102.24500274658203,
-          "prev_price": 102.25,
-          "change_pct": -0.0048872894063300976,
-          "timestamp": "2026-10-09T19:54:22Z",
+          "price": 102.23100280761719,
+          "prev_price": 102.23100280761719,
+          "change_pct": 0.0,
+          "timestamp": "2026-10-09T20:59:59Z",
           "currency": "USD",
           "exchange": "NYB"
         },
         "WTI": {
           "ok": true,
           "symbol": "CL=F",
-          "price": 91.41000366210938,
-          "prev_price": 91.38999938964844,
-          "change_pct": 0.021888907533140767,
-          "timestamp": "2026-10-09T19:54:15Z",
+          "price": 91.66000366210938,
+          "prev_price": 91.66000366210938,
+          "change_pct": 0.0,
+          "timestamp": "2026-10-09T20:59:58Z",
           "currency": "USD",
           "exchange": "NYM"
         },
         "BRENT": {
           "ok": true,
           "symbol": "BZ=F",
-          "price": 104.12000274658203,
-          "prev_price": 104.11000061035156,
-          "change_pct": 0.009607277083700794,
-          "timestamp": "2026-10-09T19:53:56Z",
+          "price": 104.43000030517578,
+          "prev_price": 104.43000030517578,
+          "change_pct": 0.0,
+          "timestamp": "2026-10-09T20:59:58Z",
           "currency": "USD",
           "exchange": "NYM"
         },
         "GOLD": {
           "ok": true,
           "symbol": "GC=F",
-          "price": 4220.39990234375,
-          "prev_price": 4221.39990234375,
-          "change_pct": -0.0236888241610278,
-          "timestamp": "2026-10-09T19:54:21Z",
+          "price": 4220.2998046875,
+          "prev_price": 4220.2998046875,
+          "change_pct": 0.0,
+          "timestamp": "2026-10-09T20:59:59Z",
           "currency": "USD",
           "exchange": "CMX"
         }
@@ -329,10 +331,10 @@
         "TSM": {
           "ok": true,
           "symbol": "TSM",
-          "price": 453.2749938964844,
-          "prev_price": 451.7919921875,
-          "change_pct": 0.3282487814367796,
-          "timestamp": "2026-10-09T19:55:00Z",
+          "price": 453.30999755859375,
+          "prev_price": 453.260009765625,
+          "change_pct": 0.011028502822174602,
+          "timestamp": "2026-10-09T20:00:00Z",
           "currency": "USD",
           "exchange": "NYQ"
         },
@@ -405,7 +407,7 @@
         "price": 14.84000015258789,
         "prev_price": 14.84000015258789,
         "change_pct": 0.0,
-        "timestamp": "2026-10-09T19:49:16Z",
+        "timestamp": "2026-10-09T20:15:00Z",
         "currency": "USD",
         "exchange": "CXI"
       },
@@ -425,67 +427,67 @@
         "price": 101.83984375,
         "prev_price": 101.83984375,
         "change_pct": 0.0,
-        "timestamp": "2026-10-09T19:54:08Z",
+        "timestamp": "2026-10-09T20:59:48Z",
         "currency": "USD",
         "exchange": "CBT"
       },
       "macro.USD_KRW": {
         "ok": true,
         "symbol": "KRW=X",
-        "price": 1340.699951171875,
-        "prev_price": 1341.02001953125,
-        "change_pct": -0.023867530291377115,
-        "timestamp": "2026-10-09T20:04:15Z",
+        "price": 1340.02001953125,
+        "prev_price": 1341.3499755859375,
+        "change_pct": -0.09915056315609183,
+        "timestamp": "2026-10-09T20:55:00Z",
         "currency": "KRW",
         "exchange": "CCY"
       },
       "macro.USD_JPY": {
         "ok": true,
         "symbol": "JPY=X",
-        "price": 158.24400329589844,
-        "prev_price": 158.23300170898438,
-        "change_pct": 0.006952776472179956,
-        "timestamp": "2026-10-09T20:04:21Z",
+        "price": 158.24600219726562,
+        "prev_price": 158.26800537109375,
+        "change_pct": -0.01390247749476492,
+        "timestamp": "2026-10-09T20:55:00Z",
         "currency": "JPY",
         "exchange": "CCY"
       },
       "macro.DXY": {
         "ok": true,
         "symbol": "DX-Y.NYB",
-        "price": 102.24500274658203,
-        "prev_price": 102.25,
-        "change_pct": -0.0048872894063300976,
-        "timestamp": "2026-10-09T19:54:22Z",
+        "price": 102.23100280761719,
+        "prev_price": 102.23100280761719,
+        "change_pct": 0.0,
+        "timestamp": "2026-10-09T20:59:59Z",
         "currency": "USD",
         "exchange": "NYB"
       },
       "macro.WTI": {
         "ok": true,
         "symbol": "CL=F",
-        "price": 91.41000366210938,
-        "prev_price": 91.38999938964844,
-        "change_pct": 0.021888907533140767,
-        "timestamp": "2026-10-09T19:54:15Z",
+        "price": 91.66000366210938,
+        "prev_price": 91.66000366210938,
+        "change_pct": 0.0,
+        "timestamp": "2026-10-09T20:59:58Z",
         "currency": "USD",
         "exchange": "NYM"
       },
       "macro.BRENT": {
         "ok": true,
         "symbol": "BZ=F",
-        "price": 104.12000274658203,
-        "prev_price": 104.11000061035156,
-        "change_pct": 0.009607277083700794,
-        "timestamp": "2026-10-09T19:53:56Z",
+        "price": 104.43000030517578,
+        "prev_price": 104.43000030517578,
+        "change_pct": 0.0,
+        "timestamp": "2026-10-09T20:59:58Z",
         "currency": "USD",
         "exchange": "NYM"
       },
       "macro.GOLD": {
         "ok": true,
         "symbol": "GC=F",
-        "price": 4220.39990234375,
-        "prev_price": 4221.39990234375,
-        "change_pct": -0.0236888241610278,
-        "timestamp": "2026-10-09T19:54:21Z",
+        "price": 4220.2998046875,
+        "prev_price": 4220.2998046875,
+        "change_pct": 0.0,
+        "timestamp": "2026-10-09T20:59:59Z",
         "currency": "USD",
         "exchange": "CMX"
       },
@@ -602,10 +604,10 @@
       "us_leaders.TSM": {
         "ok": true,
         "symbol": "TSM",
-        "price": 453.2749938964844,
-        "prev_price": 451.7919921875,
-        "change_pct": 0.3282487814367796,
-        "timestamp": "2026-10-09T19:55:00Z",
+        "price": 453.30999755859375,
+        "prev_price": 453.260009765625,
+        "change_pct": 0.011028502822174602,
+        "timestamp": "2026-10-09T20:00:00Z",
         "currency": "USD",
         "exchange": "NYQ"
       },
