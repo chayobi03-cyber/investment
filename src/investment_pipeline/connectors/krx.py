@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 from typing import Any
@@ -37,11 +38,5 @@ class KRXClient:
     def fetch_dataset(self, path: str, params: dict[str, Any], output: Path) -> Path:
         data = self.get_json(path, params)
         output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(__import__("json").dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        output.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
         return output
-
-
-def require_env() -> None:
-    for name in ("KRX_API_BASE_URL", "KRX_API_KEY"):
-        if not os.getenv(name):
-            raise RuntimeError(f"Missing required environment variable: {name}")

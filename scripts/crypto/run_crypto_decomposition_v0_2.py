@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from scripts.crypto.run_crypto_p0_p6_v0_2 import fold_boundaries
 from src.investment_pipeline.crypto_entry import (
     V02_COOLDOWN_BARS,
     add_forward_outcomes,
@@ -67,26 +68,7 @@ def grouped_summary(frame: pd.DataFrame, group_cols: list[str]) -> list[dict]:
     return rows
 
 
-def fold_boundaries(n: int) -> list[dict]:
-    if n <= 0:
-        return []
-    test_size = max(100, n // 10)
-    train_end = max(200, int(n * 0.50))
-    folds: list[dict] = []
-    while train_end + test_size <= n:
-        folds.append(
-            {
-                "split_id": f"WF{len(folds) + 1:02d}",
-                "train_rows": int(train_end),
-                "test_start": int(train_end),
-                "test_end": int(train_end + test_size),
-            }
-        )
-        train_end += test_size
-    return folds
-
-
-def prepare_primary(raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+def prepare_signals(raw: pd.DataFrame) -> pd.DataFrame:
     required = {"timestamp", "open", "high", "low", "close", "volume"}
     missing = sorted(required - set(raw.columns))
     if missing:
@@ -94,14 +76,7 @@ def prepare_primary(raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     signals = generate_signals(raw.sort_values("timestamp").reset_index(drop=True))
     signals = cluster_episodes(signals, cooldown_bars=V02_COOLDOWN_BARS)
-    signals = add_forward_outcomes(signals)
-    signals = add_signal_type(signals)
-
-    primary = signals[
-        signals["primary_event"] & signals["entry_state"].isin(CANDIDATE_STATES)
-    ].copy()
-    primary["year"] = primary["timestamp"].dt.year.astype(int)
-    return primary, signals
+    return add_forward_outcomes(signals)
 
 
 def decompose(
@@ -109,11 +84,12 @@ def decompose(
     oos_fraction: float = 0.20,
     permission_history: pd.DataFrame | None = None,
 ) -> dict:
-    primary, signals = prepare_primary(raw)
+    signals = prepare_signals(raw)
     signals, permission_result = attach_permission_overlay(
         signals,
         permission_history,
     )
+    # Decompose once, after the overlay: decomposition_regime reads confirmed_regime.
     signals = SignalDecompositionAgent().apply(signals)
     primary = signals[
         signals["primary_event"] & signals["entry_state"].isin(CANDIDATE_STATES)

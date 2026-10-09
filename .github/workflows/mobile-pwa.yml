@@ -9,6 +9,7 @@ on:
       - "tests/test_mobile_entry_parity.py"
       - "tests/test_entry_push_decision.py"
       - "tests/test_live_entry_snapshot.py"
+      - "tests/test_live_zone_parity.py"
       - "scripts/crypto/live_entry_snapshot.py"
       - "scripts/crypto/push/**"
       - ".github/workflows/mobile-pwa.yml"
@@ -20,6 +21,7 @@ on:
       - "tests/test_mobile_entry_parity.py"
       - "tests/test_entry_push_decision.py"
       - "tests/test_live_entry_snapshot.py"
+      - "tests/test_live_zone_parity.py"
       - "scripts/crypto/live_entry_snapshot.py"
       - "scripts/crypto/push/**"
       - ".github/workflows/mobile-pwa.yml"
@@ -43,7 +45,7 @@ jobs:
       - name: JS port must match Python crypto_entry
         env:
           PYTHONPATH: .
-        run: python -m pytest tests/test_mobile_entry_parity.py tests/test_entry_push_decision.py tests/test_live_entry_snapshot.py tests/test_crypto_entry.py -q
+        run: python -m pytest tests/test_mobile_entry_parity.py tests/test_entry_push_decision.py tests/test_live_entry_snapshot.py tests/test_live_zone_parity.py tests/test_crypto_entry.py -q
 
   deploy:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
