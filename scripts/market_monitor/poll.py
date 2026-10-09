@@ -100,12 +100,6 @@ def session_bucket() -> str:
     return "GLOBAL_TRANSITION"
 
 
-def pct_change(a, b):
-    if a in (None, 0) or b is None:
-        return None
-    return (b / a - 1) * 100
-
-
 def status_from_change(change, threshold):
     if change is None:
         return "N/A"
@@ -162,7 +156,9 @@ def build_state(cfg: dict, raw: dict) -> dict:
         "RISK": risk_status,
         "TREND": trend_status,
         "BREADTH": breadth_status,
-        "LEADERS": "GREEN" if breadth is not None and breadth >= 0.70 else "RED" if breadth is not None and breadth < 0.30 else "AMBER" if breadth is not None else "N/A",
+        # LEADERS is currently the breadth proxy under the same config thresholds;
+        # material_abs_pct_15m.leader is not used yet.
+        "LEADERS": breadth_status,
         "RATES": status_from_change(
             macro.get("US10Y", {}).get("change_pct") if macro.get("US10Y", {}).get("ok") else None,
             dth["macro"],
@@ -212,7 +208,6 @@ def delta(prev: dict | None, cur: dict) -> list[str]:
 def should_alert(prev: dict | None, cur: dict, changes: list[str]) -> tuple[str, bool]:
     if not prev:
         return "P2", False
-    severe = {"RED"}
     p0 = any(cur.get(k) == "RED" and prev.get(k) != "RED" for k in ["RISK", "TREND"]) and (
         cur.get("metrics", {}).get("VIX_pct") is not None
     )

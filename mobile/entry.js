@@ -1,9 +1,9 @@
 // Browser port of src/investment_pipeline/crypto_entry.py (v0.2) and the
 // live-zone logic in scripts/crypto/live_entry_snapshot.py.
 // Pure functions only: no DOM, no network. Parity is checked by
-// tests/test_mobile_entry_parity.py against the Python implementation.
+// tests/test_mobile_entry_parity.py and tests/test_live_zone_parity.py against
+// the Python implementation.
 
-export const V02_COOLDOWN_BARS = 5;
 export const V02_BREAKOUT_BUFFER = 0.005;
 export const V02_BREAKOUT_VOLUME_RATIO = 1.2;
 export const V02_STABILIZATION_GREEN_MIN = 2;
@@ -152,11 +152,22 @@ export function generateSignals(rows) {
   });
 }
 
+// Key order matters: app.js draws the guide lines from Object.entries(levels).
+export function researchLevels(h) {
+  return {
+    Z1_upper: h * 0.95,
+    Z1_lower: h * 0.92,
+    Z2_lower: h * 0.88,
+    breakout_confirmation: h * (1 + V02_BREAKOUT_BUFFER),
+  };
+}
+
 export function liveZone(livePrice, priorHigh60) {
-  if (livePrice >= priorHigh60 * 1.005) return "BREAKOUT";
-  if (livePrice > priorHigh60 * 0.95) return "Z0";
-  if (livePrice > priorHigh60 * 0.92) return "Z1";
-  if (livePrice > priorHigh60 * 0.88) return "Z2";
+  const L = researchLevels(priorHigh60);
+  if (livePrice >= L.breakout_confirmation) return "BREAKOUT";
+  if (livePrice > L.Z1_upper) return "Z0";
+  if (livePrice > L.Z1_lower) return "Z1";
+  if (livePrice > L.Z2_lower) return "Z2";
   return "Z3";
 }
 
@@ -184,12 +195,7 @@ export function buildSnapshot(daily, livePrice, dataSource, asset = "BTCUSDT") {
     drawdown60: last.drawdown60,
     live_drawdown60: livePrice / h - 1,
     ma: { ma20: last.ma20, ma50: last.ma50, ma200: last.ma200 },
-    research_levels: {
-      Z1_upper: h * 0.95,
-      Z1_lower: h * 0.92,
-      Z2_lower: h * 0.88,
-      breakout_confirmation: h * 1.005,
-    },
+    research_levels: researchLevels(h),
     promotion_gate: {
       threshold_evidence: "FAIL",
       full_buy_permission: "BLOCKED",

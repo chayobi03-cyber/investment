@@ -16,6 +16,7 @@ on:
       - "tests/test_crypto_risk_engine.py"
       - "tests/test_crypto_permission_overlay.py"
       - "tests/test_crypto_decomposition.py"
+      - "tests/test_walk_forward_folds.py"
       - "config/crypto_market_regime_entry_v0.2.json"
       - "schemas/crypto_p0_p6_v0.2.schema.json"
       - ".github/workflows/crypto-market-regime-p0-p6-v0-2.yml"
@@ -52,6 +53,7 @@ jobs:
             tests/test_crypto_risk_engine.py \
             tests/test_crypto_permission_overlay.py \
             tests/test_crypto_decomposition.py \
+            tests/test_walk_forward_folds.py \
             tests/test_signal_decomposition_agent.py \
             tests/test_crypto_threshold_freeze.py
 
