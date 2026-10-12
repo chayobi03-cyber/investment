@@ -25,7 +25,7 @@ create table investment_learning.il_market_runs (
     analysis_asof timestamptz not null,
     session_date date not null,
     session text not null check (session in ('KOREA', 'US', 'OVERLAP', 'GLOBAL_TRANSITION')),
-    run_kind text not null check (run_kind in ('INTRADAY_MONITOR', 'EOD_ANALYSIS', 'MANUAL_ANALYSIS', 'BACKFILL')),
+    run_kind text not null check (run_kind in ('INTRADAY_MONITOR', 'PREOPEN_ANALYSIS', 'EOD_ANALYSIS', 'MANUAL_ANALYSIS', 'BACKFILL')),
     run_status text not null check (run_status in ('COMPLETED', 'DATA_NOT_READY', 'BLOCKED', 'FAILED')),
     quality_status text not null check (quality_status in ('GREEN', 'AMBER', 'RED', 'N_A')),
     code_sha text not null,
