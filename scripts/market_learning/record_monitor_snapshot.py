@@ -107,8 +107,22 @@ def _effective_quality(
             or series_status not in VALID_FRESHNESS
         ):
             missing.append(key)
-        elif series_status == "STALE":
-            stale.append(key)
+        else:
+            required_fields = ["price"]
+            if isinstance(item, dict) and item.get("market_session_state") == "ACTIVE":
+                required_fields.append("change_pct_15m")
+            elif isinstance(item, dict) and item.get("market_session_state") == "CLOSED":
+                required_fields.append("last_completed_session_return_pct")
+            else:
+                required_fields.extend(["change_pct_15m", "last_completed_session_return_pct"])
+            missing_values = [
+                field for field in required_fields
+                if _as_finite_number(item.get(field)) is None
+            ]
+            if missing_values:
+                missing.extend(f"{key}.{field}" for field in missing_values)
+            elif series_status == "STALE":
+                stale.append(key)
 
     reported = state.get("DATA_QUALITY", "RED")
     if reported not in {"GREEN", "AMBER", "RED", "DATA_NOT_READY"}:
@@ -289,9 +303,9 @@ def build_envelope(
             "published_at": None,
             "available_at": asof,
             "source_id": f"derived:market-monitor:{calculation_version}",
-            "quality_status": "VALID" if effective_quality == "GREEN" else "STALE" if effective_quality == "AMBER" else "REJECTED",
+            "quality_status": "VALID" if effective_quality == "GREEN" else "STALE" if number is not None else "MISSING",
             "required_for_decision": False,
-            "freshness_status": derived_freshness if effective_quality == "GREEN" else "STALE" if effective_quality == "AMBER" else "UNKNOWN",
+            "freshness_status": derived_freshness if effective_quality == "GREEN" else "STALE" if number is not None else "MISSING",
         }
 
     dimensions = _dimension_payload(state, calculation_version)
