@@ -161,5 +161,62 @@ class MarketMonitorTests(unittest.TestCase):
         )
 
 
+    def test_chart_parser_separates_5m_15m_and_daily_close_returns(self):
+        zone = ZoneInfo("Asia/Seoul")
+        bars = [
+            (datetime(2026, 10, 9, 15, 25, tzinfo=zone), 6625.93),
+            (datetime(2026, 10, 12, 9, 0, tzinfo=zone), 6500.0),
+            (datetime(2026, 10, 12, 15, 25, tzinfo=zone), 6384.24),
+            (datetime(2026, 10, 13, 9, 0, tzinfo=zone), 6380.0),
+            (datetime(2026, 10, 13, 9, 15, tzinfo=zone), 6350.0),
+            (datetime(2026, 10, 13, 9, 25, tzinfo=zone), 6320.0),
+            (datetime(2026, 10, 13, 9, 30, tzinfo=zone), 6310.0),
+        ]
+        timestamps = [int(dt.timestamp()) for dt, _ in bars]
+        closes = [price for _, price in bars]
+        now = datetime(2026, 10, 13, 9, 30, tzinfo=zone)
+        result = MOD.summarize_chart_payload(
+            "^KS11",
+            {"exchangeTimezoneName": "Asia/Seoul", "currency": "KRW", "exchangeName": "KSE"},
+            timestamps,
+            closes,
+            market_session="KOREA",
+            cfg=MOD.load_config(),
+            now=now,
+        )
+        self.assertEqual(result["market_session_state"], "ACTIVE")
+        self.assertAlmostEqual(result["change_pct_5m"], (6310 / 6320 - 1) * 100, places=6)
+        self.assertAlmostEqual(result["change_pct_15m"], (6310 / 6350 - 1) * 100, places=6)
+        self.assertAlmostEqual(
+            result["last_completed_session_return_pct"],
+            (6384.24 / 6625.93 - 1) * 100,
+            places=5,
+        )
+        self.assertNotAlmostEqual(result["change_pct_15m"], result["last_completed_session_return_pct"], places=2)
+
+    def test_fresh_fx_cannot_mask_stale_required_korea_series(self):
+        cfg, raw = self._raw(None)
+        raw["collected_at"] = "2026-10-08T00:45:00Z"  # 09:45 KST: Korea session is active.
+        for key in ("KOSPI", "KOSDAQ", "VIX", "NASDAQ", "SOX", "SP500"):
+            if key in raw["groups"]["indices"]:
+                raw["groups"]["indices"][key]["market_session_state"] = "CLOSED"
+        raw["groups"]["indices"]["KOSPI"]["market_session_state"] = "ACTIVE"
+        raw["groups"]["indices"]["KOSDAQ"]["market_session_state"] = "ACTIVE"
+        for name in cfg["symbols"]["korea_leaders"]:
+            raw["groups"]["korea_leaders"][name]["timestamp"] = "2026-10-08T00:00:00Z"
+            raw["groups"]["korea_leaders"][name]["market_session_state"] = "ACTIVE"
+        raw["groups"]["indices"]["KOSPI"]["timestamp"] = "2026-10-08T00:00:00Z"
+        raw["groups"]["indices"]["KOSDAQ"]["timestamp"] = "2026-10-08T00:00:00Z"
+        raw["groups"]["macro"]["USD_JPY"]["timestamp"] = raw["collected_at"]
+        raw["groups"]["macro"]["USD_JPY"]["market_session_state"] = "ACTIVE"
+
+        state = MOD.build_state(cfg, raw)
+        self.assertEqual(state["metrics"]["freshness_by_series"]["indices.KOSPI"], "STALE")
+        self.assertNotEqual(state["DATA_QUALITY"], "GREEN")
+        severity, alert = MOD.should_alert(None, state, [])
+        self.assertEqual(severity, "P1")
+        self.assertTrue(alert)
+
+
 if __name__ == "__main__":
     unittest.main()
