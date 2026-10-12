@@ -99,3 +99,37 @@ class OutcomeLog:
 
     def to_record(self) -> dict[str, Any]:
         return asdict(self)
+
+
+@dataclass(frozen=True)
+class MarketRunSnapshot:
+    """Immutable point-in-time monitor run stored in the Historical DB v1 ledger."""
+
+    run_id: str
+    analysis_asof: str
+    session_date: str
+    run_kind: str
+    session: str
+    data_quality: str
+    decision_state: str
+    regime: str | None = None
+    risk_state: str | None = None
+    trend_state: str | None = None
+    breadth_state: str | None = None
+    leaders_state: str | None = None
+    rates_state: str | None = None
+    fx_state: str | None = None
+    oil_state: str | None = None
+    gold_state: str | None = None
+    input_sha256: str = ""
+    code_sha: str = ""
+    config_version: str = ""
+    rule_version: str = ""
+    calculation_version: str = ""
+    summary_json: str = "{}"
+    envelope_json: str = "{}"
+    source_snapshot_json: str = "{}"
+    record_origin: str = "market_monitor"
+
+    def to_record(self) -> dict[str, Any]:
+        return asdict(self)

@@ -4,7 +4,7 @@ import csv
 from pathlib import Path
 from typing import Iterable, Mapping
 
-from .models import DecisionLog, MarketSnapshot, OutcomeLog, StockSnapshot
+from .models import DecisionLog, MarketRunSnapshot, MarketSnapshot, OutcomeLog, StockSnapshot
 
 
 class AppendOnlyCsvStore:
@@ -50,6 +50,7 @@ MARKET_COLUMNS = tuple(MarketSnapshot.__dataclass_fields__.keys())
 STOCK_COLUMNS = tuple(StockSnapshot.__dataclass_fields__.keys())
 DECISION_COLUMNS = tuple(DecisionLog.__dataclass_fields__.keys())
 OUTCOME_COLUMNS = tuple(OutcomeLog.__dataclass_fields__.keys())
+RUN_COLUMNS = tuple(MarketRunSnapshot.__dataclass_fields__.keys())
 
 
 class HistoricalStore:
@@ -59,6 +60,7 @@ class HistoricalStore:
         self.stock = AppendOnlyCsvStore(root / "stock_snapshots.csv", "snapshot_id", STOCK_COLUMNS)
         self.decisions = AppendOnlyCsvStore(root / "decisions.csv", "decision_id", DECISION_COLUMNS)
         self.outcomes = AppendOnlyCsvStore(root / "outcomes.csv", "outcome_id", OUTCOME_COLUMNS)
+        self.runs = AppendOnlyCsvStore(root / "market_runs.csv", "run_id", RUN_COLUMNS)
 
     def append_market(self, snapshot: MarketSnapshot) -> bool:
         return self.market.append(snapshot.to_record())
@@ -71,3 +73,6 @@ class HistoricalStore:
 
     def append_outcome(self, outcome: OutcomeLog) -> bool:
         return self.outcomes.append(outcome.to_record())
+
+    def append_run(self, run: MarketRunSnapshot) -> bool:
+        return self.runs.append(run.to_record())

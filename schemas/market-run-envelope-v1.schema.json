@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://investment.local/schemas/market-run-envelope-v1.schema.json",
+  "title": "Investment Market Run Envelope V1",
+  "description": "Immutable, point-in-time record of a market monitor or analysis run. Runtime validators must also enforce cross-field time invariants.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "idempotency_key",
+    "analysis_asof",
+    "session_date",
+    "run_kind",
+    "session",
+    "data_quality",
+    "provenance",
+    "market_state",
+    "forecasts",
+    "decision"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "analysis_asof": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Frozen decision cutoff, not the current wall clock during later replay."
+    },
+    "session_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "run_kind": {
+      "enum": ["INTRADAY_MONITOR", "PREOPEN_ANALYSIS", "EOD_ANALYSIS", "MANUAL_ANALYSIS", "BACKFILL"]
+    },
+    "session": {
+      "enum": ["KOREA", "US", "OVERLAP", "GLOBAL_TRANSITION"]
+    },
+    "data_quality": {
+      "enum": ["GREEN", "AMBER", "RED", "DATA_NOT_READY"]
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code_sha",
+        "config_version",
+        "rule_version",
+        "prompt_version",
+        "calculation_version",
+        "input_sha256"
+      ],
+      "properties": {
+        "code_sha": {"type": "string", "minLength": 1, "maxLength": 128},
+        "config_version": {"type": "string", "minLength": 1, "maxLength": 120},
+        "rule_version": {"type": ["string", "null"], "maxLength": 120},
+        "prompt_version": {"type": "string", "minLength": 1, "maxLength": 120},
+        "calculation_version": {"type": "string", "minLength": 1, "maxLength": 120},
+        "input_sha256": {"$ref": "#/$defs/sha256"},
+        "artifact_uri": {"type": ["string", "null"], "maxLength": 2000}
+      }
+    },
+    "market_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["regime", "dimensions", "metrics"],
+      "properties": {
+        "regime": {
+          "enum": ["R1", "R2", "R3", "R4", "R5", "R6", "UNCONFIRMED", "DATA_NOT_READY"]
+        },
+        "dimensions": {
+          "type": "object",
+          "description": "Extensible registry. V1 examples: TREND, BREADTH, RISK, RATES_LIQUIDITY, CROSS_ASSET, ENERGY, FX, GEO.",
+          "propertyNames": {"pattern": "^[A-Z][A-Z0-9_]{0,99}$"},
+          "additionalProperties": {"$ref": "#/$defs/dimension"}
+        },
+        "metrics": {
+          "type": "object",
+          "propertyNames": {"minLength": 1, "maxLength": 160},
+          "additionalProperties": {"$ref": "#/$defs/metric"}
+        }
+      }
+    },
+    "forecasts": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/forecast"},
+      "maxItems": 1000
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "buy_allowed", "execution_allowed", "reason_codes"],
+      "properties": {
+        "state": {
+          "enum": ["DATA_NOT_READY", "BLOCKED", "RESEARCH_ONLY", "SHADOW"]
+        },
+        "buy_allowed": {"const": false},
+        "execution_allowed": {"const": false},
+        "reason_codes": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1, "maxLength": 120},
+          "uniqueItems": true,
+          "maxItems": 100
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "headline": {"type": "string", "maxLength": 500},
+        "state_delta": {
+          "type": "array",
+          "items": {"type": "string", "maxLength": 300},
+          "maxItems": 100
+        },
+        "unresolved_gaps": {
+          "type": "array",
+          "items": {"type": "string", "maxLength": 300},
+          "maxItems": 100
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {"type": "string", "format": "uuid"},
+          "uniqueItems": true,
+          "maxItems": 1000
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "dimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "confidence", "evidence_ids"],
+      "properties": {
+        "state": {
+          "enum": ["GREEN", "AMBER", "RED", "N_A", "DATA_NOT_READY", "BLOCKED"]
+        },
+        "score": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+        "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "sample_count": {"type": "integer", "minimum": 0},
+        "calculation_version": {"type": "string", "minLength": 1, "maxLength": 120},
+        "evidence_ids": {
+          "type": "array",
+          "items": {"type": "string", "format": "uuid"},
+          "uniqueItems": true,
+          "maxItems": 1000
+        }
+      }
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit", "observed_at", "available_at", "source_id", "quality_status", "required_for_decision", "freshness_status"],
+      "properties": {
+        "value": {"type": ["number", "null"]},
+        "unit": {"type": ["string", "null"], "maxLength": 80},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "published_at": {"type": ["string", "null"], "format": "date-time"},
+        "available_at": {"type": "string", "format": "date-time"},
+        "source_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "evidence_id": {"type": ["string", "null"], "format": "uuid"},
+        "quality_status": {"enum": ["VALID", "STALE", "MISSING", "REJECTED", "REVISED"]},
+        "required_for_decision": {"type": "boolean"},
+        "freshness_status": {"enum": ["FRESH_ACTIVE_SESSION", "VALID_CLOSED_SESSION", "STALE", "MISSING", "UNKNOWN"]},
+        "failure_code": {"type": ["string", "null"], "maxLength": 120}
+      }
+    },
+    "forecast": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "forecast_type",
+        "subject_type",
+        "subject_key",
+        "target_key",
+        "horizon",
+        "direction",
+        "permission_state",
+        "buy_allowed",
+        "execution_allowed"
+      ],
+      "properties": {
+        "forecast_type": {"type": "string", "minLength": 1, "maxLength": 80},
+        "subject_type": {
+          "enum": ["MARKET", "INDEX", "SECTOR", "STOCK", "ETF", "CRYPTO", "FX", "COMMODITY", "PORTFOLIO"]
+        },
+        "subject_key": {"type": "string", "minLength": 1, "maxLength": 160},
+        "target_key": {"type": "string", "minLength": 1, "maxLength": 160},
+        "horizon": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "unit"],
+          "properties": {
+            "value": {"type": "integer", "minimum": 1},
+            "unit": {"enum": ["INTRADAY_MINUTES", "TRADING_SESSIONS", "CALENDAR_DAYS"]},
+            "definition_version": {"type": "string", "maxLength": 120}
+          }
+        },
+        "direction": {"enum": ["UP", "DOWN", "NEUTRAL", "EVENT", "DISTRIBUTION"]},
+        "probability_up": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "probability_down": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "probability_event": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "expected_return_pct": {"type": ["number", "null"]},
+        "downside_q05_pct": {"type": ["number", "null"]},
+        "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "permission_state": {"enum": ["DATA_NOT_READY", "BLOCKED", "RESEARCH_ONLY", "SHADOW"]},
+        "buy_allowed": {"const": false},
+        "execution_allowed": {"const": false},
+        "model_version": {"type": "string", "minLength": 1, "maxLength": 120},
+        "rule_version": {"type": ["string", "null"], "maxLength": 120},
+        "evidence_ids": {
+          "type": "array",
+          "items": {"type": "string", "format": "uuid"},
+          "uniqueItems": true,
+          "maxItems": 1000
+        }
+      }
+    }
+  }
+}

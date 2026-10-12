@@ -20,6 +20,13 @@ on:
       - "tests/test_binance_derivatives_archive.py"
       - "tests/test_fred_permission_macro.py"
       - "tests/test_permission_evidence_bundle.py"
+      - "scripts/market_learning/validate_envelope.py"
+      - "schemas/market-run-envelope-v1.schema.json"
+      - "tests/test_market_run_envelope.py"
+      - "scripts/market_learning/record_monitor_snapshot.py"
+      - "src/investment_pipeline/history/models.py"
+      - "src/investment_pipeline/history/store.py"
+      - "tests/test_market_history_recorder.py"
       - "requirements.txt"
       - ".github/workflows/collectors-ci.yml"
   push:
@@ -37,6 +44,13 @@ on:
       - "tests/test_binance_derivatives_archive.py"
       - "tests/test_fred_permission_macro.py"
       - "tests/test_permission_evidence_bundle.py"
+      - "scripts/market_learning/validate_envelope.py"
+      - "schemas/market-run-envelope-v1.schema.json"
+      - "tests/test_market_run_envelope.py"
+      - "scripts/market_learning/record_monitor_snapshot.py"
+      - "src/investment_pipeline/history/models.py"
+      - "src/investment_pipeline/history/store.py"
+      - "tests/test_market_history_recorder.py"
       - "requirements.txt"
       - ".github/workflows/collectors-ci.yml"
 
@@ -70,4 +84,6 @@ jobs:
             tests/test_market_monitor_workflow.py \
             tests/test_binance_derivatives_archive.py \
             tests/test_fred_permission_macro.py \
-            tests/test_permission_evidence_bundle.py
+            tests/test_permission_evidence_bundle.py \
+            tests/test_market_run_envelope.py \
+            tests/test_market_history_recorder.py
