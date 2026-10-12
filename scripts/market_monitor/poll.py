@@ -548,7 +548,7 @@ def build_state(cfg: dict, raw: dict) -> dict:
         "metrics": {
             # Legacy names are retained as aliases for the validated 15-minute move only.
             # They are null outside a validated current session; use the explicit fields below.
-            "KOSPI_pct": idx.get("KOSPI", {}).get("change_pct_15m"),
+            "KOSPI_pct": _active_move(idx.get("KOSPI"), freshness_statuses.get("indices.KOSPI", "UNKNOWN")),
             "NASDAQ_pct": idx.get("NASDAQ", {}).get("change_pct_15m"),
             "SOX_pct": idx.get("SOX", {}).get("change_pct_15m"),
             "VIX_pct": vix_change_15m,
