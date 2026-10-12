@@ -433,18 +433,17 @@ def build_state(cfg: dict, raw: dict) -> dict:
     dth_daily = cfg["thresholds"].get("material_abs_pct_daily", {"index": 2.0, "macro": 1.0, "leader": 3.0, "risk": 10.0})
 
     if session == "KOREA":
-        intraday_trend = [idx.get("KOSPI"), idx.get("KOSDAQ")]
+        intraday_trend_names = ["KOSPI", "KOSDAQ"]
     elif session == "US":
-        intraday_trend = [idx.get("SP500"), idx.get("NASDAQ"), idx.get("SOX")]
+        intraday_trend_names = ["SP500", "NASDAQ", "SOX"]
     else:
-        intraday_trend = []
+        intraday_trend_names = []
     fresh_trend_items = []
-    for item in intraday_trend:
-        if item:
-            key = f"indices.{item.get('symbol_name')}" if item.get("symbol_name") else None
-            freshness = freshness_statuses.get(key, "UNKNOWN") if key else None
-            if freshness == "FRESH_ACTIVE_SESSION" and item.get("change_pct_15m") is not None:
-                fresh_trend_items.append(item)
+    for name in intraday_trend_names:
+        item = idx.get(name)
+        freshness = freshness_statuses.get(f"indices.{name}", "UNKNOWN")
+        if item and freshness == "FRESH_ACTIVE_SESSION" and item.get("change_pct_15m") is not None:
+            fresh_trend_items.append(item)
     if fresh_trend_items:
         trend_horizon = "15m"
         trend = _mean([item["change_pct_15m"] for item in fresh_trend_items])
