@@ -32,6 +32,8 @@ def valid_envelope():
                     "available_at": "2026-10-12T23:59:00Z",
                     "source_id": "yahoo-chart",
                     "quality_status": "VALID",
+                    "required_for_decision": True,
+                    "freshness_status": "FRESH_ACTIVE_SESSION",
                 }
             },
         },
@@ -127,3 +129,31 @@ def test_timezone_is_required():
 
 def test_non_object_payload_is_rejected():
     assert validate_envelope([]) == ["$: expected a JSON object"]
+
+
+def test_fresh_unrelated_fx_cannot_mask_stale_required_korea():
+    envelope = valid_envelope()
+    envelope["market_state"]["metrics"]["KOSPI_pct"]["quality_status"] = "STALE"
+    envelope["market_state"]["metrics"]["KOSPI_pct"]["freshness_status"] = "STALE"
+    envelope["market_state"]["metrics"]["USD_JPY"] = {
+        "value": 149.2,
+        "unit": "JPY_per_USD",
+        "observed_at": "2026-10-12T23:59:40Z",
+        "published_at": "2026-10-12T23:59:40Z",
+        "available_at": "2026-10-12T23:59:45Z",
+        "source_id": "yahoo-chart",
+        "quality_status": "VALID",
+        "required_for_decision": False,
+        "freshness_status": "FRESH_ACTIVE_SESSION",
+    }
+    errors = validate_envelope(envelope)
+    assert any("required evidence is not decision-usable" in error for error in errors)
+    assert any("GREEN cannot mask stale/missing required evidence" in error for error in errors)
+    assert any("stale/missing required evidence must fail closed" in error for error in errors)
+
+
+def test_valid_closed_session_close_is_acceptable_when_explicit():
+    envelope = valid_envelope()
+    metric = envelope["market_state"]["metrics"]["KOSPI_pct"]
+    metric["freshness_status"] = "VALID_CLOSED_SESSION"
+    assert validate_envelope(envelope) == []
