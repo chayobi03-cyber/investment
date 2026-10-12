@@ -197,3 +197,23 @@ The V1 contract and store are not considered production-ready until tests show t
 This change is an implementation proposal, not a claim that a live database has been provisioned. The currently connected Supabase projects are already associated with other systems. Do not apply this schema to them. Before P1, establish a dedicated investment database target, confirm cost/organization if provisioning a new project, apply the migration in an isolated development environment, run security/performance advisors, validate the schema and writer, then promote via reviewed migration.
 
 The current DecisionGate and upstream M0/M1/M2 controls remain authoritative. This learning loop supplies evidence for improvement; it does not bypass them.
+
+
+## 15. First incident seed: monitor return-horizon and freshness failure
+
+Seed the learning loop with the open P1 incident documented in [investment Issue #27](https://github.com/chayobi03-cyber/investment/issues/27). On the 2026-10-13 07:28 KST monitor snapshot, KOSPI was reported at -0.377% while the reported 2026-10-12 regular-session close was -3.65%. KOSDAQ was reported at -0.435% versus -4.83%; Samsung Electronics at -0.299% versus -4.39%; SK hynix at -0.496% versus -4.52%. The snapshot nevertheless carried DATA_QUALITY=GREEN and RISK=GREEN.
+
+Initial diagnosis from the incident:
+- fetch_chart() divided the last two 5-minute closes and exposed that result as generic change_pct; this did not represent either a validated 15-minute move or a daily close-to-close return.
+- The configured threshold was described as a 15-minute threshold but consumed the generic last-bar return.
+- Global freshness was calculated using the newest timestamp among all symbols. A fresh USD/JPY observation therefore masked materially older KOSPI/KOSDAQ/leader observations.
+- The bad upstream semantics propagated to market state/alerting and could suppress risk warnings.
+
+Required countermeasure and regression evidence:
+1. Make every return field explicit (5m, validated 15m, current-session versus prior regular-session close-to-close) and pin the calculation/horizon version.
+2. Calculate each measure only from timestamp-compatible bars and preserve the observation/reference timestamps.
+3. Evaluate freshness per series and required group using session-aware rules; a fresh unrelated series must never clear a stale critical series.
+4. Reproduce both the close-to-close divergence and the fresh-USD/JPY/stale-Korea scenario in deterministic tests.
+5. Confirm that required input gaps produce DATA_NOT_READY or BLOCKED and never produce an authorized buy or execution signal.
+
+The incident must remain linked to its original run, evidence, diagnosis, countermeasure, evaluation and governance events. Do not mark the root cause as remediated merely because a patch was committed: require test results and a subsequent verified shadow/production observation. Until that remedy has independently passed, the affected monitor fields remain non-authoritative for buy timing, matching the current incident's stated safety posture.
