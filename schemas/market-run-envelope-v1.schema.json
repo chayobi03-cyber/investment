@@ -162,7 +162,7 @@
     "metric": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["value", "unit", "observed_at", "available_at", "source_id", "quality_status"],
+      "required": ["value", "unit", "observed_at", "available_at", "source_id", "quality_status", "required_for_decision", "freshness_status"],
       "properties": {
         "value": {"type": ["number", "null"]},
         "unit": {"type": ["string", "null"], "maxLength": 80},
@@ -172,6 +172,8 @@
         "source_id": {"type": "string", "minLength": 1, "maxLength": 160},
         "evidence_id": {"type": ["string", "null"], "format": "uuid"},
         "quality_status": {"enum": ["VALID", "STALE", "MISSING", "REJECTED", "REVISED"]},
+        "required_for_decision": {"type": "boolean"},
+        "freshness_status": {"enum": ["FRESH_ACTIVE_SESSION", "VALID_CLOSED_SESSION", "STALE", "MISSING", "UNKNOWN"]},
         "failure_code": {"type": ["string", "null"], "maxLength": 120}
       }
     },
