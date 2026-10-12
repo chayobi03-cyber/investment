@@ -6,6 +6,7 @@ on:
     paths:
       - "scripts/crypto/run_asset_review_v0_1.py"
       - "scripts/crypto/run_crypto_p0_p6_v0_2.py"
+      - "src/investment_pipeline/crypto_entry.py"
       - "scripts/crypto/fetch_multi_asset_daily.py"
       - "config/crypto_asset_review_v0.1.json"
       - "tests/test_asset_review.py"
@@ -16,6 +17,7 @@ on:
     paths:
       - "scripts/crypto/run_asset_review_v0_1.py"
       - "scripts/crypto/run_crypto_p0_p6_v0_2.py"
+      - "src/investment_pipeline/crypto_entry.py"
       - "config/crypto_asset_review_v0.1.json"
       - ".github/workflows/crypto-asset-review.yml"
   schedule:

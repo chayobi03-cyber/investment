@@ -9,7 +9,13 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-from src.investment_pipeline.crypto_entry import V02_BREAKOUT_BUFFER, generate_signals
+from src.investment_pipeline.crypto_entry import (
+    V02_BREAKOUT_BUFFER,
+    V02_Z1_LOWER_MULT,
+    V02_Z1_UPPER_MULT,
+    V02_Z2_LOWER_MULT,
+    generate_signals,
+)
 
 API = "https://api.exchange.coinbase.com/products/{product}"
 # Coinbase product -> asset id used in config/crypto_market_regime_entry_v0.2.json
@@ -76,9 +82,9 @@ def get_live_price(product: str) -> float:
 # Keep the multiplicative price form: a drawdown re-expression flips near-boundary prices.
 def research_levels(prior_high60: float) -> dict[str, float]:
     return {
-        "Z1_upper": prior_high60 * 0.95,
-        "Z1_lower": prior_high60 * 0.92,
-        "Z2_lower": prior_high60 * 0.88,
+        "Z1_upper": prior_high60 * V02_Z1_UPPER_MULT,
+        "Z1_lower": prior_high60 * V02_Z1_LOWER_MULT,
+        "Z2_lower": prior_high60 * V02_Z2_LOWER_MULT,
         "breakout_confirmation": prior_high60 * (1.0 + V02_BREAKOUT_BUFFER),
     }
 

@@ -9,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.investment_pipeline.crypto_entry import (
+    V02_COOLDOWN_BARS,
     add_forward_outcomes,
     cluster_episodes,
     generate_signals,
@@ -73,7 +74,7 @@ def main() -> int:
     sig = generate_signals(raw)
 
     # P2: episode clustering.
-    sig = cluster_episodes(sig, cooldown_bars=5)
+    sig = cluster_episodes(sig, cooldown_bars=V02_COOLDOWN_BARS)
 
     # P3/P4: next-session execution and forward outcomes.
     sig = add_forward_outcomes(sig)
@@ -113,7 +114,7 @@ def main() -> int:
         "p2": {
             "status": "PASS",
             "primary_events": int(len(primary)),
-            "cooldown_bars": 5,
+            "cooldown_bars": V02_COOLDOWN_BARS,
         },
         "p3_p4": {
             "status": "PASS",

@@ -23,8 +23,12 @@ from scripts.crypto.run_crypto_p0_p6_v0_2 import (
 )
 from src.investment_pipeline.crypto_entry import (
     V02_COOLDOWN_BARS,
+    V02_Z1_MAX_DD,
+    V02_Z2_MAX_DD,
+    V02_Z3_MAX_DD,
     add_entry_features,
     add_forward_outcomes,
+    assign_zones,
     cluster_episodes,
     signal_from_row,
 )
@@ -66,11 +70,7 @@ def signals_for(raw: pd.DataFrame, k: float) -> pd.DataFrame:
     if k != 1.0:
         dd = raw_dd / k
         df["drawdown60"] = dd
-        df["zone"] = "Z3"
-        df.loc[dd.isna(), "zone"] = "UNKNOWN"
-        df.loc[dd > -0.05, "zone"] = "Z0"
-        df.loc[(dd <= -0.05) & (dd > -0.08), "zone"] = "Z1"
-        df.loc[(dd <= -0.08) & (dd > -0.12), "zone"] = "Z2"
+        df["zone"] = assign_zones(dd)
     sig = df.apply(signal_from_row, axis=1)
     df["entry_state"] = sig.map(lambda s: s.state)
     df["entry_reason"] = sig.map(lambda s: "|".join(s.reason_codes))
@@ -122,7 +122,11 @@ def evaluate(raw: pd.DataFrame, btc: pd.DataFrame, k: float, oos_fraction: float
     stats = event_stats(oos_primary)
     return {
         "k": k,
-        "zone_depths": {"Z1": round(-0.05 * k, 4), "Z2": round(-0.08 * k, 4), "Z3": round(-0.12 * k, 4)},
+        "zone_depths": {
+            "Z1": round(V02_Z1_MAX_DD * k, 4),
+            "Z2": round(V02_Z2_MAX_DD * k, 4),
+            "Z3": round(V02_Z3_MAX_DD * k, 4),
+        },
         "oos_start": str(oos["timestamp"].min().date()),
         "oos_primary_events": int(len(oos_primary)),
         "threshold_validation": gate,
