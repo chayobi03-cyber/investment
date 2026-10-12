@@ -37,7 +37,7 @@
       "format": "date"
     },
     "run_kind": {
-      "enum": ["INTRADAY_MONITOR", "EOD_ANALYSIS", "MANUAL_ANALYSIS", "BACKFILL"]
+      "enum": ["INTRADAY_MONITOR", "PREOPEN_ANALYSIS", "EOD_ANALYSIS", "MANUAL_ANALYSIS", "BACKFILL"]
     },
     "session": {
       "enum": ["KOREA", "US", "OVERLAP", "GLOBAL_TRANSITION"]
