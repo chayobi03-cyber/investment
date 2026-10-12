@@ -23,6 +23,8 @@ VALID_DATA_QUALITY = {"GREEN", "AMBER", "RED", "DATA_NOT_READY"}
 VALID_DECISION_STATES = {"DATA_NOT_READY", "BLOCKED", "RESEARCH_ONLY", "SHADOW"}
 VALID_HORIZON_UNITS = {"INTRADAY_MINUTES", "TRADING_SESSIONS", "CALENDAR_DAYS"}
 VALID_QUALITY = {"VALID", "STALE", "MISSING", "REJECTED", "REVISED"}
+VALID_FRESHNESS = {"FRESH_ACTIVE_SESSION", "VALID_CLOSED_SESSION", "STALE", "MISSING", "UNKNOWN"}
+DECISION_USABLE_FRESHNESS = {"FRESH_ACTIVE_SESSION", "VALID_CLOSED_SESSION"}
 
 
 def _timestamp(value: Any, field: str, errors: list[str]) -> datetime | None:
@@ -93,6 +95,7 @@ def validate_envelope(payload: Any) -> list[str]:
         errors.append("$.market_state.metrics: expected object")
         metrics = {}
 
+    required_evidence_bad = False
     if asof is not None:
         for key, metric in metrics.items():
             prefix = f"$.market_state.metrics.{key}"
@@ -111,12 +114,26 @@ def validate_envelope(payload: Any) -> list[str]:
                 errors.append(f"{prefix}.observed_at: observation is later than analysis_asof")
             if published_at is not None and published_at > asof:
                 errors.append(f"{prefix}.published_at: publication is later than analysis_asof")
-            if metric.get("quality_status") not in VALID_QUALITY:
+            quality_status = metric.get("quality_status")
+            if quality_status not in VALID_QUALITY:
                 errors.append(f"{prefix}.quality_status: invalid quality state")
-            if metric.get("quality_status") == "VALID" and metric.get("value") is None:
+            freshness_status = metric.get("freshness_status")
+            if freshness_status not in VALID_FRESHNESS:
+                errors.append(f"{prefix}.freshness_status: invalid or missing freshness state")
+            required_for_decision = metric.get("required_for_decision")
+            if not isinstance(required_for_decision, bool):
+                errors.append(f"{prefix}.required_for_decision: explicit boolean is required")
+            if quality_status == "VALID" and metric.get("value") is None:
                 errors.append(f"{prefix}.value: VALID metric cannot have null value")
-            if metric.get("quality_status") in {"MISSING", "REJECTED"} and metric.get("value") is not None:
+            if quality_status in {"MISSING", "REJECTED"} and metric.get("value") is not None:
                 errors.append(f"{prefix}.value: MISSING/REJECTED metric cannot supply a decision value")
+            if required_for_decision is True and (
+                quality_status != "VALID"
+                or freshness_status not in DECISION_USABLE_FRESHNESS
+                or metric.get("value") is None
+            ):
+                required_evidence_bad = True
+                errors.append(f"{prefix}: required evidence is not decision-usable")
 
     for name, dimension in dimensions.items():
         prefix = f"$.market_state.dimensions.{name}"
@@ -144,6 +161,10 @@ def validate_envelope(payload: Any) -> list[str]:
         errors.append("$.decision.execution_allowed: must be false in V1")
     if payload["data_quality"] in {"RED", "DATA_NOT_READY"} and decision.get("state") not in {"BLOCKED", "DATA_NOT_READY"}:
         errors.append("$.decision.state: RED/DATA_NOT_READY evidence must fail closed")
+    if required_evidence_bad and payload["data_quality"] == "GREEN":
+        errors.append("$.data_quality: GREEN cannot mask stale/missing required evidence")
+    if required_evidence_bad and decision.get("state") not in {"BLOCKED", "DATA_NOT_READY"}:
+        errors.append("$.decision.state: stale/missing required evidence must fail closed")
 
     forecasts = payload["forecasts"]
     if not isinstance(forecasts, list):
