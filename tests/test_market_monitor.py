@@ -195,7 +195,7 @@ class MarketMonitorTests(unittest.TestCase):
         self.assertNotAlmostEqual(result["change_pct_15m"], result["last_completed_session_return_pct"], places=2)
 
     def test_fresh_fx_cannot_mask_stale_required_korea_series(self):
-        cfg, raw = self._raw(None)
+        cfg, raw = self._raw({"ok": True, "change_pct_5m": 0.05, "change_pct_15m": 0.1, "session_change_pct": 0.2, "last_completed_session_return_pct": 0.1, "market_session_state": "CLOSED", "timestamp": "2026-10-08T00:00:00Z"})
         raw["collected_at"] = "2026-10-08T00:45:00Z"  # 09:45 KST: Korea session is active.
         for key in ("KOSPI", "KOSDAQ", "VIX", "NASDAQ", "SOX", "SP500"):
             if key in raw["groups"]["indices"]:
@@ -207,6 +207,8 @@ class MarketMonitorTests(unittest.TestCase):
             raw["groups"]["korea_leaders"][name]["market_session_state"] = "ACTIVE"
         raw["groups"]["indices"]["KOSPI"]["timestamp"] = "2026-10-08T00:00:00Z"
         raw["groups"]["indices"]["KOSDAQ"]["timestamp"] = "2026-10-08T00:00:00Z"
+        for name in cfg["symbols"]["us_leaders"]:
+            raw["groups"]["us_leaders"][name]["market_session_state"] = "CLOSED"
         raw["groups"]["macro"]["USD_JPY"]["timestamp"] = raw["collected_at"]
         raw["groups"]["macro"]["USD_JPY"]["market_session_state"] = "ACTIVE"
 
