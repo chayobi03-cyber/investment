@@ -5,14 +5,17 @@ on:
   pull_request:
     paths:
       - "scripts/crypto/run_asset_review_v0_1.py"
+      - "scripts/crypto/run_crypto_p0_p6_v0_2.py"
       - "scripts/crypto/fetch_multi_asset_daily.py"
       - "config/crypto_asset_review_v0.1.json"
       - "tests/test_asset_review.py"
+      - "tests/test_walk_forward_folds.py"
       - ".github/workflows/crypto-asset-review.yml"
   push:
     branches: ["main"]
     paths:
       - "scripts/crypto/run_asset_review_v0_1.py"
+      - "scripts/crypto/run_crypto_p0_p6_v0_2.py"
       - "config/crypto_asset_review_v0.1.json"
       - ".github/workflows/crypto-asset-review.yml"
   schedule:
@@ -42,7 +45,7 @@ jobs:
       - name: Unit tests
         env:
           PYTHONPATH: .
-        run: python -m pytest -q -W error::DeprecationWarning tests/test_asset_review.py tests/test_live_entry_snapshot.py
+        run: python -m pytest -q -W error::DeprecationWarning tests/test_asset_review.py tests/test_walk_forward_folds.py tests/test_live_entry_snapshot.py
 
       - name: Fetch Coinbase PIT daily history
         env:

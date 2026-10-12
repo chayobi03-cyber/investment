@@ -47,6 +47,25 @@ class MarketMonitorTests(unittest.TestCase):
         }
         self.assertEqual(MOD.should_alert(cur, cur, []), ("P2", False))
 
+    def test_should_alert_priorities_are_pinned(self):
+        base = {
+            "RISK": "GREEN", "TREND": "GREEN", "BREADTH": "GREEN", "LEADERS": "GREEN",
+            "RATES": "GREEN", "FX": "GREEN", "OIL": "GREEN", "GOLD": "GREEN",
+            "BUY_TRIGGER": "UNCONFIRMED", "DATA_QUALITY": "GREEN", "metrics": {"VIX_pct": 1.0},
+        }
+        cases = [
+            (None, {}, ("P2", False)),
+            (base, {"DATA_QUALITY": "RED"}, ("P1", True)),
+            (base, {"RISK": "RED"}, ("P0", True)),
+            (base, {"RISK": "RED", "metrics": {"VIX_pct": None}}, ("P2", False)),
+            (base, {"BREADTH": "AMBER", "LEADERS": "AMBER"}, ("P1", True)),
+            (base, {"BREADTH": "AMBER"}, ("P2", False)),
+            (base, {"GOLD": "RED", "TREND": "AMBER"}, ("P2", False)),
+        ]
+        for prev, change, expected in cases:
+            cur = {**base, **change}
+            self.assertEqual(MOD.should_alert(prev, cur, MOD.delta(prev, cur)), expected, change)
+
     def _raw(self, vix):
         cfg = MOD.load_config()
         ts = "2026-10-08T00:00:00Z"
@@ -74,6 +93,54 @@ class MarketMonitorTests(unittest.TestCase):
             state = MOD.build_state(cfg, raw)
             self.assertIsNone(state["metrics"]["VIX_pct"])
             self.assertEqual(state["RISK"], "N/A")
+
+    def _breadth_raw(self, up, total, cfg=None):
+        cfg = cfg or MOD.load_config()
+        _, raw = self._raw({"ok": True, "change_pct": 0.1, "timestamp": "2026-10-08T00:00:00Z"})
+        # `total` ok leaders, `up` of them rising; one failed quote that must be ignored.
+        leaders = {f"L{i}": {"ok": True, "change_pct": 1.0 if i < up else -1.0} for i in range(total)}
+        leaders["DOWN"] = {"ok": False, "error": "x"}
+        raw["groups"]["korea_leaders"] = leaders
+        raw["groups"]["us_leaders"] = {}
+        return cfg, raw
+
+    def test_breadth_and_leaders_are_pinned(self):
+        cases = [
+            ((0, 0), None, "N/A"),
+            ((0, 10), 0.0, "RED"),
+            ((29, 100), 0.29, "RED"),
+            ((3, 10), 0.30, "AMBER"),
+            ((5, 10), 0.5, "AMBER"),
+            ((6999, 10000), 0.6999, "AMBER"),
+            ((7, 10), 0.70, "GREEN"),
+            ((10, 10), 1.0, "GREEN"),
+        ]
+        for (up, total), breadth, expected in cases:
+            cfg, raw = self._breadth_raw(up, total)
+            state = MOD.build_state(cfg, raw)
+            self.assertEqual(state["metrics"]["breadth_proxy"], breadth, (up, total))
+            self.assertEqual(state["BREADTH"], expected, (up, total))
+            self.assertEqual(state["LEADERS"], expected, (up, total))
+
+    def test_leaders_reads_breadth_thresholds_from_config(self):
+        cfg = json.loads(json.dumps(MOD.load_config()))
+        cfg["thresholds"]["breadth_proxy_red"] = 0.20
+        cfg["thresholds"]["breadth_proxy_green"] = 0.60
+        for (up, total), expected in [((1, 10), "RED"), ((2, 10), "AMBER"), ((6, 10), "GREEN")]:
+            state = MOD.build_state(*self._breadth_raw(up, total, cfg))
+            self.assertEqual(state["BREADTH"], expected, (up, total))
+            self.assertEqual(state["LEADERS"], expected, (up, total))
+
+    def test_state_key_order_is_pinned(self):
+        cfg, raw = self._breadth_raw(5, 10)
+        self.assertEqual(
+            list(MOD.build_state(cfg, raw)),
+            [
+                "schema_version", "asof", "session", "REGIME", "RISK", "TREND", "BREADTH",
+                "LEADERS", "RATES", "FX", "OIL", "GOLD", "GEO", "BUY_TRIGGER",
+                "DATA_QUALITY", "metrics",
+            ],
+        )
 
 
 if __name__ == "__main__":

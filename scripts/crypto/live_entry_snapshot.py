@@ -9,7 +9,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-from src.investment_pipeline.crypto_entry import generate_signals
+from src.investment_pipeline.crypto_entry import V02_BREAKOUT_BUFFER, generate_signals
 
 API = "https://api.exchange.coinbase.com/products/{product}"
 # Coinbase product -> asset id used in config/crypto_market_regime_entry_v0.2.json
@@ -72,6 +72,30 @@ def get_live_price(product: str) -> float:
     return float(resp.json()["price"])
 
 
+# Mirrored by researchLevels/liveZone in mobile/entry.js (tests/test_live_zone_parity.py).
+# Keep the multiplicative price form: a drawdown re-expression flips near-boundary prices.
+def research_levels(prior_high60: float) -> dict[str, float]:
+    return {
+        "Z1_upper": prior_high60 * 0.95,
+        "Z1_lower": prior_high60 * 0.92,
+        "Z2_lower": prior_high60 * 0.88,
+        "breakout_confirmation": prior_high60 * (1.0 + V02_BREAKOUT_BUFFER),
+    }
+
+
+def live_zone(live: float, prior_high60: float) -> str:
+    levels = research_levels(prior_high60)
+    if live >= levels["breakout_confirmation"]:
+        return "BREAKOUT"
+    if live > levels["Z1_upper"]:
+        return "Z0"
+    if live > levels["Z1_lower"]:
+        return "Z1"
+    if live > levels["Z2_lower"]:
+        return "Z2"
+    return "Z3"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--output", type=Path, default=Path("artifacts/crypto/live_entry.json"))
@@ -87,21 +111,6 @@ def main() -> int:
     live = get_live_price(args.product)
 
     prior_high60 = float(last["prior_high60"])
-    z1_high = prior_high60 * 0.95
-    z1_low = prior_high60 * 0.92
-    z2_low = prior_high60 * 0.88
-    breakout = prior_high60 * 1.005
-
-    if live >= breakout:
-        live_zone = "BREAKOUT"
-    elif live > z1_high:
-        live_zone = "Z0"
-    elif live > z1_low:
-        live_zone = "Z1"
-    elif live > z2_low:
-        live_zone = "Z2"
-    else:
-        live_zone = "Z3"
 
     core_state = str(last["entry_state"])
     stabilization = bool(last["stabilization"])
@@ -117,16 +126,11 @@ def main() -> int:
         "live_price": live,
         "daily_core_state": core_state,
         "daily_zone": str(last["zone"]),
-        "live_zone": live_zone,
+        "live_zone": live_zone(live, prior_high60),
         "trend_ok": trend_ok,
         "stabilization": stabilization,
         "prior_high60": prior_high60,
-        "research_levels": {
-            "Z1_upper": z1_high,
-            "Z1_lower": z1_low,
-            "Z2_lower": z2_low,
-            "breakout_confirmation": breakout,
-        },
+        "research_levels": research_levels(prior_high60),
         "promotion_gate": {
             "threshold_evidence": "FAIL",
             "full_buy_permission": "BLOCKED",

@@ -17,6 +17,7 @@ import pandas as pd
 from scripts.crypto.run_crypto_p0_p6_v0_2 import (
     cluster_boolean,
     event_stats,
+    fold_boundaries,
     threshold_validation,
     validate_p0,
 )
@@ -89,15 +90,12 @@ def baseline_events(signals: pd.DataFrame) -> pd.DataFrame:
 
 def walk_forward_summary(raw: pd.DataFrame, btc: pd.DataFrame, cfg: dict | None) -> dict:
     """Same fold layout as run_crypto_p0_p6_v0_2.walk_forward; k re-fit per fold when scaled."""
-    n = len(raw)
-    test_size = max(100, n // 10)
-    train_end = max(200, int(n * 0.50))
     folds = []
     frozen = signals_for(raw, 1.0) if cfg is None else None
-    while train_end + test_size <= n:
-        k = 1.0 if cfg is None else scale_factor(raw, btc, train_end, cfg)
+    for fold in fold_boundaries(len(raw)):
+        k = 1.0 if cfg is None else scale_factor(raw, btc, fold["train_rows"], cfg)
         signals = frozen if frozen is not None else signals_for(raw, k)
-        test = signals.iloc[train_end : train_end + test_size]
+        test = signals.iloc[fold["test_start"] : fold["test_end"]]
         r20 = pd.to_numeric(primary_events(test)["forward_return_20d"], errors="coerce").dropna()
         folds.append({
             "test_start": str(test["timestamp"].min().date()),
@@ -105,7 +103,6 @@ def walk_forward_summary(raw: pd.DataFrame, btc: pd.DataFrame, cfg: dict | None)
             "events": int(len(primary_events(test))),
             "median_return_20d": None if r20.empty else float(r20.median()),
         })
-        train_end += test_size
     with_events = [f for f in folds if f["events"] > 0]
     return {
         "folds": folds,

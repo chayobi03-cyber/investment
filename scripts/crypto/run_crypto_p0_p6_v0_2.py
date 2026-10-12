@@ -122,24 +122,40 @@ def threshold_validation(oos: pd.DataFrame, baseline: pd.DataFrame) -> dict:
     }
 
 
-def walk_forward(signals: pd.DataFrame) -> list[dict]:
-    n = len(signals)
+def fold_boundaries(n: int) -> list[dict]:
+    """Walk-forward layout shared with the decomposition and asset-review scripts."""
+    if n <= 0:
+        return []
     test_size = max(100, n // 10)
-    folds = []
     train_end = max(200, int(n * 0.50))
+    folds: list[dict] = []
     while train_end + test_size <= n:
-        test = signals.iloc[train_end : train_end + test_size]
+        folds.append(
+            {
+                "split_id": f"WF{len(folds) + 1:02d}",
+                "train_rows": int(train_end),
+                "test_start": int(train_end),
+                "test_end": int(train_end + test_size),
+            }
+        )
+        train_end += test_size
+    return folds
+
+
+def walk_forward(signals: pd.DataFrame) -> list[dict]:
+    folds = []
+    for fold in fold_boundaries(len(signals)):
+        test = signals.iloc[fold["test_start"] : fold["test_end"]]
         test_primary = test[test["primary_event"] & test["entry_state"].isin(["B2", "B3", "B4"])]
         folds.append({
-            "split_id": f"WF{len(folds)+1:02d}",
-            "train_rows": int(train_end),
+            "split_id": fold["split_id"],
+            "train_rows": fold["train_rows"],
             "test_rows": int(len(test)),
             "test_start": str(test["timestamp"].min()),
             "test_end": str(test["timestamp"].max()),
             "threshold_retuned": False,
             "metrics": event_stats(test_primary),
         })
-        train_end += test_size
     return folds
 
 

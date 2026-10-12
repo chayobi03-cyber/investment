@@ -46,8 +46,3 @@ class OpenDARTClient:
         output.parent.mkdir(parents=True, exist_ok=True)
         df.to_csv(output, index=False, encoding="utf-8-sig")
         return output
-
-
-def require_env() -> None:
-    if not os.getenv("OPENDART_API_KEY"):
-        raise RuntimeError("Missing required environment variable: OPENDART_API_KEY")
