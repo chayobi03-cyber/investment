@@ -51,6 +51,7 @@ create table investment_learning.il_evidence_observations (
     numeric_value numeric,
     text_value text,
     quality_status text not null check (quality_status in ('VALID', 'STALE', 'MISSING', 'REJECTED', 'REVISED')),
+    freshness_status text not null check (freshness_status in ('FRESH_ACTIVE_SESSION', 'VALID_CLOSED_SESSION', 'STALE', 'MISSING', 'UNKNOWN')),
     revision_key text not null default 'original',
     content_sha256 text not null check (content_sha256 ~ '^[0-9a-f]{64}$'),
     source_uri text,
