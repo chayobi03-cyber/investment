@@ -17,9 +17,11 @@ A failed forecast is a learning sample, not an instruction to change a threshold
 
 The current market monitor in **scripts/market_monitor/poll.py** collects quotes, derives compact market states, detects state deltas, and writes the latest object to **runtime/market_state.json**. The GitHub Actions workflow persists that current-state file on the **runtime/market-state** branch and uploads an artifact with a seven-day retention period.
 
-This is useful for alerting, but it is not yet a queryable long-term learning database. It does not by itself link a frozen forecast to its later realized outcome, error taxonomy, countermeasure, evaluation run, and human approval.
+The repository also contains a **Historical DB v1** module in `src/investment_pipeline/history/`. It provides append-only CSV files for market snapshots, stock snapshots, decisions and outcomes, plus a live-review adapter. That is useful reusable groundwork, but it is a file-backed store rather than a relational DB; current tests exercise it with temporary directories, and the market monitor does not yet persist its run envelope into that store or a dedicated history branch.
 
-Do not repurpose the latest-state file as the source of truth. Treat it as an operational cache and ingest each material run into an independent, append-oriented history store.
+The gap is therefore **not "no history code exists"**. The gap is that live market-monitor observations, versioned horizon semantics, forecast records, matured outcomes, diagnoses, evaluations and HOTL governance events are not yet connected into one persisted lifecycle. Extend/reuse the Historical DB v1 contracts for a low-cost bootstrap instead of duplicating its existing market/stock/decision/outcome semantics. Keep the PostgreSQL proposal in `db/proposals/` as a future migration target after the data contract and usage patterns are proven.
+
+Do not repurpose the latest-state file as the source of truth. Treat it as an operational cache and ingest eligible run envelopes into an independent append-only ledger with idempotency and durable branch/storage semantics.
 
 ## 3. Non-negotiable invariants
 
@@ -39,7 +41,7 @@ Do not repurpose the latest-state file as the source of truth. Treat it as an op
 
 - **Collector:** Existing market monitor and future market/sector/asset collectors. Capture source timestamps and failures, not just final labels.
 - **Envelope validator:** Verify the run schema, hashes, required fields, temporal invariants, and hard decision flags before persistence.
-- **History store:** PostgreSQL/Supabase-compatible relational core. Store normalized fields in typed columns and optional extensions in bounded JSONB. Large raw downloads remain in content-addressed artifacts referenced by URI and SHA-256.
+- **History store:** Reuse the existing Historical DB v1 file-backed adapter for the first controlled write path, with the market-run envelope/ledger stored durably and idempotently. Keep the proposed PostgreSQL schema as a migration path once a dedicated investment database is selected. Normalized data should use typed columns in relational storage; large raw downloads remain in content-addressed artifacts referenced by URI and SHA-256.
 - **Forecast ledger:** Save the forecast exactly as emitted at the decision timestamp, including probability/expected-return fields where available, horizon definition, rule version, uncertainty, and permission state.
 - **Outcome settler:** Join forecasts to later realized data only after their due horizon. Use adjusted prices/total-return methodology appropriate to the asset; retain source and calculation versions.
 - **Evaluation engine:** Produce direction/calibration, event detection, risk and path metrics, segmented by regime and horizon.
@@ -185,7 +187,7 @@ The V1 contract and store are not considered production-ready until tests show t
 ## 13. Delivery plan
 
 - **P0 — Contract and governance:** run-envelope schema, validators, DB proposal, taxonomy, hard gates. No live behavior change.
-- **P1 — Storage integration:** choose/create a dedicated investment database, apply reviewed migration, add idempotent writer, and import the current runtime state with clear **LEGACY_SNAPSHOT** provenance.
+- **P1 — Storage integration:** connect the fixed market monitor to the existing Historical DB v1 / append-only run ledger; persist one pre-open baseline plus material state/quality transitions with idempotency, then import any existing runtime snapshot with **LEGACY_SNAPSHOT** provenance. Establish a single-writer and branch-retention policy before enabling scheduled writes.
 - **P2 — Forecast ledger:** freeze daily/EOD and entry-timing forecasts with the existing D/W/M checks, timestamps, rules and permissions.
 - **P3 — Outcome settlement:** schedule trading-session/calendar-day labels, MAE/MFE and data sufficiency checks.
 - **P4 — Evaluation and diagnostics:** scorecard, error clustering, root-cause evidence bundles and countermeasure experiments.
@@ -194,7 +196,9 @@ The V1 contract and store are not considered production-ready until tests show t
 
 ## 14. Current deployment boundary
 
-This change is an implementation proposal, not a claim that a live database has been provisioned. The currently connected Supabase projects are already associated with other systems. Do not apply this schema to them. Before P1, establish a dedicated investment database target, confirm cost/organization if provisioning a new project, apply the migration in an isolated development environment, run security/performance advisors, validate the schema and writer, then promote via reviewed migration.
+The existing Historical DB v1 implementation is currently append-only CSV on a local filesystem. It is not yet a demonstrated durable market-monitor history service: the current scheduled monitor does not ingest into it, and no tracked `data/history` series was found on the main branch. The planned durable bootstrap therefore needs an explicit history branch or another persistent target, single-writer control, replay/idempotency tests and documented backup/retention. Do not claim daily accumulation until the scheduled write path has run successfully and a record can be read back.
+
+The SQL file is a proposal only; it has not been applied. The connected Supabase projects are already associated with other systems, so do not apply this schema to them. A dedicated investment relational database remains a later migration decision; confirm organization/cost, test in an isolated development environment, run security/performance advisors and validate permissions before applying it.
 
 The current DecisionGate and upstream M0/M1/M2 controls remain authoritative. This learning loop supplies evidence for improvement; it does not bypass them.
 
