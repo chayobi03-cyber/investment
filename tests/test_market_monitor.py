@@ -105,7 +105,18 @@ class MarketMonitorTests(unittest.TestCase):
         cfg = cfg or MOD.load_config()
         _, raw = self._raw({"ok": True, "change_pct": 0.1, "timestamp": "2026-10-08T00:00:00Z"})
         # `total` ok leaders, `up` of them rising; one failed quote that must be ignored.
-        leaders = {f"L{i}": {"ok": True, "change_pct": 1.0 if i < up else -1.0} for i in range(total)}
+        leaders = {
+            f"L{i}": {
+                "ok": True,
+                "change_pct_15m": 1.0 if i < up else -1.0,
+                "change_pct_5m": 0.1 if i < up else -0.1,
+                "session_change_pct": 1.0 if i < up else -1.0,
+                "last_completed_session_return_pct": 0.5 if i < up else -0.5,
+                "market_session_state": "ACTIVE",
+                "timestamp": "2026-10-08T00:00:00Z",
+            }
+            for i in range(total)
+        }
         leaders["DOWN"] = {"ok": False, "error": "x"}
         raw["groups"]["korea_leaders"] = leaders
         raw["groups"]["us_leaders"] = {}
