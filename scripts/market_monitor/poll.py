@@ -359,6 +359,12 @@ def _daily_move(item: dict | None, freshness: str) -> float | None:
     return None
 
 
+def _completed_daily_move(item: dict | None, freshness: str) -> float | None:
+    if item and item.get("ok") and freshness in {"FRESH_ACTIVE_SESSION", "VALID_CLOSED_SESSION"}:
+        return item.get("last_completed_session_return_pct")
+    return None
+
+
 def _active_move(item: dict | None, freshness: str, field: str = "change_pct_15m") -> float | None:
     if item and item.get("ok") and freshness == "FRESH_ACTIVE_SESSION":
         return item.get(field)
