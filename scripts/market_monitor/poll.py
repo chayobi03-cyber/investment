@@ -450,20 +450,26 @@ def build_state(cfg: dict, raw: dict) -> dict:
         trend_status = status_from_change(trend, dth["index"])
         session_returns = [item.get("session_change_pct") for item in fresh_trend_items if item.get("session_change_pct") is not None]
         if session_returns:
-            session_trend = _mean(session_returns)
+            daily_threshold = dth_daily.get("index", 2.0)
             trend_status = _worst_status(
                 trend_status,
-                status_from_change(session_trend, dth_daily.get("index", 2.0)),
+                status_from_change(_mean(session_returns), daily_threshold),
+                *[status_from_change(value, daily_threshold) for value in session_returns],
             )
     else:
         trend_horizon = "daily_close_to_close"
-        daily_candidates = [idx.get("KOSPI"), idx.get("NASDAQ"), idx.get("SOX")]
+        daily_names = ["KOSPI", "KOSDAQ", "NASDAQ", "SOX"]
         daily_values = [
-            _daily_move(item, freshness_statuses.get(f"indices.{name}", "UNKNOWN"))
-            for item, name in zip(daily_candidates, ["KOSPI", "NASDAQ", "SOX"])
+            (name, _daily_move(idx.get(name), freshness_statuses.get(f"indices.{name}", "UNKNOWN")))
+            for name in daily_names
         ]
-        trend = _mean([value for value in daily_values if value is not None])
-        trend_status = status_from_change(trend, dth_daily.get("index", 2.0))
+        valid_daily = [(name, value) for name, value in daily_values if value is not None]
+        trend = _mean([value for _, value in valid_daily])
+        daily_threshold = dth_daily.get("index", 2.0)
+        trend_status = _worst_status(
+            status_from_change(trend, daily_threshold),
+            *[status_from_change(value, daily_threshold) for _, value in valid_daily],
+        )
 
     vix = idx.get("VIX", {})
     vix_status = freshness_statuses.get("indices.VIX", "MISSING")
@@ -594,6 +600,12 @@ def should_alert(prev: dict | None, cur: dict, changes: list[str]) -> tuple[str,
     ):
         return "P1", True
     if not prev:
+        if cur.get("RISK") == "RED" or cur.get("TREND") == "RED":
+            if cur.get("metrics", {}).get("VIX_15m_pct") is not None or cur.get("metrics", {}).get("VIX_daily_close_pct") is not None:
+                return "P0", True
+            return "P1", True
+        if cur.get("BREADTH") == "RED" or cur.get("LEADERS") == "RED":
+            return "P1", True
         return "P2", False
     p0 = any(cur.get(k) == "RED" and prev.get(k) != "RED" for k in ["RISK", "TREND"]) and (
         cur.get("metrics", {}).get("VIX_15m_pct") is not None
