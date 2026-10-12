@@ -220,5 +220,43 @@ class MarketMonitorTests(unittest.TestCase):
         self.assertTrue(alert)
 
 
+    def test_closed_session_uses_daily_close_and_initial_stress_is_alerted(self):
+        cfg, raw = self._raw({
+            "ok": True,
+            "change_pct_5m": 0.05,
+            "change_pct_15m": 0.1,
+            "session_change_pct": None,
+            "last_completed_session_return_pct": 2.0,
+            "market_session_state": "CLOSED",
+            "timestamp": "2026-10-12T20:00:00Z",
+        })
+        raw["collected_at"] = "2026-10-12T22:30:00Z"  # 07:30 KST, before the Korea session.
+        for group in raw["groups"].values():
+            for item in group.values():
+                item["market_session_state"] = "CLOSED"
+        korea_ts = "2026-10-12T06:00:00Z"
+        us_ts = "2026-10-12T20:00:00Z"
+        daily_moves = {"KOSPI": -3.65, "KOSDAQ": -4.83, "SP500": -0.8, "NASDAQ": -0.44, "SOX": -2.7, "VIX": 2.0}
+        for name, item in raw["groups"]["indices"].items():
+            item["timestamp"] = korea_ts if name in {"KOSPI", "KOSDAQ"} else us_ts
+            item["last_completed_session_return_pct"] = daily_moves.get(name, 0.1)
+        for item in raw["groups"]["korea_leaders"].values():
+            item["timestamp"] = korea_ts
+            item["last_completed_session_return_pct"] = -4.0
+        for item in raw["groups"]["us_leaders"].values():
+            item["timestamp"] = us_ts
+            item["last_completed_session_return_pct"] = 0.5
+
+        state = MOD.build_state(cfg, raw)
+        self.assertEqual(state["session"], "GLOBAL_TRANSITION")
+        self.assertEqual(state["DATA_QUALITY"], "GREEN")
+        self.assertIsNone(state["metrics"]["KOSPI_15m_pct"])
+        self.assertAlmostEqual(state["metrics"]["KOSPI_daily_close_pct"], -3.65, places=6)
+        self.assertEqual(state["TREND"], "RED")
+        severity, alert = MOD.should_alert(None, state, [])
+        self.assertEqual(severity, "P0")
+        self.assertTrue(alert)
+
+
 if __name__ == "__main__":
     unittest.main()
