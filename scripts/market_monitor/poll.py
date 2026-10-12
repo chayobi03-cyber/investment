@@ -480,7 +480,7 @@ def build_state(cfg: dict, raw: dict) -> dict:
     vix = idx.get("VIX", {})
     vix_status = freshness_statuses.get("indices.VIX", "MISSING")
     vix_change_15m = _active_move(vix, vix_status)
-    vix_daily = _daily_move(vix, vix_status)
+    vix_daily = _completed_daily_move(vix, vix_status)
     risk_status = (
         status_from_change(vix_change_15m, dth["index"])
         if vix_change_15m is not None
