@@ -1,0 +1,129 @@
+name: Market Learning Recorder
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_kind:
+        description: Analysis run type to record
+        required: false
+        type: choice
+        default: MANUAL_ANALYSIS
+        options:
+          - PREOPEN_ANALYSIS
+          - MANUAL_ANALYSIS
+  schedule:
+    # One validated pre-open baseline per Korean business day.
+    - cron: "30 8 * * 1-5"
+      timezone: "Asia/Seoul"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: market-learning-history-ledger
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check monitor horizon contract
+        id: contract
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          config = json.loads(Path("config/market_monitor.json").read_text(encoding="utf-8"))
+          source = Path("scripts/market_monitor/poll.py").read_text(encoding="utf-8")
+          ready = (
+              str(config.get("version")) == "2.1"
+              and '"return_calculation_version": "returns-5m-15m-close-close-v1"' in source
+              and '"freshness_by_series"' in source
+          )
+          with open("\${GITHUB_OUTPUT}", "a", encoding="utf-8") as output:
+              output.write(f"ready={'true' if ready else 'false'}\n")
+          if not ready:
+              print("Monitor contract is not yet horizon-aware v2.1; refusing to persist legacy return semantics.")
+          PY
+
+      - name: Restore existing history ledger
+        if: steps.contract.outputs.ready == 'true'
+        shell: bash
+        run: |
+          mkdir -p /tmp/market-history
+          if git ls-remote --exit-code --heads origin runtime/market-history >/dev/null 2>&1; then
+            git fetch origin runtime/market-history:refs/remotes/origin/runtime/market-history
+            git show origin/runtime/market-history:data/history/market_runs.csv > /tmp/market-history/market_runs.csv
+          else
+            : > /tmp/market-history/market_runs.csv
+          fi
+
+      - name: Run horizon-aware market monitor
+        if: steps.contract.outputs.ready == 'true'
+        run: |
+          python scripts/market_monitor/poll.py > /tmp/market-history/monitor-event.json
+          cp runtime/market_state.json /tmp/market-history/market_state.json
+
+      - name: Validate and append immutable market run
+        if: steps.contract.outputs.ready == 'true'
+        env:
+          RUN_KIND: \${{ inputs.run_kind || 'PREOPEN_ANALYSIS' }}
+          CODE_SHA: \${{ github.sha }}
+        run: |
+          PYTHONPATH=.:src python scripts/market_learning/record_monitor_snapshot.py \
+            --input /tmp/market-history/market_state.json \
+            --root /tmp/market-history \
+            --code-sha "$CODE_SHA" \
+            --run-kind "$RUN_KIND" \
+            --envelope-output /tmp/market-history/market-run-envelope.json
+
+      - name: Persist ledger to runtime branch
+        if: steps.contract.outputs.ready == 'true'
+        shell: bash
+        run: |
+          rm -f runtime/market_state.json
+          git fetch origin runtime/market-history:refs/remotes/origin/runtime/market-history || true
+          if git show-ref --verify --quiet refs/remotes/origin/runtime/market-history; then
+            git switch -C runtime/market-history origin/runtime/market-history
+          else
+            git switch --orphan runtime/market-history
+          fi
+          mkdir -p data/history
+          cp /tmp/market-history/market_runs.csv data/history/market_runs.csv
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/history/market_runs.csv
+          if git diff --cached --quiet; then
+            echo "No new immutable market run to commit."
+          else
+            git commit -m "data(market-learning): append validated market run"
+          fi
+          git push origin HEAD:runtime/market-history
+
+      - name: Upload run envelope for diagnostics
+        if: steps.contract.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: market-learning-run-\${{ github.run_id }}
+          path: |
+            /tmp/market-history/market-run-envelope.json
+            /tmp/market-history/monitor-event.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Report legacy contract guard
+        if: steps.contract.outputs.ready != 'true'
+        run: echo "::notice::History write skipped safely; merge and validate monitor horizon-fix PR before enabling run persistence."
