@@ -53,13 +53,13 @@ class MarketMonitorTests(unittest.TestCase):
         base = {
             "RISK": "GREEN", "TREND": "GREEN", "BREADTH": "GREEN", "LEADERS": "GREEN",
             "RATES": "GREEN", "FX": "GREEN", "OIL": "GREEN", "GOLD": "GREEN",
-            "BUY_TRIGGER": "UNCONFIRMED", "DATA_QUALITY": "GREEN", "metrics": {"VIX_pct": 1.0},
+            "BUY_TRIGGER": "UNCONFIRMED", "DATA_QUALITY": "GREEN", "metrics": {"VIX_pct": 1.0, "VIX_15m_pct": 1.0, "VIX_daily_close_pct": None},
         }
         cases = [
             (None, {}, ("P2", False)),
             (base, {"DATA_QUALITY": "RED"}, ("P1", True)),
             (base, {"RISK": "RED"}, ("P0", True)),
-            (base, {"RISK": "RED", "metrics": {"VIX_pct": None}}, ("P2", False)),
+            (base, {"RISK": "RED", "metrics": {"VIX_pct": None, "VIX_15m_pct": None, "VIX_daily_close_pct": None}}, ("P2", False)),
             (base, {"BREADTH": "AMBER", "LEADERS": "AMBER"}, ("P1", True)),
             (base, {"BREADTH": "AMBER"}, ("P2", False)),
             (base, {"GOLD": "RED", "TREND": "AMBER"}, ("P2", False)),
