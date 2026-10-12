@@ -2,6 +2,8 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import importlib.util
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -70,7 +72,12 @@ class MarketMonitorTests(unittest.TestCase):
         cfg = MOD.load_config()
         ts = "2026-10-08T00:00:00Z"
         groups = {
-            g: {name: {"ok": True, "change_pct": 0.1, "timestamp": ts} for name in syms}
+            g: {
+                name: {"ok": True, "change_pct_5m": 0.05, "change_pct_15m": 0.1,
+                       "session_change_pct": 0.2, "last_completed_session_return_pct": 0.1,
+                       "market_session_state": "ACTIVE", "timestamp": ts}
+                for name in syms
+            }
             for g, syms in cfg["symbols"].items()
         }
         if vix is None:
