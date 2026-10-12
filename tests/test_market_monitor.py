@@ -88,7 +88,7 @@ class MarketMonitorTests(unittest.TestCase):
         return cfg, {"collected_at": ts, "groups": groups, "all": flat}
 
     def test_build_state_reads_vix_change(self):
-        cfg, raw = self._raw({"ok": True, "change_pct": 2.5, "timestamp": "2026-10-08T00:00:00Z"})
+        cfg, raw = self._raw({"ok": True, "change_pct_15m": 2.5, "change_pct_5m": 0.8, "session_change_pct": 1.2, "last_completed_session_return_pct": 0.1, "market_session_state": "ACTIVE", "timestamp": "2026-10-08T00:00:00Z"})
         state = MOD.build_state(cfg, raw)
         self.assertEqual(state["metrics"]["VIX_pct"], 2.5)
         self.assertEqual(state["RISK"], "RED")
