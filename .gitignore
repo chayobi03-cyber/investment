@@ -9,3 +9,4 @@ data/processed/*.json
 data/processed/*.csv
 node_modules/
 .state/
+research/deployment-ladder/results/starts_*.csv
