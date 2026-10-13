@@ -13,6 +13,7 @@ import pandas as pd
 import pytest
 
 from scripts.crypto import live_entry_snapshot as snap_mod
+from src.investment_pipeline import crypto_entry as ce
 from src.investment_pipeline.crypto_entry import generate_signals
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -147,3 +148,30 @@ def test_js_snapshot_matches_python_snapshot(tmp_path, monkeypatch):
         assert jsnap["live_zone"] == py["live_zone"] == golden_zone(price, h), price
         assert list(jsnap["research_levels"]) == list(py["research_levels"]) == LEVEL_KEYS
         assert jsnap["research_levels"] == py["research_levels"]
+
+
+@pytest.mark.skipif(NODE is None, reason="node not installed")
+def test_js_constants_and_unit_levels_match_python():
+    # entry.js is a separate-language port with its own literals; pin them to
+    # the Python constants in crypto_entry (researchLevels(1) is the multipliers).
+    script = (
+        "import * as e from './mobile/entry.js';"
+        "process.stdout.write(JSON.stringify({buffer:e.V02_BREAKOUT_BUFFER,"
+        "volume:e.V02_BREAKOUT_VOLUME_RATIO,green:e.V02_STABILIZATION_GREEN_MIN,"
+        "levels:e.researchLevels(1)}));"
+    )
+    proc = subprocess.run(
+        [NODE, "--input-type=module", "-e", script],
+        capture_output=True, text=True, cwd=ROOT, check=True,
+    )
+    js = json.loads(proc.stdout)
+    assert js["buffer"] == ce.V02_BREAKOUT_BUFFER
+    assert js["volume"] == ce.V02_BREAKOUT_VOLUME_RATIO
+    assert js["green"] == ce.V02_STABILIZATION_GREEN_MIN
+    assert list(js["levels"]) == LEVEL_KEYS
+    assert js["levels"] == snap_mod.research_levels(1.0) == {
+        "Z1_upper": ce.V02_Z1_UPPER_MULT,
+        "Z1_lower": ce.V02_Z1_LOWER_MULT,
+        "Z2_lower": ce.V02_Z2_LOWER_MULT,
+        "breakout_confirmation": 1.0 + ce.V02_BREAKOUT_BUFFER,
+    }

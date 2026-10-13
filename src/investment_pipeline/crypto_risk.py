@@ -24,6 +24,10 @@ REGIMES: tuple[tuple[str, float, float], ...] = (
 
 BUY_ALLOWED = False
 
+# Market gate cut-offs (config market_score.gates green_min / yellow_min).
+MARKET_GATE_GREEN_MIN = 70.0
+MARKET_GATE_YELLOW_MIN = 55.0
+
 EXPOSURE_MULTIPLIER: dict[str, float] = {
     "B0": 0.0,
     "B1": 0.0,
@@ -95,9 +99,9 @@ def compute_market_score(
 
 def market_gate_from_score(score: float) -> str:
     score = _validate_score(score)
-    if score >= 70.0:
+    if score >= MARKET_GATE_GREEN_MIN:
         return "GREEN"
-    if score >= 55.0:
+    if score >= MARKET_GATE_YELLOW_MIN:
         return "YELLOW"
     return "RED"
 

@@ -12,6 +12,21 @@ V02_BREAKOUT_BUFFER = 0.005
 V02_BREAKOUT_VOLUME_RATIO = 1.20
 V02_STABILIZATION_GREEN_MIN = 2
 
+# Pullback zones on drawdown60 (config pullback_zones): Z0 above -5%,
+# Z1 (-8%, -5%], Z2 (-12%, -8%], Z3 at or below -12%.
+V02_Z1_MAX_DD = -0.05
+V02_Z2_MAX_DD = -0.08
+V02_Z3_MAX_DD = -0.12
+# Z0 no-chase band: drawdown60 at or above -2% gives B1.
+V02_NO_CHASE_DD = -0.02
+
+# The same cut-offs as prior_high60 price multipliers. 1.0 + each cut-off is
+# bit-identical to the literals 0.95/0.92/0.88 (pinned by
+# tests/test_crypto_threshold_freeze.py).
+V02_Z1_UPPER_MULT = 1.0 + V02_Z1_MAX_DD
+V02_Z1_LOWER_MULT = 1.0 + V02_Z2_MAX_DD
+V02_Z2_LOWER_MULT = 1.0 + V02_Z3_MAX_DD
+
 
 @dataclass(frozen=True)
 class EntrySignal:
@@ -93,12 +108,19 @@ def add_entry_features(frame: pd.DataFrame) -> pd.DataFrame:
         & df["trend_ok"]
     )
 
-    df["zone"] = "Z3"
-    df.loc[df["drawdown60"].isna(), "zone"] = "UNKNOWN"
-    df.loc[df["drawdown60"] > -0.05, "zone"] = "Z0"
-    df.loc[(df["drawdown60"] <= -0.05) & (df["drawdown60"] > -0.08), "zone"] = "Z1"
-    df.loc[(df["drawdown60"] <= -0.08) & (df["drawdown60"] > -0.12), "zone"] = "Z2"
+    df["zone"] = assign_zones(df["drawdown60"])
     return df
+
+
+def assign_zones(drawdown: pd.Series) -> pd.Series:
+    """Pullback zone per bar from a drawdown series (NaN gives UNKNOWN)."""
+    zone = pd.DataFrame(index=drawdown.index)
+    zone["zone"] = "Z3"
+    zone.loc[drawdown.isna(), "zone"] = "UNKNOWN"
+    zone.loc[drawdown > V02_Z1_MAX_DD, "zone"] = "Z0"
+    zone.loc[(drawdown <= V02_Z1_MAX_DD) & (drawdown > V02_Z2_MAX_DD), "zone"] = "Z1"
+    zone.loc[(drawdown <= V02_Z2_MAX_DD) & (drawdown > V02_Z3_MAX_DD), "zone"] = "Z2"
+    return zone["zone"]
 
 
 def signal_from_row(row: pd.Series) -> EntrySignal:
@@ -115,9 +137,9 @@ def signal_from_row(row: pd.Series) -> EntrySignal:
     high60 = float(row["prior_high60"])
 
     zone_bounds = {
-        "Z1": (high60 * 0.92, high60 * 0.95),
-        "Z2": (high60 * 0.88, high60 * 0.92),
-        "Z3": (0.0, high60 * 0.88),
+        "Z1": (high60 * V02_Z1_LOWER_MULT, high60 * V02_Z1_UPPER_MULT),
+        "Z2": (high60 * V02_Z2_LOWER_MULT, high60 * V02_Z1_LOWER_MULT),
+        "Z3": (0.0, high60 * V02_Z2_LOWER_MULT),
     }
 
     if not trend_ok:
@@ -129,7 +151,7 @@ def signal_from_row(row: pd.Series) -> EntrySignal:
         return EntrySignal("B2", "BREAKOUT", ("BREAKOUT_WATCH", "TREND_VALID"), None, None)
 
     if zone == "Z0":
-        if float(row["drawdown60"]) >= -0.02:
+        if float(row["drawdown60"]) >= V02_NO_CHASE_DD:
             return EntrySignal("B1", "Z0", ("NO_CHASE", "PULLBACK_NOT_REACHED"), *zone_bounds["Z1"])
         return EntrySignal("B0", "Z0", ("PULLBACK_NOT_REACHED",), *zone_bounds["Z1"])
 
