@@ -1,7 +1,7 @@
-# Portfolio Factor Exposure Rule v1.2
+# Portfolio Factor Exposure Rule v1.3
 
 Status: ACTIVE / POLICY DRAFT FOR VALIDATION
-Effective date: 2026-10-13
+Effective date: 2026-10-15
 Scope: Portfolio snapshot, multi-account reconciliation, risk review, entry/trim decisions, Market Monitor integration
 
 ## 1. Purpose
@@ -243,8 +243,26 @@ At minimum, regression tests should cover:
 - T16: same-index strategy wrappers are flagged as strategy overlap, not mislabeled as the same instrument
 - T17: common constituent across multiple ETFs is counted once per actual position for assets and aggregated across wrappers only for factor exposure
 - T18: constituent weights used in historical analysis match the observation's PIT date; stale or mismatched weights reduce readiness
+- T19: account-level P&L differs from itemized P&L -> PNL_RECONCILIATION_MISMATCH / DATA_NOT_READY unless scope and FX explain it with evidence
+- T20: position quantity changes across snapshots without transaction evidence -> action blocked; do not infer buy/sell
+- T21: broker FX valuation and timestamped external FX quote differ -> record FX_VALUATION_VARIANCE separately from account-total reconciliation
+- T22: account-level P&L, realized P&L, and itemized unrealized P&L are never added together or compared without scope normalization
 
-## 13. Lesson learned from 2026-10-13 portfolio reconciliation
+## 13. P&L Reconciliation and Snapshot Delta Control
+
+Portfolio market-value reconciliation and P&L reconciliation are separate controls.
+
+For broker account summaries and itemized holding rows:
+
+- Store the displayed account-level P&L as a source value; never assume it equals the sum of visible row-level P&L.
+- Store pnl_scope and source_definition where available, distinguishing unrealized P&L, realized P&L, total-period P&L, fees, distributions, and FX translation effects.
+- Sum itemized P&L only within a common scope and native currency. Convert foreign-currency P&L only with a timestamped, provenance-backed FX rate.
+- Compare account-level and itemized P&L after scope and currency normalization. If the residual exceeds the configured tolerance, mark PNL_RECONCILIATION_MISMATCH and DATA_NOT_READY; do not infer missing positions or silently explain the residual as realized P&L.
+- A value reconciliation gap caused by a different broker FX valuation must be labeled FX_VALUATION_VARIANCE and reported separately from P&L mismatch.
+- Snapshot-to-snapshot quantity differences are observations, not proof of trades. Reconcile them to fills, transfers, corporate actions, or other account events before attributing purchases/sales or using the delta as an action signal.
+- Do not issue sell/trim/buy recommendations that rely on unresolved P&L semantics or unexplained quantity changes.
+
+## 14. Lesson learned from 2026-10-13 portfolio reconciliation
 
 A portfolio total displayed in reporting currency may already include foreign-currency positions. Adding the individually listed USD holdings on top of that aggregate double-counts assets; replacing the aggregate with native-currency instrument rows avoids this error.
 
@@ -261,3 +279,12 @@ and independently:
 security -> tradability constraint -> allowable risk action
 
 This rule should be reused by the Market Monitor, P0-P6 entry research, and portfolio risk engine rather than maintained as a separate manual worksheet.
+
+
+## 15. Lesson learned from 2026-10-15 operational reconciliation
+
+The latest screenshot showed an account-level P&L of -2,679,677 KRW while the visible KRW-row P&L summed to -1,079,476 KRW and the visible USD-row P&L summed to -232.85 USD. At a timestamped external FX reference, the itemized P&L still did not reconcile to the account-level figure. The unexplained residual is not evidence by itself of an error, realized loss, or hidden holding; it is evidence that P&L scope and transaction history must be checked.
+
+The latest and prior screenshots also showed quantity changes for several positions. Those changes must be reconciled to execution history instead of automatically labeling them as purchases or sales.
+
+Store only generic rules and synthetic regression cases in the repository. Never commit the user's private account balances, position quantities, or personal screenshots to a public repository.
