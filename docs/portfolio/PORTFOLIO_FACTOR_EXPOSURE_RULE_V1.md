@@ -1,4 +1,4 @@
-# Portfolio Factor Exposure Rule v1.3
+# Portfolio Factor Exposure Rule v1.4
 
 Status: ACTIVE / POLICY DRAFT FOR VALIDATION
 Effective date: 2026-10-15
@@ -247,6 +247,9 @@ At minimum, regression tests should cover:
 - T20: position quantity changes across snapshots without transaction evidence -> action blocked; do not infer buy/sell
 - T21: broker FX valuation and timestamped external FX quote differ -> record FX_VALUATION_VARIANCE separately from account-total reconciliation
 - T22: account-level P&L, realized P&L, and itemized unrealized P&L are never added together or compared without scope normalization
+- T23: position quantity delta is compared with signed visible filled orders; matched deltas are marked reconciled only for the visible scope
+- T24: cropped/incomplete order history never proves the order list is complete; missing rows remain UNKNOWN
+- T25: net visible order cash flow is not assumed to equal cash balance delta without fees, taxes, deposits, withdrawals, FX, settlement, and all orders
 
 ## 13. P&L Reconciliation and Snapshot Delta Control
 
@@ -288,3 +291,19 @@ The latest screenshot showed an account-level P&L of -2,679,677 KRW while the vi
 The latest and prior screenshots also showed quantity changes for several positions. Those changes must be reconciled to execution history instead of automatically labeling them as purchases or sales.
 
 Store only generic rules and synthetic regression cases in the repository. Never commit the user's private account balances, position quantities, or personal screenshots to a public repository.
+
+
+## 16. Lesson learned from 2026-10-15 order-history reconciliation
+
+Visible executed-order history can reconcile snapshot quantity changes even when it cannot explain account-level P&L.
+
+A quantity delta is reconciled only when signed filled orders in the observed window match the prior-to-current position delta. If the screenshot is cropped, reconciliation is explicitly scoped to visible rows and must not claim complete transaction coverage.
+
+Gross buy/sell notionals or net order cash flow do not by themselves reconcile cash balances or realized P&L. The reconciliation needs the full execution ledger, fees/taxes, deposits/withdrawals, FX conversions, settlement status, and consistent P&L definitions.
+
+Keep three statuses separate:
+- POSITION_DELTA_RECONCILED: visible filled orders match quantity changes
+- CASH_FLOW_RECONCILIATION_PENDING: visible order net flow has not been reconciled to broker cash movements
+- PNL_RECONCILIATION_MISMATCH: account-level versus position-level P&L scope/residual remains unexplained
+
+Store only these general rules and synthetic tests in the repository; do not commit personal account balances, quantities, order prices, or screenshots.
