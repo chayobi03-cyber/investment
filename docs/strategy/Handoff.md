@@ -97,3 +97,36 @@ Long-term quality justifies observation, not automatic entry. A strategy must de
 ## Resume instruction
 
 Start at P0. Inspect current Issue 27/31 status and actual repository code/tests before implementation. Do not assume a blocker is resolved from documentation alone. Commit only reproducible, tested changes. At the end of each session, update this handoff with verified status, evidence/commit IDs, remaining blockers, lessons learned, and any justified rule-change proposal.
+
+
+## Session audit — 2026-10-16
+
+### Verified state
+
+- Issue #27 remains OPEN: https://github.com/chayobi03-cyber/investment/issues/27
+- Issue #31 remains OPEN: https://github.com/chayobi03-cyber/investment/issues/31
+- Main still contains the defect in `scripts/market_monitor/poll.py`: `change_pct` is calculated from adjacent 5-minute bars while the threshold is named 15-minute, and aggregate freshness uses the newest timestamp across all instruments.
+- Main's `tests/test_market_monitor.py` does not cover horizon parity, verified prior-session close, or fresh-USD/JPY masking stale Korean series.
+- Do not infer CI success from empty status/check responses for current main. Main's test state remains NOT VERIFIED.
+
+### Existing remediation candidate
+
+- Draft PR #30: https://github.com/chayobi03-cyber/investment/pull/30
+- Head: `e1d095b534015c738c3aeda3d025e792fddd9dec` (`fix/market-monitor-horizons-issue-27`)
+- The candidate separates 5m / validated 15m / session / prior-completed-session returns, adds per-series freshness and adds fixture tests for close-to-close divergence and fresh FX masking stale Korea.
+- Its `collectors-ci` run #38321023634 succeeded on 2026-10-12T23:13:51Z (KST 2026-10-13 08:13:51), but this is historical evidence for the PR head, not a test of current main or a fresh revalidation against current main.
+- PR #30 remains OPEN and DRAFT; no review submissions or comments were found. Its base snapshot predates the current main head, so revalidate against current main before merge.
+
+### Additional review blocker found
+
+- Static review found that the PR helper `_daily_closes()` takes the last available 5-minute bar for each local calendar date but does not verify that the bar is near that market's configured regular-session close. A partial session or missing final bars could therefore be labeled a completed-session close and yield an apparently valid daily return.
+- Add regression fixtures where the final regular-session bars are missing or too early; the daily close-to-close value must become unavailable and the required freshness/data-quality gate must fail closed. Apply the correct session close and an explicit tolerance for both Korean and US series.
+- Also review whether the active-session freshness allowance of up to 30 minutes is sufficiently strict for a 15-minute return. This is an open review item, not a verified failing test.
+
+### Session decision
+
+- M1: BLOCKED / NOT VERIFIED.
+- `BUY_ALLOWED=false`; `EXECUTION_ALLOWED=false`; `PROMOTION=DISABLED`.
+- B0 baseline remains frozen and unchanged. Do not merge PR #30 or promote M1 solely on its historical CI run; address the close-validation gap, rerun relevant tests/CI against the updated base, and review evidence first.
+- Tests run locally in this session: NONE. Findings above are from remote file/issue/PR inspection and static code review.
+- Rule/threshold change: NO. Keep the issue and remediation separate from any threshold tuning.
