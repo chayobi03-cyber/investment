@@ -258,5 +258,51 @@ class MarketMonitorTests(unittest.TestCase):
         self.assertTrue(alert)
 
 
+
+    def test_chart_parser_rejects_incomplete_prior_session_close(self):
+        zone = ZoneInfo("Asia/Seoul")
+        bars = [
+            (datetime(2026, 10, 7, 15, 25, tzinfo=zone), 6900.0),
+            (datetime(2026, 10, 8, 15, 25, tzinfo=zone), 6800.0),
+            # Final regular-session bars are missing on Oct 9; 15:15 is too early to be a close.
+            (datetime(2026, 10, 9, 15, 15, tzinfo=zone), 6750.0),
+            (datetime(2026, 10, 12, 9, 0, tzinfo=zone), 6700.0),
+            (datetime(2026, 10, 12, 9, 15, tzinfo=zone), 6710.0),
+            (datetime(2026, 10, 12, 9, 25, tzinfo=zone), 6720.0),
+            (datetime(2026, 10, 12, 9, 30, tzinfo=zone), 6730.0),
+        ]
+        result = MOD.summarize_chart_payload(
+            "^KS11",
+            {"exchangeTimezoneName": "Asia/Seoul", "currency": "KRW", "exchangeName": "KSE"},
+            [int(dt.timestamp()) for dt, _ in bars],
+            [price for _, price in bars],
+            market_session="KOREA",
+            cfg=MOD.load_config(),
+            now=datetime(2026, 10, 12, 9, 30, tzinfo=zone),
+        )
+        self.assertEqual(result["market_session_state"], "ACTIVE")
+        self.assertIsNone(result["session_change_pct"])
+        self.assertIsNone(result["last_completed_session_return_pct"])
+        self.assertIsNone(result["last_completed_session_close_at"])
+        self.assertFalse(result["last_completed_session_close_verified"])
+        self.assertFalse(result["prior_session_close_verified"])
+
+    def test_missing_prior_close_blocks_active_required_series(self):
+        cfg, raw = self._raw({
+            "ok": True,
+            "change_pct_5m": 0.05,
+            "change_pct_15m": 0.1,
+            "session_change_pct": 0.2,
+            "last_completed_session_return_pct": 0.1,
+            "market_session_state": "ACTIVE",
+            "timestamp": "2026-10-08T00:00:00Z",
+        })
+        raw["groups"]["indices"]["KOSPI"]["session_change_pct"] = None
+        state = MOD.build_state(cfg, raw)
+        self.assertEqual(state["metrics"]["freshness_by_series"]["indices.KOSPI"], "UNKNOWN")
+        self.assertEqual(state["DATA_QUALITY"], "RED")
+        self.assertNotEqual(state["DATA_QUALITY"], "GREEN")
+
+
 if __name__ == "__main__":
     unittest.main()
