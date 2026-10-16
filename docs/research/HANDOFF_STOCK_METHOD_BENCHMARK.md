@@ -2,149 +2,134 @@
 
 - 작성일: 2026-10-16
 - 프로젝트: 투자 / investment
-- 상태: RESEARCH ONLY
+- 상태: RESEARCH ONLY / M1 BLOCKED / 매수·실행 불허
 - 기준 저장소: https://github.com/chayobi03-cyber/investment
-- 기준 브랜치: main (기본 브랜치 기준)
-- 기준 문서: [INVESTMENT_METHOD_BENCHMARK_2026-10-16.md](docs/research/INVESTMENT_METHOD_BENCHMARK_2026-10-16.md)
-- 기준 커밋: 2394db0bbc21b6ab36f4840b78dc227e4a84445c
+- 기준 브랜치: main
+- 기존 방법론 근거: [INVESTMENT_METHOD_BENCHMARK_2026-10-16.md](INVESTMENT_METHOD_BENCHMARK_2026-10-16.md)
+- 기준 엔진 커밋: 2394db0bbc21b6ab36f4840b78dc227e4a84445c
+- 현행 문서 HEAD(세션 종료 시 확인 필요): main
 
-## 1. 다음 세션 목표
+## 1. 이번 세션에서 완료한 일
 
-기존 투자 엔진을 보존하면서, 신규 주식투자 방법론이 기존 규칙 대비 실제로 유의미한 증분 효과를 내는지 검증할 실험 계약(test contract)을 작성한다. 구현이나 매매 적용보다 먼저 데이터 무결성 게이트 및 비교 기준선을 확인한다.
+1. GitHub Issue #27을 다시 확인했다. 상태는 OPEN.
+2. M1 Data Integrity 관련 구현, 구성, 테스트, CI 워크플로를 원격으로 검사했다.
+3. 기존 코드 기준선 EXPERIMENT_B0_ENGINE_2026-10-16을 원본 커밋 2394db0bbc21b6ab36f4840b78dc227e4a84445c로 고정하고 구현/구성/테스트 주요 blob SHA를 매니페스트에 기록했다.
+4. M1 회귀 테스트 조건과 주식투자 방법론별 사전등록 test contract를 문서화했다.
+5. Lesson Learned를 기록했다.
+6. 기존 실행 규칙/임계값/가중치는 변경하지 않았다.
 
-## 2. 현재 상태 / 고정 제약
+## 2. 필수 산출물
 
-- 투자 원칙: 자본 보존, MDD·tail loss·회복기간·생존성 우선. CAGR 단독 최적화 금지.
-- Decision plane은 개발/연구 에이전트와 분리한다.
-- BUY_ALLOWED=false, EXECUTION_ALLOWED=false를 유지한다.
-- 데이터 상태가 DATA_NOT_READY 또는 BLOCKED이면 fail-closed.
-- 규칙/임계값은 실험 전에 동결한다. OOS 결과를 본 뒤 수정하면 해당 구간은 독립 OOS로 간주하지 않는다.
-- 신규 팩터는 기존 점수에 무조건 더하지 않고, 각각 독립 신호로 시험한다.
-- 종목 기회, 시장 허가, 진입 셋업, 포지션 사이징, 자금투입 정책을 분리한다.
-- LOCKED 보유분은 위험 계산에는 포함하되 자동 매도 대상으로 처리하지 않는다.
-- 계좌 총액과 개별 보유분을 중복 합산하지 않는다. ETF look-through 노출을 별도 반영한다.
+- [B0 기준선 동결 매니페스트](B0_BASELINE_FREEZE_2026-10-16.md)
+- [주식 방법론별 Test Contracts v1](STOCK_METHOD_TEST_CONTRACTS_V1_2026-10-16.md)
+- [Lesson Learned — B0 / M1 / 주식 방법론](../governance/LESSONS_LEARNED_2026-10-16_B0_M1_STOCK_METHODS.md)
+- [방법론 근거 및 우선순위 벤치마크](INVESTMENT_METHOD_BENCHMARK_2026-10-16.md)
 
-## 3. 선행 차단 항목
+Baseline manifest는 B0가 재현성 기준선으로 동결되었음을 의미할 뿐, 데이터 품질·성능·매수 적격성이 승인됐다는 뜻이 아니다.
 
-GitHub Issue #27 — https://github.com/chayobi03-cyber/investment/issues/27
+## 3. Issue #27 및 M1 조사 결과
 
-기록된 문제:
-- 5분 막대의 변화율을 15분/일간 변화율로 오인할 수 있음.
-- 모든 심볼 중 최신 timestamp 하나만 사용해, 오래된 한국 지수 데이터가 최신인 타 자산 데이터에 의해 가려질 수 있음.
-- 이런 경우 DATA_QUALITY=GREEN이 잘못 설정될 위험이 있음.
+Issue #27: https://github.com/chayobi03-cyber/investment/issues/27
 
-다음 세션에서 할 일:
-1. Issue #27의 현재 상태와 관련 코드/테스트를 다시 확인한다.
-2. 심볼별·필드별 timestamp/freshness를 검증한다.
-3. 5m/15m/intraday/close-to-close 수익률 정의를 분리한다.
-4. quote conflict, stale data, missing bars, market session, timezone, corporate action 테스트를 확인한다.
-5. 회귀 테스트가 통과하고 M1 데이터 무결성이 승인되기 전까지 이 신호를 매수 허가에 연결하지 않는다.
+확인된 결함:
+- scripts/market_monitor/poll.py는 range=1d, interval=5m 결과 중 마지막 두 유효 종가로 change_pct를 계산한다. 이는 마지막 5분 봉 변화이며, 이름/구성의 15분 또는 일간 수익률을 보장하지 않는다.
+- build_state()는 모든 성공 심볼 중 가장 최신 timestamp로 전체 freshness를 계산한다. 최신 USD/JPY quote가 오래된 KOSPI/KOSDAQ/한국 리더 데이터를 가릴 수 있다.
+- config/market_monitor.json의 material_abs_pct_15m 임계값이 실제 측정 구간과 일치하는지 보장되지 않는다.
+- 기존 tests/test_market_monitor.py는 상태 임계값, alert/delta, breadth, 실패 VIX 처리, state schema 등을 확인하지만 5m/15m/daily horizon parity 및 심볼별 freshness의 핵심 회귀 케이스를 직접 입증하지 않는다.
+- tests/test_data_pipeline.py와 tests/r01/*은 completeness/PIT/provenance 게이트를 검사하지만 시장 모니터의 return horizon/freshness 문제를 대체하지 않는다.
+- .github/workflows/collectors-ci.yml은 market monitor 관련 파일 변경 시 해당 테스트를 실행하도록 구성돼 있다.
 
-## 4. 벤치마크 후보와 순서
+검증 한계:
+- GitHub commit status는 pending / check contexts 0으로 조회되었다.
+- 연결된 workflow-run 조회에서 점검 커밋 실행 기록을 얻지 못했다.
+- 로컬 clone/test는 실행 환경의 github.com DNS 해석 실패로 실행하지 못했다.
+- 따라서 테스트 상태는 NOT VERIFIED이며 PASS가 아니다.
 
-우선순위는 아래와 같다. 한 번에 여러 요소를 추가하지 말고 각 후보의 증분 효과부터 시험한다.
+## 4. 동결 기준선과 명명 규칙
 
-1. Cross-sectional momentum / relative strength: 20/60/120 거래일 및 중기 모멘텀, 시장/섹터 대비 RS.
-2. Quality / profitability: 현금흐름, 수익성, 레버리지, 일회성 이익, 재무 건전성.
-3. Value / valuation discipline: 이익·현금흐름 대비 가격, 업종별 비교, value trap 통제.
-4. Low-risk / volatility-aware sizing: 하방 변동성, 상관, 유동성, 공통 테마·ETF look-through.
-5. Time-series trend filter: 200일 SMA와 월간 10개월 SMA를 비교군으로 평가.
-6. Breakout / volume setup: 기존 D/W/M 및 RS 대비 진입 실패율·추격매수·MAE/MFE 개선 여부.
-7. Capital deployment: lump sum vs fixed DCA vs risk-gated staged deployment.
+- EXPERIMENT_B0_ENGINE_2026-10-16: 기존 엔진 비교 기준선, source commit 2394db0bbc21b6ab36f4840b78dc227e4a84445c.
+- BUY_TRIGGER_B0_NO_BUY: 기존 Buy Trigger Engine의 No Buy 권한 상태.
+- 둘은 다른 개념이다. 실험 baseline 이름이 기존 매수 차단 상태를 변경하거나 우회하지 않는다.
 
-## 5. 다음 세션의 구체적인 작업 순서
+동결 매니페스트에 코드·설정·테스트·CI 파일의 blob SHA가 있다. 향후 구현 변경은 별도 변경 커밋에서 만들고 기존 B0 기준선과 비교한다. 기준선을 조용히 덮어쓰지 않는다.
 
-### Step A — 저장소 기준선 확인
-- 기준 커밋과 문서가 존재하는지 확인.
-- 기존 Market Regime Engine, Buy Trigger Engine, Portfolio Factor Exposure 규칙을 읽는다.
-- 현행 엔진 B0의 코드·설정 버전, 데이터 컷오프, 산출물을 고정한다.
+## 5. 절대 유지할 제약
 
-### Step B — Issue #27 / M1 게이트 검증
-- 이슈 상태와 관련 구현/CI 테스트를 확인한다.
-- 데이터 무결성 문제를 해결하기 전 성능 백테스트를 실행해 결론을 내리지 않는다.
-- 수정이 필요하면 작은 변경 단위로 수정하고 회귀 테스트를 추가한다.
+- BUY_ALLOWED=false
+- EXECUTION_ALLOWED=false
+- PROMOTION=DISABLED
+- M0 Risk Contract → M1 Data Integrity → M2 Portfolio Risk Engine → M3 Asset Allocation Backtest 순서를 보존한다.
+- DATA_NOT_READY/BLOCKED는 fail-closed.
+- M1 통과 전에 성능 백테스트를 매수 권한 근거로 사용하지 않는다.
+- LOCKED 보유분은 위험 계산에 포함하지만 자동 매도 대상으로 처리하지 않는다.
+- 계좌 총액과 개별 보유분의 중복 합산을 금지하고 ETF look-through는 별도 노출로 반영한다.
+- 팩터·임계값을 OOS 결과 확인 뒤 선택하지 않는다.
+- CAGR는 보조 지표다. MDD, tail loss, stress loss, recovery duration 및 생존성 제약이 우선이다.
 
-### Step C — Test Contract 작성
-실험마다 다음 항목을 고정한다.
-- hypothesis / mechanism
-- universe / survivorship handling
-- PIT availability timestamp and lag
-- signal formula, lookback, rebalance frequency
-- entry/exit and executable price assumptions
-- corporate actions
-- fees, taxes, spread, slippage, liquidity limits
-- benchmark and frozen B0 version
-- train / validation / walk-forward OOS windows
-- overlapping-label purge/embargo when needed
-- primary metrics and pre-registered pass/fail thresholds
-- sensitivity grid and number of trials
-- falsification conditions
-- artifact path and run identifier
+## 6. M1 다음 작업 — 구현/CI
 
-### Step D — 실험 순서
-1. B0: frozen current engine.
-2. B1: KOSPI/KOSPI 200 buy-and-hold plus current portfolio baseline.
-3. B2: fixed DCA baseline.
-4. B3: 200-day / 10-month trend filter.
-5. C1: B0 + quality/profitability.
-6. C2: B0 + value discipline.
-7. C3: B0 + cross-sectional momentum/RS.
-8. C4: B0 + low-risk sizing.
-9. C5: 통과한 단일 신호만 결합한 multifactor.
-10. C6: breakout/volume entry setup.
-11. C7: risk-gated staged deployment.
+아래 회귀 테스트를 코드와 CI에 연결하고 증거를 보관한다.
 
-### Step E — 평가 지표
-필수:
-- capital survival: MDD, 95% CVaR/Expected Shortfall, stress loss, worst forward return
-- recovery: recovery duration, time underwater
-- signal: horizon별 forward return, Rank IC/monotonicity, FP/FN, lead time
-- entry: MAE/MFE, breakout failure, chase-entry frequency
-- implementation: turnover, fees/taxes/slippage-adjusted results, liquidity capacity
-- robustness: walk-forward OOS, year/regime/sector split, parameter sensitivity
-- deployment: cash opportunity cost, loss probability/depth/duration
+1. 5분, 검증된 15분, 이전 정규 세션 종가 대비 일간 수익률을 별도 필드로 산출한다.
+2. 15분 구간의 간격/누락/중복/역순 timestamp를 검증한다. 잘못된 바를 인접 5분 변화율로 대체하지 않는다.
+3. prior regular-session close, endpoint timestamp, price basis를 보존한다.
+4. freshness를 심볼별·필수 그룹별로 계산하고 session-aware 정책을 적용한다. 가장 신선한 무관 심볼로 전체 GREEN을 만들지 않는다.
+5. quote conflict, stale/missing critical symbol, market holiday/session/timezone, corporate action 테스트를 추가한다.
+6. DATA_NOT_READY/BLOCKED가 BUY_TRIGGER를 승격하지 못하고 BUY_ALLOWED/EXECUTION_ALLOWED가 계속 false인지 확인한다.
+7. collectors-ci 경로에서 회귀 테스트를 실행하고, 음성 fixture와 전체 테스트 결과를 artifact로 저장한다.
 
-CAGR는 보조 지표로 보고한다. 데이터 무결성 실패나 생존 제약 악화가 있으면 높은 CAGR로 상쇄하지 않는다.
+모든 필수 M1 회귀 테스트와 출처/시간 검증 증거가 확보되기 전까지 M1은 GREEN으로 간주하지 않는다.
 
-## 6. 승격 게이트
+## 7. 방법론 실험 순서
 
-- G0 Evidence-ready: PIT, 데이터 계약, 기업행동, 시점, 비용/체결 가정 검증.
-- G1 Baseline parity: B0와 단순 대조군 재현.
-- G2 Incremental value: 사전 정의된 지표에서 증분 개선, tail risk/MDD의 부당한 악화 없음.
-- G3 Robustness: walk-forward OOS, 국면별 결과, 비용·파라미터 민감도 및 반증 통과.
-- G4 Paper/shadow: 실시간 신호와 기록 정확성 검증.
-- G5 Promotion review: 독립 검토 후 별도 승인.
+M1 GREEN 이후에만 유효한 데이터 구간에서 empirical backtest를 시작한다.
 
-어떤 게이트도 BUY_ALLOWED 또는 EXECUTION_ALLOWED를 자동으로 true로 만들지 않는다. 승격은 별도 검토와 승인이 필요하다.
+1. EXPERIMENT_B0_ENGINE parity 재현.
+2. B1: KOSPI/KOSPI 200 buy-and-hold 대조군.
+3. B2: 고정 DCA 및 현금 기회비용 대조군.
+4. B3/B3-M: 일간 200일 SMA와 월간 10개월 SMA를 별도 테스트.
+5. C1: Cross-sectional momentum / relative strength.
+6. C2: Quality / profitability.
+7. C3: Value / valuation discipline.
+8. C4: Low-risk / volatility-aware sizing.
+9. C5: Time-series trend / exposure filter.
+10. C6: Breakout / volume / entry setup.
+11. C7: Lump sum vs fixed DCA vs risk-gated staging.
+12. C8: 개별 테스트를 통과한 신호만 사용한 multifactor 조합.
 
-## 7. Lessons learned / 운영 규칙
+각 실험은 universe/survivorship, PIT, 수식/lookback, rebalance, 실행가/비용, corporate actions, walk-forward OOS, purge/embargo, 사전등록 1차 지표, 최소 효과, 민감도/다중검정, 반증 조건을 명시한다. 상세 기준은 Test Contracts v1을 기준으로 한다.
 
-- 전략을 많이 붙이는 것보다 기존 엔진 대비 검증 가능한 증분 가설이 우선이다.
-- 동일 정보를 여러 신호가 중복 반영하지 않도록 opportunity, permission, entry, sizing, deployment를 분리한다.
-- 한국 주식 팩터 연구는 현지 검증 가설의 근거이지 미래 수익 보장이 아니다.
-- DCA는 초과수익 보장 전략이 아니라 자금투입 정책의 대조군이다.
-- 데이터 품질 실패는 전략 성능보다 우선하는 차단 조건이다.
-- 결과를 본 뒤 파라미터를 수정하면 그 OOS 기간은 더 이상 독립 검증 구간이 아니다.
-- 현재 문서는 연구 프레임워크만 등록하며 live rule/threshold를 변경하지 않는다.
+## 8. 승격 게이트
 
-## 8. 다음 세션 시작 프롬프트
+- G0 Evidence-ready: source/provenance/PIT/기업행동/세션/비용 검증.
+- G1 Baseline parity: B0와 대조군 재현.
+- G2 Incremental value: 사전등록 지표의 증분 효과 및 tail-risk 제약.
+- G3 Robustness: walk-forward OOS, regime/sector 분해, 비용/파라미터 민감도, falsification.
+- G4 Paper/shadow: 신호/기록 정합성.
+- G5 독립 검토 및 명시적 promotion 승인.
 
-아래 내용을 다음 세션 첫 메시지로 사용한다.
+어떤 게이트도 BUY_ALLOWED 또는 EXECUTION_ALLOWED를 자동으로 true로 만들지 않는다.
 
-> investment 저장소의 docs/research/HANDOFF_STOCK_METHOD_BENCHMARK.md와 docs/research/INVESTMENT_METHOD_BENCHMARK_2026-10-16.md를 읽고 이어서 진행하자. 먼저 GitHub Issue #27의 현재 상태와 M1 Data Integrity 관련 코드·CI 테스트를 확인하라. 기존 B0 및 M0–M3 게이트를 보존하고 BUY_ALLOWED=false, EXECUTION_ALLOWED=false를 유지하라. 데이터 무결성이 검증되기 전에는 신규 전략 백테스트 결과를 매수 권한 근거로 사용하지 말라. 그 다음 단일 신호별 test contract와 사전등록 합격/반증 기준을 작성하라. 변경이 필요하면 작은 단위로 구현·테스트하고, 유의미한 산출물은 Git에 커밋하라. 마지막에 Lesson Learned, 규칙 변경 필요성, 후속 작업을 기록하라.
+## 9. Lesson Learned 및 룰 변경 판단
 
-## 9. 참고 링크
+- Lesson Learned 파일과 baseline/test contract를 Git에 보관한다.
+- 원인: 전략보다 상위인 데이터 유효성에서 수익률 기간과 freshness 집계 단위가 어긋나면 위험 상태를 반대로 표시할 수 있다.
+- 개선 규칙: 수익률 필드 이름·threshold·실제 endpoint가 동일한 horizon을 나타내야 하고, freshness는 각 필수 관측치와 그룹에서 따로 판정한다.
+- 식별자 규칙: 연구 기준선은 EXPERIMENT_B0_ENGINE, 매수 차단 상태는 BUY_TRIGGER_B0_NO_BUY로 구분한다.
+- 이번 세션에서는 live rule, threshold, weight를 변경하지 않았다. M1 교정 후 별도 변경으로 테스트·리뷰한다.
+- Git 저장은 필요하다. 아래 체크리스트는 해당 문서화 작업을 완료한 상태로 기록한다.
 
-- Benchmark: https://github.com/chayobi03-cyber/investment/blob/main/docs/research/INVESTMENT_METHOD_BENCHMARK_2026-10-16.md
-- Issue #27: https://github.com/chayobi03-cyber/investment/issues/27
-- Repository: https://github.com/chayobi03-cyber/investment
+## 10. 다음 세션 시작 프롬프트
 
-## 10. 세션 종료 체크리스트
+> investment 저장소의 HANDOFF_STOCK_METHOD_BENCHMARK.md, B0_BASELINE_FREEZE_2026-10-16.md, STOCK_METHOD_TEST_CONTRACTS_V1_2026-10-16.md를 읽고 이어서 진행하자. Issue #27은 OPEN이고 M1은 아직 GREEN이 아니다. scripts/market_monitor/poll.py에서 5m/15m/daily return horizon을 분리하고 symbol/group/session-aware freshness를 구현하라. quote conflict, missing/stale bars, holiday/timezone, corporate action 및 fail-closed decision gate 회귀 테스트를 추가하고 collectors-ci에 연결하라. 기존 EXPERIMENT_B0_ENGINE 기준선과 M0–M3 게이트를 보존하고 BUY_ALLOWED=false, EXECUTION_ALLOWED=false, PROMOTION=DISABLED를 유지하라. CI의 실제 결과와 artifact를 확인하기 전에는 테스트 PASS를 주장하거나 전략 성능 백테스트를 매수 권한 근거로 쓰지 말라. 마지막에 Lesson Learned, 규칙 변경 필요성, Git 커밋 여부를 검토하라.
 
-- [ ] 실제 수행한 작업과 확인하지 못한 항목을 구분해 기록
-- [ ] 테스트 결과와 실행 ID / artifact 경로 기록
-- [ ] Lesson Learned 작성
-- [ ] 기존 룰 수정 여부와 근거 기록
-- [ ] Git 커밋 필요 여부 검토 및 필요한 변경 커밋
-- [ ] 다음 세션 시작 프롬프트 갱신
-- [ ] BUY_ALLOWED=false / EXECUTION_ALLOWED=false 유지 여부 확인
+## 11. 세션 종료 체크리스트
+
+- [x] Issue #27 상태 및 관련 코드·테스트·CI 경로 확인
+- [x] 기존 B0 source commit/파일 SHA 동결
+- [x] 방법론별 test contract 및 사전등록 기준 작성
+- [x] Lesson Learned 기록
+- [x] Git 저장 필요성 검토 및 문서 커밋
+- [ ] Issue #27 코드 수정 및 회귀 테스트 실행 (다음 작업)
+- [ ] GitHub Actions artifact 기반 M1 승인 (다음 작업)
+- [x] BUY_ALLOWED=false / EXECUTION_ALLOWED=false 유지
