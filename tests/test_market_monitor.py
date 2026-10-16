@@ -2,6 +2,8 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import importlib.util
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -51,13 +53,13 @@ class MarketMonitorTests(unittest.TestCase):
         base = {
             "RISK": "GREEN", "TREND": "GREEN", "BREADTH": "GREEN", "LEADERS": "GREEN",
             "RATES": "GREEN", "FX": "GREEN", "OIL": "GREEN", "GOLD": "GREEN",
-            "BUY_TRIGGER": "UNCONFIRMED", "DATA_QUALITY": "GREEN", "metrics": {"VIX_pct": 1.0},
+            "BUY_TRIGGER": "UNCONFIRMED", "DATA_QUALITY": "GREEN", "metrics": {"VIX_pct": 1.0, "VIX_15m_pct": 1.0, "VIX_daily_close_pct": None},
         }
         cases = [
             (None, {}, ("P2", False)),
             (base, {"DATA_QUALITY": "RED"}, ("P1", True)),
             (base, {"RISK": "RED"}, ("P0", True)),
-            (base, {"RISK": "RED", "metrics": {"VIX_pct": None}}, ("P2", False)),
+            (base, {"RISK": "RED", "metrics": {"VIX_pct": None, "VIX_15m_pct": None, "VIX_daily_close_pct": None}}, ("P2", False)),
             (base, {"BREADTH": "AMBER", "LEADERS": "AMBER"}, ("P1", True)),
             (base, {"BREADTH": "AMBER"}, ("P2", False)),
             (base, {"GOLD": "RED", "TREND": "AMBER"}, ("P2", False)),
@@ -70,7 +72,12 @@ class MarketMonitorTests(unittest.TestCase):
         cfg = MOD.load_config()
         ts = "2026-10-08T00:00:00Z"
         groups = {
-            g: {name: {"ok": True, "change_pct": 0.1, "timestamp": ts} for name in syms}
+            g: {
+                name: {"ok": True, "change_pct_5m": 0.05, "change_pct_15m": 0.1,
+                       "session_change_pct": 0.2, "last_completed_session_return_pct": 0.1,
+                       "market_session_state": "ACTIVE", "timestamp": ts}
+                for name in syms
+            }
             for g, syms in cfg["symbols"].items()
         }
         if vix is None:
@@ -81,7 +88,7 @@ class MarketMonitorTests(unittest.TestCase):
         return cfg, {"collected_at": ts, "groups": groups, "all": flat}
 
     def test_build_state_reads_vix_change(self):
-        cfg, raw = self._raw({"ok": True, "change_pct": 2.5, "timestamp": "2026-10-08T00:00:00Z"})
+        cfg, raw = self._raw({"ok": True, "change_pct_15m": 2.5, "change_pct_5m": 0.8, "session_change_pct": 1.2, "last_completed_session_return_pct": 0.1, "market_session_state": "ACTIVE", "timestamp": "2026-10-08T00:00:00Z"})
         state = MOD.build_state(cfg, raw)
         self.assertEqual(state["metrics"]["VIX_pct"], 2.5)
         self.assertEqual(state["RISK"], "RED")
@@ -98,7 +105,18 @@ class MarketMonitorTests(unittest.TestCase):
         cfg = cfg or MOD.load_config()
         _, raw = self._raw({"ok": True, "change_pct": 0.1, "timestamp": "2026-10-08T00:00:00Z"})
         # `total` ok leaders, `up` of them rising; one failed quote that must be ignored.
-        leaders = {f"L{i}": {"ok": True, "change_pct": 1.0 if i < up else -1.0} for i in range(total)}
+        leaders = {
+            f"L{i}": {
+                "ok": True,
+                "change_pct_15m": 1.0 if i < up else -1.0,
+                "change_pct_5m": 0.1 if i < up else -0.1,
+                "session_change_pct": 1.0 if i < up else -1.0,
+                "last_completed_session_return_pct": 0.5 if i < up else -0.5,
+                "market_session_state": "ACTIVE",
+                "timestamp": "2026-10-08T00:00:00Z",
+            }
+            for i in range(total)
+        }
         leaders["DOWN"] = {"ok": False, "error": "x"}
         raw["groups"]["korea_leaders"] = leaders
         raw["groups"]["us_leaders"] = {}
@@ -141,6 +159,149 @@ class MarketMonitorTests(unittest.TestCase):
                 "DATA_QUALITY", "metrics",
             ],
         )
+
+
+    def test_chart_parser_separates_5m_15m_and_daily_close_returns(self):
+        zone = ZoneInfo("Asia/Seoul")
+        bars = [
+            (datetime(2026, 10, 9, 15, 25, tzinfo=zone), 6625.93),
+            (datetime(2026, 10, 12, 9, 0, tzinfo=zone), 6500.0),
+            (datetime(2026, 10, 12, 15, 25, tzinfo=zone), 6384.24),
+            (datetime(2026, 10, 13, 9, 0, tzinfo=zone), 6380.0),
+            (datetime(2026, 10, 13, 9, 15, tzinfo=zone), 6350.0),
+            (datetime(2026, 10, 13, 9, 25, tzinfo=zone), 6320.0),
+            (datetime(2026, 10, 13, 9, 30, tzinfo=zone), 6310.0),
+        ]
+        timestamps = [int(dt.timestamp()) for dt, _ in bars]
+        closes = [price for _, price in bars]
+        now = datetime(2026, 10, 13, 9, 30, tzinfo=zone)
+        result = MOD.summarize_chart_payload(
+            "^KS11",
+            {"exchangeTimezoneName": "Asia/Seoul", "currency": "KRW", "exchangeName": "KSE"},
+            timestamps,
+            closes,
+            market_session="KOREA",
+            cfg=MOD.load_config(),
+            now=now,
+        )
+        self.assertEqual(result["market_session_state"], "ACTIVE")
+        self.assertAlmostEqual(result["change_pct_5m"], (6310 / 6320 - 1) * 100, places=6)
+        self.assertAlmostEqual(result["change_pct_15m"], (6310 / 6350 - 1) * 100, places=6)
+        self.assertAlmostEqual(
+            result["last_completed_session_return_pct"],
+            (6384.24 / 6625.93 - 1) * 100,
+            places=5,
+        )
+        self.assertNotAlmostEqual(result["change_pct_15m"], result["last_completed_session_return_pct"], places=2)
+
+    def test_fresh_fx_cannot_mask_stale_required_korea_series(self):
+        cfg, raw = self._raw({"ok": True, "change_pct_5m": 0.05, "change_pct_15m": 0.1, "session_change_pct": 0.2, "last_completed_session_return_pct": 0.1, "market_session_state": "CLOSED", "timestamp": "2026-10-08T00:00:00Z"})
+        raw["collected_at"] = "2026-10-08T00:45:00Z"  # 09:45 KST: Korea session is active.
+        for key in ("KOSPI", "KOSDAQ", "VIX", "NASDAQ", "SOX", "SP500"):
+            if key in raw["groups"]["indices"]:
+                raw["groups"]["indices"][key]["market_session_state"] = "CLOSED"
+        raw["groups"]["indices"]["KOSPI"]["market_session_state"] = "ACTIVE"
+        raw["groups"]["indices"]["KOSDAQ"]["market_session_state"] = "ACTIVE"
+        for name in cfg["symbols"]["korea_leaders"]:
+            raw["groups"]["korea_leaders"][name]["timestamp"] = "2026-10-08T00:00:00Z"
+            raw["groups"]["korea_leaders"][name]["market_session_state"] = "ACTIVE"
+        raw["groups"]["indices"]["KOSPI"]["timestamp"] = "2026-10-08T00:00:00Z"
+        raw["groups"]["indices"]["KOSDAQ"]["timestamp"] = "2026-10-08T00:00:00Z"
+        for name in cfg["symbols"]["us_leaders"]:
+            raw["groups"]["us_leaders"][name]["market_session_state"] = "CLOSED"
+        raw["groups"]["macro"]["USD_JPY"]["timestamp"] = raw["collected_at"]
+        raw["groups"]["macro"]["USD_JPY"]["market_session_state"] = "ACTIVE"
+
+        state = MOD.build_state(cfg, raw)
+        self.assertEqual(state["metrics"]["freshness_by_series"]["indices.KOSPI"], "STALE")
+        self.assertNotEqual(state["DATA_QUALITY"], "GREEN")
+        severity, alert = MOD.should_alert(None, state, [])
+        self.assertEqual(severity, "P1")
+        self.assertTrue(alert)
+
+
+    def test_closed_session_uses_daily_close_and_initial_stress_is_alerted(self):
+        cfg, raw = self._raw({
+            "ok": True,
+            "change_pct_5m": 0.05,
+            "change_pct_15m": 0.1,
+            "session_change_pct": None,
+            "last_completed_session_return_pct": 2.0,
+            "market_session_state": "CLOSED",
+            "timestamp": "2026-10-12T20:00:00Z",
+        })
+        raw["collected_at"] = "2026-10-12T22:30:00Z"  # 07:30 KST, before the Korea session.
+        for group in raw["groups"].values():
+            for item in group.values():
+                item["market_session_state"] = "CLOSED"
+        korea_ts = "2026-10-12T06:00:00Z"
+        us_ts = "2026-10-12T20:00:00Z"
+        daily_moves = {"KOSPI": -3.65, "KOSDAQ": -4.83, "SP500": -0.8, "NASDAQ": -0.44, "SOX": -2.7, "VIX": 2.0}
+        for name, item in raw["groups"]["indices"].items():
+            item["timestamp"] = korea_ts if name in {"KOSPI", "KOSDAQ"} else us_ts
+            item["last_completed_session_return_pct"] = daily_moves.get(name, 0.1)
+        for item in raw["groups"]["korea_leaders"].values():
+            item["timestamp"] = korea_ts
+            item["last_completed_session_return_pct"] = -4.0
+        for item in raw["groups"]["us_leaders"].values():
+            item["timestamp"] = us_ts
+            item["last_completed_session_return_pct"] = 0.5
+
+        state = MOD.build_state(cfg, raw)
+        self.assertEqual(state["session"], "GLOBAL_TRANSITION")
+        self.assertEqual(state["DATA_QUALITY"], "GREEN")
+        self.assertIsNone(state["metrics"]["KOSPI_15m_pct"])
+        self.assertAlmostEqual(state["metrics"]["KOSPI_daily_close_pct"], -3.65, places=6)
+        self.assertEqual(state["TREND"], "RED")
+        severity, alert = MOD.should_alert(None, state, [])
+        self.assertEqual(severity, "P0")
+        self.assertTrue(alert)
+
+
+
+    def test_chart_parser_rejects_incomplete_prior_session_close(self):
+        zone = ZoneInfo("Asia/Seoul")
+        bars = [
+            (datetime(2026, 10, 7, 15, 25, tzinfo=zone), 6900.0),
+            (datetime(2026, 10, 8, 15, 25, tzinfo=zone), 6800.0),
+            # Final regular-session bars are missing on Oct 9; 15:15 is too early to be a close.
+            (datetime(2026, 10, 9, 15, 15, tzinfo=zone), 6750.0),
+            (datetime(2026, 10, 12, 9, 0, tzinfo=zone), 6700.0),
+            (datetime(2026, 10, 12, 9, 15, tzinfo=zone), 6710.0),
+            (datetime(2026, 10, 12, 9, 25, tzinfo=zone), 6720.0),
+            (datetime(2026, 10, 12, 9, 30, tzinfo=zone), 6730.0),
+        ]
+        result = MOD.summarize_chart_payload(
+            "^KS11",
+            {"exchangeTimezoneName": "Asia/Seoul", "currency": "KRW", "exchangeName": "KSE"},
+            [int(dt.timestamp()) for dt, _ in bars],
+            [price for _, price in bars],
+            market_session="KOREA",
+            cfg=MOD.load_config(),
+            now=datetime(2026, 10, 12, 9, 30, tzinfo=zone),
+        )
+        self.assertEqual(result["market_session_state"], "ACTIVE")
+        self.assertIsNone(result["session_change_pct"])
+        self.assertIsNone(result["last_completed_session_return_pct"])
+        self.assertIsNone(result["last_completed_session_close_at"])
+        self.assertFalse(result["last_completed_session_close_verified"])
+        self.assertFalse(result["prior_session_close_verified"])
+
+    def test_missing_prior_close_blocks_active_required_series(self):
+        cfg, raw = self._raw({
+            "ok": True,
+            "change_pct_5m": 0.05,
+            "change_pct_15m": 0.1,
+            "session_change_pct": 0.2,
+            "last_completed_session_return_pct": 0.1,
+            "market_session_state": "ACTIVE",
+            "timestamp": "2026-10-08T00:00:00Z",
+        })
+        raw["groups"]["indices"]["KOSPI"]["session_change_pct"] = None
+        state = MOD.build_state(cfg, raw)
+        self.assertEqual(state["metrics"]["freshness_by_series"]["indices.KOSPI"], "UNKNOWN")
+        self.assertEqual(state["DATA_QUALITY"], "RED")
+        self.assertNotEqual(state["DATA_QUALITY"], "GREEN")
 
 
 if __name__ == "__main__":
