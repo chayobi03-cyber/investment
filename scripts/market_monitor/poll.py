@@ -123,7 +123,7 @@ def _period_return(pairs: list[tuple[int, float]], horizon_minutes: int, zone: Z
 
 
 def _daily_closes(pairs: list[tuple[int, float]], zone: ZoneInfo) -> list[tuple[object, int, float]]:
-    """Extract the last regular-session bar for each exchange-local date."""
+    """Return the last observed 5-minute bar per local date; callers must verify close proximity."""
     by_date: dict[object, tuple[int, float]] = {}
     for ts, px in pairs:
         day = datetime.fromtimestamp(ts, UTC).astimezone(zone).date()
@@ -131,6 +131,29 @@ def _daily_closes(pairs: list[tuple[int, float]], zone: ZoneInfo) -> list[tuple[
         if existing is None or ts > existing[0]:
             by_date[day] = (ts, px)
     return [(day, ts, px) for day, (ts, px) in sorted(by_date.items())]
+
+
+def _is_verified_session_close_bar(
+    ts: int,
+    zone: ZoneInfo,
+    market_session: str | None,
+    cfg: dict,
+) -> bool:
+    """Validate that a 5-minute bar is the final regular-session bar, not an early partial-day value."""
+    schedule = cfg.get("market_sessions", {}).get(market_session or "")
+    if not schedule:
+        return False
+    try:
+        close_clock = clock_time.fromisoformat(schedule["close"])
+        local_day = datetime.fromtimestamp(ts, UTC).astimezone(zone).date()
+        close_at = datetime.combine(local_day, close_clock, tzinfo=zone).timestamp()
+    except (KeyError, ValueError, ZoneInfoNotFoundError):
+        return False
+
+    # Yahoo 5-minute chart timestamps denote the bar start; the final regular
+    # bar is therefore expected at close-5m. Permit close-stamped data (+1m),
+    # but never silently accept an earlier bar if the close endpoint is missing.
+    return close_at - 5 * 60 <= ts <= close_at + 60
 
 
 def summarize_chart_payload(
@@ -173,13 +196,20 @@ def summarize_chart_payload(
     local_now = now.astimezone(zone)
     closes_by_day = _daily_closes(pairs, zone)
     prior_day_close = None
+    prior_day_close_verified = False
     for day, ts, px in reversed(closes_by_day[:-1]):
         if day < latest_dt.date():
             prior_day_close = (ts, px)
+            prior_day_close_verified = _is_verified_session_close_bar(ts, zone, market_session, cfg)
             break
 
     current_session_pct = None
-    if session_state is True and latest_dt.date() == local_now.date() and prior_day_close:
+    if (
+        session_state is True
+        and latest_dt.date() == local_now.date()
+        and prior_day_close
+        and prior_day_close_verified
+    ):
         current_session_pct = pct_change(latest_px, prior_day_close[1])
 
     completed_closes = closes_by_day[:]
@@ -197,10 +227,21 @@ def summarize_chart_payload(
 
     daily_pct = None
     completed_close_at = None
+    latest_completed_close_verified = False
     if completed_closes:
-        completed_close_at = completed_closes[-1][1]
+        latest_close_ts = completed_closes[-1][1]
+        latest_completed_close_verified = _is_verified_session_close_bar(
+            latest_close_ts, zone, market_session, cfg
+        )
+        if latest_completed_close_verified:
+            completed_close_at = latest_close_ts
     if len(completed_closes) >= 2:
-        daily_pct = pct_change(completed_closes[-1][2], completed_closes[-2][2])
+        previous_close_ts = completed_closes[-2][1]
+        previous_close_verified = _is_verified_session_close_bar(
+            previous_close_ts, zone, market_session, cfg
+        )
+        if latest_completed_close_verified and previous_close_verified:
+            daily_pct = pct_change(completed_closes[-1][2], completed_closes[-2][2])
 
     prev_5m_px = pairs[-2][1] if len(pairs) >= 2 and (
         0 < pairs[-1][0] - pairs[-2][0] <= 10 * 60
@@ -217,6 +258,8 @@ def summarize_chart_payload(
         "session_change_pct": current_session_pct,
         "last_completed_session_return_pct": daily_pct,
         "last_completed_session_close_at": timestamp_iso(completed_close_at) if completed_close_at else None,
+        "last_completed_session_close_verified": latest_completed_close_verified,
+        "prior_session_close_verified": prior_day_close_verified,
         "timestamp": timestamp_iso(latest_ts),
         "currency": meta.get("currency"),
         "exchange": meta.get("exchangeName"),
@@ -331,7 +374,9 @@ def _freshness_status(item: dict | None, asof: datetime, cfg: dict) -> tuple[str
     if market_state == "ACTIVE":
         if age > thresholds["max_stale_minutes"]:
             return "STALE", age
-        if item.get("change_pct_15m") is None:
+        # Active-session direction is not complete without a verified prior-session
+        # close; otherwise intraday data could produce GREEN despite a missing daily baseline.
+        if item.get("change_pct_15m") is None or item.get("session_change_pct") is None:
             return "UNKNOWN", age
         return "FRESH_ACTIVE_SESSION", age
     if market_state == "CLOSED":
