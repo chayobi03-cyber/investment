@@ -130,3 +130,19 @@ Start at P0. Inspect current Issue 27/31 status and actual repository code/tests
 - B0 baseline remains frozen and unchanged. Do not merge PR #30 or promote M1 solely on its historical CI run; address the close-validation gap, rerun relevant tests/CI against the updated base, and review evidence first.
 - Tests run locally in this session: NONE. Findings above are from remote file/issue/PR inspection and static code review.
 - Rule/threshold change: NO. Keep the issue and remediation separate from any threshold tuning.
+
+
+### Remediation follow-up — PR #30 (2026-10-16)
+
+- Continued P0 work on existing draft PR #30 rather than creating a duplicate fix: https://github.com/chayobi03-cyber/investment/pull/30
+- New PR-branch commits:
+  - `c98d4b808ca5eaf6de250db97767d72ca7f6f615`: validate the final 5-minute bar against the configured regular-session close; do not derive daily/session returns from an unverified prior close; classify an active series as UNKNOWN when its prior-session baseline is missing.
+  - `6c9ba73cae60c32eded9f25a0024a9d17fd58037`: add missing-close and missing-prior-close regression tests.
+- Added tests:
+  - `test_chart_parser_rejects_incomplete_prior_session_close`
+  - `test_missing_prior_close_blocks_active_required_series`
+- GitHub Actions `collectors-ci` run #38839367370 completed SUCCESS on PR head `6c9ba73cae60c32eded9f25a0024a9d17fd58037`: 36 tests passed in 1.22s. Run: https://github.com/chayobi03-cyber/investment/actions/runs/38839367370
+- This verifies the PR-branch collector test suite only. It does not verify current `main`, end-to-end Historical DB/HOTL persistence, or M1 promotion requirements.
+- PR #30 remains OPEN/DRAFT; Issue #27 and Issue #31 remain OPEN. No code was merged into `main`; the current-main monitor defect remains active until the remediation is reviewed and merged.
+- Remaining review item: current active-series freshness permits timestamps up to 30 minutes old while evaluating a 15-minute return. Explicitly test and justify this tolerance before treating the monitor as decision-grade.
+- Decision unchanged: M1 remains BLOCKED / NOT VERIFIED; `BUY_ALLOWED=false`, `EXECUTION_ALLOWED=false`, `PROMOTION=DISABLED`. B0 remains frozen and untouched.
