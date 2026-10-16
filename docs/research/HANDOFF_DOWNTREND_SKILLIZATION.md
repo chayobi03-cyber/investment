@@ -169,3 +169,14 @@
 - **Rule Change:** NO. 이번 handoff는 기존 투자 규칙/임계값을 변경하지 않는다.
 - **Git:** YES. 이 handoff 자체가 다음 세션에서 재사용할 상태와 순서를 고정하므로 별도 문서 커밋으로 저장한다.
 - **테스트:** 이 문서는 문서 전용 변경이며 코드 테스트를 수행하지 않았다.
+
+
+## Session follow-up — Issue #27 remediation candidate
+
+- Inspected the existing draft PR #30 instead of duplicating the fix: https://github.com/chayobi03-cyber/investment/pull/30
+- The PR branch now includes verified close-endpoint handling and fail-closed behavior if an active required series lacks a verified prior-session close. Regression tests cover an incomplete prior session close and missing prior close.
+- Current PR head: `6c9ba73cae60c32eded9f25a0024a9d17fd58037`.
+- `collectors-ci` run #38839367370 passed on that exact head (36 tests passed in 1.22s): https://github.com/chayobi03-cyber/investment/actions/runs/38839367370
+- Verification is limited to the PR branch's collectors suite. No local tests were run, the patch is not merged to `main`, and end-to-end deterministic workflow/Historical DB/HOTL evidence remains unverified.
+- Static review follow-up still required: test and justify the 30-minute active-series freshness tolerance against a 15-minute return horizon; rerun review/CI with the current base. Issue #27 and Issue #31 remain OPEN.
+- Safety remains unchanged: M1 BLOCKED / NOT VERIFIED; `BUY_ALLOWED=false`, `EXECUTION_ALLOWED=false`, `PROMOTION=DISABLED`. No baseline, threshold, or production permission changes.
