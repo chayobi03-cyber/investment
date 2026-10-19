@@ -1,5 +1,5 @@
 {
-  "version": "2.0",
+  "version": "2.1",
   "symbols": {
     "indices": {
       "KOSPI": "^KS11",
@@ -39,12 +39,56 @@
   },
   "thresholds": {
     "material_abs_pct_15m": {
-      "index": 1.0,
+      "index": 1,
       "macro": 0.5,
-      "leader": 2.0
+      "leader": 2
     },
-    "breadth_proxy_red": 0.30,
-    "breadth_proxy_green": 0.70,
-    "max_stale_minutes": 30
+    "breadth_proxy_red": 0.3,
+    "breadth_proxy_green": 0.7,
+    "max_stale_minutes": 30,
+    "material_abs_pct_daily": {
+      "index": 3,
+      "macro": 1,
+      "leader": 4,
+      "risk": 10
+    },
+    "max_closed_session_age_minutes": 4320,
+    "required_series": [
+      "indices.KOSPI",
+      "indices.KOSDAQ",
+      "indices.SP500",
+      "indices.NASDAQ",
+      "indices.SOX",
+      "indices.VIX",
+      "korea_leaders.SAMSUNG",
+      "korea_leaders.SK_HYNIX",
+      "us_leaders.TSM"
+    ]
+  },
+  "market_sessions": {
+    "KOREA": {
+      "timezone": "Asia/Seoul",
+      "open": "09:00",
+      "close": "15:30",
+      "weekdays": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "US": {
+      "timezone": "America/New_York",
+      "open": "09:30",
+      "close": "16:00",
+      "weekdays": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
   }
 }
