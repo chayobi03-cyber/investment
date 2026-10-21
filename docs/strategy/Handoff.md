@@ -146,3 +146,19 @@ Start at P0. Inspect current Issue 27/31 status and actual repository code/tests
 - PR #30 remains OPEN/DRAFT; Issue #27 and Issue #31 remain OPEN. No code was merged into `main`; the current-main monitor defect remains active until the remediation is reviewed and merged.
 - Remaining review item: current active-series freshness permits timestamps up to 30 minutes old while evaluating a 15-minute return. Explicitly test and justify this tolerance before treating the monitor as decision-grade.
 - Decision unchanged: M1 remains BLOCKED / NOT VERIFIED; `BUY_ALLOWED=false`, `EXECUTION_ALLOWED=false`, `PROMOTION=DISABLED`. B0 remains frozen and untouched.
+
+
+### Session audit — 2026-10-22: PR #30 current-main audit prompt
+
+- Reviewed current remote state of PR #30, Issue #27, Issue #31, scripts/market_monitor/poll.py, tests/test_market_monitor.py, and the PR diff.
+- Current-main reference at audit time: c30f3f0b7e2ed84f4b668b4778d57e51fc1b5312; PR head reference: 6c9ba73cae60c32eded9f25a0024a9d17fd58037; merge base reference: 2e7e59eb96440eda0be9177e3ffc4d5df4651517. Comparison reported 19 commits ahead and 20 behind; refresh all refs before acting.
+- Confirmed the current-main monitor still computes change_pct from the last two 5-minute bars and computes aggregate freshness from the globally newest series. The main-branch defect remains unresolved in the reviewed snapshot.
+- Static review of PR #30 identified additional validation targets: _period_return() permits 60–140% of the requested horizon (so a 10-minute observed move may qualify as “15m”); regular-session-only calendar assumptions need review for holidays/early closes and non-equity instruments; the 30-minute active freshness allowance needs explicit justification for 15-minute returns.
+- Benchmarked design patterns from Microsoft Qlib, AI4Finance FinRL/FinRL-X, backtesting.py, and Hugging Face EOD dataset candidates. These are research references, not evidence of production price accuracy or investment alpha.
+- Added reusable prompt: docs/research/META_PROMPT_PR30_CURRENT_MAIN_AUDIT_CI_BENCHMARK_V1.md.
+- Prompt commit: c4701f7ae6d25049d838dd3f585c5a3cde198269 on branch docs/meta-prompt-pr30-audit-20261022.
+- This session performed remote inspection and documentation only. No local tests were run, no monitor code was modified, and no new CI run was triggered. Do not claim the PR fix or current-main CI is complete.
+- Lessons learned: an old green CI run does not establish correctness against a diverged current main; timestamps must prove the requested horizon, and data freshness must be evaluated independently per required series and its market session.
+- Rule/threshold change: NO. Keep threshold tuning separate from integrity repair.
+- Decision remains unchanged: M1 BLOCKED / NOT VERIFIED; Issue #27 and #31 open; PR #30 open/draft; BUY_ALLOWED=false, EXECUTION_ALLOWED=false, PROMOTION=DISABLED; B0 remains frozen.
+- Git decision: YES. Preserve the reusable prompt and handoff update in a dedicated documentation branch; do not merge automatically.
